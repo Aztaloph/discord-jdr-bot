@@ -1,0 +1,15 @@
+schema_version: "1.0"
+type: race
+id: halfling
+name:
+  fr: Halfelin
+  en: Halfling
+mechanics:
+  ability_score_increase:
+    - ability: dex
+      value: 2
+  size: small
+  speed: 25
+  traits: []  # TODO Phase 4.5: traits (Brave, Lucky, Halfling Nimbleness, Naturally Stealthy)
+  languages:
+    fixed: [common, halfling]

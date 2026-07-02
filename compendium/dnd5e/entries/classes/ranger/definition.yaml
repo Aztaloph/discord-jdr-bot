@@ -1,0 +1,41 @@
+schema_version: '1.0'
+type: class
+id: ranger
+name:
+  fr: Rôdeur
+  en: Ranger
+mechanics:
+  hit_die: d10
+  primary_abilities:
+  - str
+  - dex
+  - wis
+  saving_throw_proficiencies:
+  - str
+  - dex
+  armor_proficiencies:
+  - light
+  - medium
+  - shields
+  weapon_proficiencies:
+  - simple
+  - martial
+  skill_choices:
+    count: 3
+    from:
+    - animal_handling
+    - athletics
+    - insight
+    - investigation
+    - nature
+    - perception
+    - stealth
+    - survival
+  spellcasting:
+    level: 2
+    ability: wis
+  features_by_level:
+    # TODO Phase 4.5: favored_enemy, natural_explorer (effets mécaniques non implémentés)
+    '1':
+    - favored_enemy
+    - natural_explorer

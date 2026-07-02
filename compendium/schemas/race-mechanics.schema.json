@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jdr-engine.local/compendium/schemas/race-mechanics.schema.json",
+  "title": "RaceMechanics",
+  "description": "Champs mécaniques obligatoires pour definition.yaml (type: race)",
+  "type": "object",
+  "required": ["ability_score_increase", "size", "speed"],
+  "additionalProperties": true,
+  "properties": {
+    "ability_score_increase": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["ability", "value"],
+        "additionalProperties": false,
+        "properties": {
+          "ability": {
+            "type": "string",
+            "enum": ["str", "dex", "con", "int", "wis", "cha"]
+          },
+          "value": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2
+          }
+        }
+      }
+    },
+    "size": {
+      "type": "string",
+      "enum": ["tiny", "small", "medium", "large", "huge", "gargantuan"]
+    },
+    "speed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "traits": {
+      "type": "array"
+    },
+    "languages": {
+      "type": "object"
+    }
+  }
+}

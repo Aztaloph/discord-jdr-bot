@@ -1,0 +1,34 @@
+schema_version: '1.0'
+type: class
+id: fighter
+name:
+  fr: Guerrier
+  en: Fighter
+mechanics:
+  hit_die: d10
+  primary_abilities:
+  - str
+  - con
+  saving_throw_proficiencies:
+  - str
+  - con
+  armor_proficiencies:
+  - shields
+  weapon_proficiencies:
+  - simple
+  - martial
+  skill_choices:
+    count: 2
+    from:
+    - acrobatics
+    - animal_handling
+    - athletics
+    - history
+    - insight
+    - intimidation
+    - perception
+    - survival
+  features_by_level:
+    '1':
+    - fighting_style
+    - second_wind

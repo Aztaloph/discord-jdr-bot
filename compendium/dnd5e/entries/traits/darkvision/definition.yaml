@@ -1,0 +1,12 @@
+schema_version: "1.0"
+type: trait
+id: darkvision
+name:
+  fr: Vision dans le noir
+  en: Darkvision
+mechanics:
+  effects:
+    - type: grant_sense
+      sense: darkvision
+      range: 60
+      unit: feet

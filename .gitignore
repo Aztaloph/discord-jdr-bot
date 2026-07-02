@@ -1,0 +1,9 @@
+.env
+config.json
+venv/
+__pycache__/
+*.pyc
+*.log
+data/characters/characters.json
+data/characters/v2/
+compendium/.srd_cache/

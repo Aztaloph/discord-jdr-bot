@@ -1,0 +1,28 @@
+schema_version: "1.0"
+type: race
+id: human
+name:
+  fr: Humain
+  en: Human
+mechanics:
+  ability_score_increase:
+    - ability: str
+      value: 1
+    - ability: dex
+      value: 1
+    - ability: con
+      value: 1
+    - ability: int
+      value: 1
+    - ability: wis
+      value: 1
+    - ability: cha
+      value: 1
+  size: medium
+  speed: 30
+  traits: []
+  languages:
+    fixed: [common]
+    choose:
+      count: 1
+      from: [common, dwarvish, elvish, giant, gnomish, goblin, halfling, orc, abyssal, celestial, draconic, deep_speech, infernal, primordial, sylvan, undercommon]

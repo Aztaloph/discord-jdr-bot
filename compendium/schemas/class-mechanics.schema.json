@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jdr-engine.local/compendium/schemas/class-mechanics.schema.json",
+  "title": "ClassMechanics",
+  "description": "Champs mécaniques obligatoires pour definition.yaml (type: class)",
+  "type": "object",
+  "required": ["hit_die", "saving_throw_proficiencies"],
+  "additionalProperties": true,
+  "properties": {
+    "hit_die": {
+      "type": "string",
+      "pattern": "^d\\d+$"
+    },
+    "primary_abilities": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["str", "dex", "con", "int", "wis", "cha"]
+      }
+    },
+    "saving_throw_proficiencies": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "string",
+        "enum": ["str", "dex", "con", "int", "wis", "cha"]
+      }
+    },
+    "armor_proficiencies": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "weapon_proficiencies": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "skill_choices": {
+      "type": "object",
+      "required": ["count", "from"],
+      "additionalProperties": false,
+      "properties": {
+        "count": { "type": "integer", "minimum": 1 },
+        "from": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "spellcasting": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "level": { "type": "integer", "minimum": 1 },
+        "ability": {
+          "type": "string",
+          "enum": ["str", "dex", "con", "int", "wis", "cha"]
+        }
+      }
+    },
+    "features_by_level": {
+      "type": "object"
+    }
+  }
+}

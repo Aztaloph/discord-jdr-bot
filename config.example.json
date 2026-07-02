@@ -1,0 +1,7 @@
+{
+  "guild_id": null,
+  "use_engine_v2": true,
+  "default_ruleset": "dnd5e",
+  "default_locale": "fr",
+  "compendium_strict": true
+}

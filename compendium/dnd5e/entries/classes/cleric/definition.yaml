@@ -1,0 +1,35 @@
+schema_version: '1.0'
+type: class
+id: cleric
+name:
+  fr: Clerc
+  en: Cleric
+mechanics:
+  hit_die: d8
+  primary_abilities:
+  - wis
+  - cha
+  saving_throw_proficiencies:
+  - wis
+  - cha
+  armor_proficiencies:
+  - light
+  - medium
+  - shields
+  weapon_proficiencies:
+  - simple
+  skill_choices:
+    count: 2
+    from:
+    - history
+    - insight
+    - medicine
+    - persuasion
+    - religion
+  spellcasting:
+    level: 1
+    ability: wis
+  features_by_level:
+    '1':
+    - spellcasting
+    - divine_domain

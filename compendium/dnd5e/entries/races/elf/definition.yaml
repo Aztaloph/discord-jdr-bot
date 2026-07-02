@@ -1,0 +1,19 @@
+schema_version: "1.0"
+type: race
+id: elf
+name:
+  fr: Elfe
+  en: Elf
+mechanics:
+  ability_score_increase:
+    - ability: dex
+      value: 2
+  size: medium
+  speed: 30
+  traits:
+    - ref: traits/darkvision
+    - ref: traits/keen_senses
+    - ref: traits/fey_ancestry
+    - ref: traits/trance
+  languages:
+    fixed: [common, elvish]

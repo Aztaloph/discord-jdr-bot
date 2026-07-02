@@ -1,0 +1,30 @@
+schema_version: '1.0'
+type: class
+id: wizard
+name:
+  fr: Magicien
+  en: Wizard
+mechanics:
+  hit_die: d6
+  primary_abilities:
+  - int
+  - wis
+  saving_throw_proficiencies:
+  - int
+  - wis
+  skill_choices:
+    count: 2
+    from:
+    - arcana
+    - history
+    - insight
+    - investigation
+    - medicine
+    - religion
+  spellcasting:
+    level: 1
+    ability: int
+  features_by_level:
+    '1':
+    - arcane_recovery
+    - spellcasting

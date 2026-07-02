@@ -1,0 +1,16 @@
+schema_version: "1.0"
+type: race
+id: dwarf
+name:
+  fr: Nain
+  en: Dwarf
+mechanics:
+  ability_score_increase:
+    - ability: con
+      value: 2
+  size: medium
+  speed: 25
+  traits:
+    - ref: traits/darkvision
+  languages:
+    fixed: [common, dwarvish]

@@ -1,0 +1,26 @@
+{
+  "characters": {
+    "7fcf37cd": {
+      "owner_id": 372519173097652236,
+      "nom": "aztaloph",
+      "race": "Elfe",
+      "classe": "Guerrier",
+      "niveau": 1,
+      "id": "7fcf37cd",
+      "image_url": null,
+      "caracteristiques": {
+        "force": 10,
+        "dexterite": 10,
+        "constitution": 10,
+        "intelligence": 10,
+        "sagesse": 10,
+        "charisme": 10
+      },
+      "pv_max": 100,
+      "pv_actuels": 100,
+      "ca": 20,
+      "bonus_maitrise": 2,
+      "attaques": []
+    }
+  }
+}

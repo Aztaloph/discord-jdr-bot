@@ -1,0 +1,17 @@
+id: dnd5e
+name:
+  fr: "Dungeons & Dragons 5e"
+  en: "Dungeons & Dragons 5e"
+version: "1.0.0"
+schema_version: "1.0"
+compatible_engine: ">=0.1.0"
+locales:
+  - fr
+  - en
+default_locale: fr
+license: SRD
+entry_types:
+  - races
+  - classes
+  - traits
+dependencies: []

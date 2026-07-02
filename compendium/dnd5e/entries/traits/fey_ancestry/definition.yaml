@@ -1,0 +1,13 @@
+schema_version: "1.0"
+type: trait
+id: fey_ancestry
+name:
+  fr: Ascendance féerique
+  en: Fey Ancestry
+mechanics:
+  effects:
+    - type: advantage
+      context: saving_throw
+      versus: charmed
+    - type: immunity
+      versus: magical_sleep
