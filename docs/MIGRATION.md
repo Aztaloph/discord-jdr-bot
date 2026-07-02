@@ -382,3 +382,47 @@ Guerrier, Barbare, Roublard, Moine — SRD 5.1 **2014** uniquement.
 python -m unittest discover -s tests -v   # 156 tests
 python tools/validate_compendium.py dnd5e
 ```
+
+---
+
+## Phase 4.8 — Visibilité combat `/roll` (2026-07-03) ✅
+
+Traits Lot A visibles en jeu Discord (même bloc **✨ Traits actifs** que Chanceux).
+
+### Paramètres `/roll`
+
+| Paramètre | Flag interne | Classe |
+|---|---|---|
+| `arme_distance` | `ranged_weapon` | Guerrier (Archerie) |
+| `rage` | `rage_active` | Barbare |
+| `impetueux` | `reckless` | Barbare niv.2+ |
+| `attaque_sournoise` | `sneak_attack_eligible` | Roublard |
+
+### Validation
+
+```powershell
+python -m unittest discover -s tests -v   # 162 tests
+python main.py   # resync slash commands
+```
+
+---
+
+## Phase 4.8 — Visibilité combat `/roll` (2026-07-03) ✅
+
+Traits Lot A visibles en jeu Discord (même bloc **✨ Traits actifs** que Chanceux).
+
+### Paramètres `/roll`
+
+| Paramètre | Flag interne | Classe |
+|---|---|---|
+| `arme_distance` | `ranged_weapon` | Guerrier (Archerie) |
+| `rage` | `rage_active` | Barbare |
+| `impetueux` | `reckless` | Barbare niv.2+ |
+| `attaque_sournoise` | `sneak_attack_eligible` | Roublard |
+
+### Validation
+
+```powershell
+python -m unittest discover -s tests -v   # 162 tests
+python main.py   # resync slash commands
+```
