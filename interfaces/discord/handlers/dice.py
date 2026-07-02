@@ -1,5 +1,5 @@
 # interfaces/discord/handlers/dice.py
-"""Handler /roll Discord — branchement moteur d20 + traits personnage (Phase 4.6)."""
+"""Handler /roll Discord — branchement moteur d20 + traits personnage (Phase 4.6+)."""
 from __future__ import annotations
 
 import logging
@@ -17,6 +17,10 @@ from jdr_engine.domain.character.character import Character
 from jdr_engine.rules.roll_effects import roll_d20_for_character
 
 from interfaces.discord.container import DiscordJdrContext
+from interfaces.discord.handlers.combat_roll import (
+    CombatRollFlags,
+    build_trait_display_lines,
+)
 
 log = logging.getLogger(__name__)
 
@@ -102,11 +106,30 @@ def _from_legacy_roll(result, mode: str) -> RollDisplay:
     )
 
 
+def _build_d20_request(
+    *,
+    modifier: int,
+    mode: str,
+    combat: CombatRollFlags,
+) -> D20RollRequest:
+    roll_type = "attack" if combat.is_combat_roll else "ability_check"
+    return D20RollRequest(
+        roll_type=roll_type,
+        ability_modifier=modifier,
+        base_mode=mode,  # type: ignore[arg-type]
+        ranged_weapon=combat.ranged_weapon,
+        rage_active=combat.rage_active,
+        reckless_attack=combat.reckless,
+        str_melee_attack=combat.reckless,
+    )
+
+
 def _from_d20_result(
     result: D20RollResult,
     *,
     sign: str,
     character_name: str,
+    display_effects: list[str],
 ) -> RollDisplay:
     mod = result.modifier
     mod_label = f"{sign}{abs(mod)}" if mod != 0 else ""
@@ -119,7 +142,7 @@ def _from_d20_result(
         total=result.total,
         mode=result.mode,
         character_name=character_name,
-        applied_effects=list(result.applied_effects),
+        applied_effects=display_effects,
         rerolled=result.rerolled,
         traits_active=True,
     )
@@ -132,6 +155,7 @@ def execute_roll(
     owner_id: int,
     perso: str | None = None,
     *,
+    combat: CombatRollFlags | None = None,
     rng: RandInt | None = None,
 ) -> RollDisplay:
     """
@@ -145,17 +169,18 @@ def execute_roll(
             f'Mode invalide : "{mode}". Utilise normal, avantage ou desavantage.'
         )
 
-    count, faces, modifier, sign = parse(dice_str)
+    combat_flags = combat or CombatRollFlags()
+    _, _, modifier, sign = parse(dice_str)
 
     character: Character | None = None
     if ctx is not None and is_single_d20(dice_str):
         character = resolve_character_for_roll(ctx, owner_id, perso)
 
     if character is not None and ctx is not None and ctx.rule_engine is not None:
-        request = D20RollRequest(
-            roll_type="ability_check",
-            ability_modifier=modifier,
-            base_mode=mode,  # type: ignore[arg-type]
+        request = _build_d20_request(
+            modifier=modifier,
+            mode=mode,
+            combat=combat_flags,
         )
         result = roll_d20_for_character(
             request,
@@ -163,14 +188,27 @@ def execute_roll(
             ctx.rule_engine,
             rng=rng,
         )
+        display_lines = build_trait_display_lines(
+            character,
+            combat_flags,
+            result.applied_effects,
+            roll_mode=result.mode,
+            engine=ctx.rule_engine,
+        )
         log.info(
-            "Roll d20 traits : %s (%s) total=%s effects=%s",
+            "Roll d20 traits : %s (%s) total=%s effects=%s display=%s",
             character.name,
-            character.race_id,
+            character.class_id,
             result.total,
             result.applied_effects,
+            display_lines,
         )
-        return _from_d20_result(result, sign=sign, character_name=character.name)
+        return _from_d20_result(
+            result,
+            sign=sign,
+            character_name=character.name,
+            display_effects=display_lines,
+        )
 
     legacy = roll(dice_str, mode=mode)
     display = _from_legacy_roll(legacy, mode)
