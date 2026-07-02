@@ -11,6 +11,7 @@ Voir [ARCHITECTURE_V2.md](ARCHITECTURE_V2.md) pour la vision complète.
 | **2** | ✅ Terminée | Domain + Persistence v2 + CharacterService |
 | **3** | ✅ Terminée | Discord branché sur moteur v2 (feature flag) |
 | **4** | ✅ Terminée | Affichage enrichi (lore + portraits Compendium) |
+| **4.5** | ✅ Terminée | Hook d20 + traits actifs (Halfelin, Rôdeur niv.1) |
 | 5 | ⬜ | Backgrounds, skills |
 
 ## Phase 0 — Fondations (2026-07-02)
@@ -259,3 +260,55 @@ python tools/validate_compendium.py dnd5e        # strict, 0 erreur
 | CI | `validate_compendium.py dnd5e` | erreurs |
 | Dev bot | `COMPENDIUM_STRICT=false` ou `--warn` | warnings |
 | Bot prod | `COMPENDIUM_STRICT=true` (défaut) | erreurs |
+
+---
+
+## Phase 4.5 — Traits actifs & hook d20 (2026-07-03) ✅
+
+Effets mécaniques SRD 5.1 2014 sur les jets de d20 via un hook central.
+
+### Livrables
+
+- [x] `jdr_engine/dice/d20.py` — `roll_d20()` : point d'entrée unique (attaque, test, sauvegarde)
+- [x] Hooks **avant** jet (avantage, maîtrise x2) et **après** jet (relance nat. 1)
+- [x] `jdr_engine/rules/roll_effects.py` — collecte effets Compendium + `roll_d20_for_character()`
+- [x] Traits Halfelin : **Brave**, **Chanceux** (`traits/brave`, `traits/lucky`)
+- [x] Features Rôdeur niv.1 : **Ennemi juré**, **Explorateur-né**
+- [x] 24 nouveaux tests (118 au total)
+
+### API hook d20 (résumé)
+
+| Entrée | Description |
+|---|---|
+| `D20RollRequest.roll_type` | `attack` \| `ability_check` \| `saving_throw` |
+| `D20RollRequest.base_mode` | avantage / désavantage externe |
+| `D20RollRequest.save_versus_condition` | ex. `frightened` (Brave) |
+| `D20RollRequest.tracking` | pistage Ennemi juré (Survival) |
+| `D20RollRequest.recalling_favored_enemy_info` | rappel Intelligence Ennemi juré |
+| `D20RollRequest.favored_terrain_related` | jet lié au terrain favori |
+| `D20RollContext.effects` | effets Compendium actifs |
+
+| Sortie | Description |
+|---|---|
+| `D20RollResult.kept_value` | d20 retenu (après adv/dis + relance) |
+| `D20RollResult.applied_effects` | piste d'audit |
+| `D20RollResult.rerolled` | relance Chanceux déclenchée |
+
+Doc complète : docstring module `jdr_engine/dice/d20.py`.
+
+### Validation
+
+```powershell
+python -m unittest discover -s tests -v          # 118 tests
+python tools/validate_compendium.py dnd5e
+```
+
+### Ignoré (données SRD non implémentées)
+
+| Entité | Effet SRD | Raison |
+|---|---|---|
+| Halfelin | Halfling Nimbleness | déplacement, pas de jet d20 |
+| Halfelin | Naturally Stealthy | camouflage, pas de jet d20 |
+| Rôdeur | Ennemi juré — langue | choix joueur, hors hook d20 |
+| Rôdeur | Explorateur-né — voyage | règles exploration, hors jet d20 |
+| Rôdeur | Style de combat, sorts | hors périmètre Phase 4.5 |

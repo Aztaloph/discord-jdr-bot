@@ -1,0 +1,16 @@
+schema_version: "1.0"
+type: trait
+id: natural_explorer
+name:
+  fr: Explorateur-né
+  en: Natural Explorer
+mechanics:
+  effects:
+    - type: double_proficiency
+      context: ability_check
+      abilities:
+        - int
+        - wis
+      when: favored_terrain_related
+      requires_proficiency: true
+      multiplier: 2

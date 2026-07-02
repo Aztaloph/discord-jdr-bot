@@ -35,7 +35,6 @@ mechanics:
     level: 2
     ability: wis
   features_by_level:
-    # TODO Phase 4.5: favored_enemy, natural_explorer (effets mécaniques non implémentés)
     '1':
     - favored_enemy
     - natural_explorer

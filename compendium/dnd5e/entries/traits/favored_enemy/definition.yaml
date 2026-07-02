@@ -1,0 +1,16 @@
+schema_version: "1.0"
+type: trait
+id: favored_enemy
+name:
+  fr: Ennemi juré
+  en: Favored Enemy
+mechanics:
+  effects:
+    - type: advantage
+      context: ability_check
+      skill: survival
+      when: tracking_favored_enemy
+    - type: advantage
+      context: ability_check
+      ability: int
+      when: recalling_favored_enemy
