@@ -1,0 +1,13 @@
+schema_version: "1.0"
+type: trait
+id: deflect_missiles
+name:
+  fr: Dévier les projectiles
+  en: Deflect Missiles
+mechanics:
+  reaction:
+    reduce_ranged_weapon_damage: true
+    throw_back:
+      requires: damage_reduced_to_zero
+      ki_cost: 1
+      attack_roll: d20

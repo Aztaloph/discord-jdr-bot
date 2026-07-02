@@ -1,0 +1,14 @@
+schema_version: "1.0"
+type: trait
+id: martial_arts
+name:
+  fr: Arts martiaux
+  en: Martial Arts
+mechanics:
+  unarmed:
+    use_dex_for_attacks: true
+    die_by_level:
+      - { min: 1, max: 4, die: 4 }
+      - { min: 5, max: 10, die: 6 }
+    bonus_unarmed_strike:
+      when: unarmed_or_monk_weapon_no_shield

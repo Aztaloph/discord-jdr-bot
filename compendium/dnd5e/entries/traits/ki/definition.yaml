@@ -1,0 +1,27 @@
+schema_version: "1.0"
+type: trait
+id: ki
+name:
+  fr: Ki
+  en: Ki
+mechanics:
+  pool:
+    ability: wis
+    minimum: 1
+    recharge_long_rest: all
+    recharge_short_rest: 1
+  options:
+    flurry_of_blows:
+      cost: 1
+      action: bonus_action
+    patient_defense:
+      cost: 1
+      action: bonus_action
+      grants: dodge
+    step_of_the_wind:
+      cost: 1
+      action: bonus_action
+      grants:
+        - disengage
+        - dash
+        - jump_double

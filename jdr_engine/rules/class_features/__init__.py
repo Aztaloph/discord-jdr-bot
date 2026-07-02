@@ -18,8 +18,20 @@ from jdr_engine.rules.class_features.rogue import (
     sneak_attack_eligible,
 )
 
+from jdr_engine.rules.class_features.monk import (
+    deflect_missiles_can_throw,
+    ki_max,
+    ki_options,
+    martial_arts_die,
+    unarmored_movement_bonus,
+)
+
 __all__ = [
     "action_surge_available",
+    "deflect_missiles_can_throw",
+    "ki_max",
+    "ki_options",
+    "martial_arts_die",
     "rage_damage_bonus",
     "rage_end_triggers",
     "rage_resistances",
@@ -28,6 +40,7 @@ __all__ = [
     "second_wind_available",
     "sneak_attack_dice_count",
     "sneak_attack_eligible",
+    "unarmored_movement_bonus",
     "use_action_surge",
     "use_second_wind",
 ]

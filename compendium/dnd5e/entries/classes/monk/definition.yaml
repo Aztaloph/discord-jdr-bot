@@ -1,0 +1,36 @@
+schema_version: "1.0"
+type: class
+id: monk
+name:
+  fr: Moine
+  en: Monk
+mechanics:
+  hit_die: d8
+  primary_abilities:
+    - dex
+    - wis
+  saving_throw_proficiencies:
+    - str
+    - dex
+  weapon_proficiencies:
+    - simple
+    - shortsword
+  skill_choices:
+    count: 2
+    from:
+      - acrobatics
+      - athletics
+      - history
+      - insight
+      - religion
+      - stealth
+  features_by_level:
+    "1":
+      - unarmored_defense_monk
+      - martial_arts
+    "2":
+      - ki
+      - unarmored_movement
+    "3":
+      - monastic_tradition
+      - deflect_missiles

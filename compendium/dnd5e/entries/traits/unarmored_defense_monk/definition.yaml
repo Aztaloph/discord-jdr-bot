@@ -1,0 +1,14 @@
+schema_version: "1.0"
+type: trait
+id: unarmored_defense_monk
+name:
+  fr: Défense sans armure
+  en: Unarmored Defense
+mechanics:
+  ac_formula:
+    base: 10
+    plus:
+      - dex
+      - wis
+    requires_no_armor: true
+    requires_no_shield: true

@@ -13,6 +13,7 @@ Voir [ARCHITECTURE_V2.md](ARCHITECTURE_V2.md) pour la vision complète.
 | **4** | ✅ Terminée | Affichage enrichi (lore + portraits Compendium) |
 | **4.5** | ✅ Terminée | Hook d20 + traits actifs (Halfelin, Rôdeur niv.1) |
 | **4.6** | ✅ Terminée | `/roll` Discord branché sur hook d20 + traits |
+| **4.7 A** | ✅ Terminée | 4 classes non-lanceuses niv. 1-3 (SRD 2014) |
 | 5 | ⬜ | Backgrounds, skills |
 
 ## Phase 0 — Fondations (2026-07-02)
@@ -357,4 +358,26 @@ Répéter jusqu'à un **1 naturel** → embed doré avec champ **🍀 Chanceux**
 ```powershell
 python -m unittest discover -s tests -v   # 126 tests
 python main.py
+```
+
+---
+
+## Phase 4.7 Lot A — Classes non-lanceuses niv. 1-3 (2026-07-03) ✅
+
+Guerrier, Barbare, Roublard, Moine — SRD 5.1 **2014** uniquement.
+
+### Commits
+
+| Classe | Commit | Tests |
+|---|---|---|
+| Guerrier | `6717a07` | 7 |
+| Barbare | `056ac3b` | 8 |
+| Roublard | `e1e66a6` | 8 |
+| Moine | *(voir ci-dessous)* | 7 |
+
+### Validation
+
+```powershell
+python -m unittest discover -s tests -v   # 156 tests
+python tools/validate_compendium.py dnd5e
 ```
