@@ -1,0 +1,8 @@
+schema_version: "1.0"
+type: trait
+id: thieves_cant
+name:
+  fr: Argot des voleurs
+  en: Thieves' Cant
+mechanics:
+  language: thieves_cant

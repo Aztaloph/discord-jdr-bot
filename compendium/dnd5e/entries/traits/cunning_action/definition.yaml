@@ -1,0 +1,11 @@
+schema_version: "1.0"
+type: trait
+id: cunning_action
+name:
+  fr: Action rusée
+  en: Cunning Action
+mechanics:
+  bonus_action_options:
+    - dash
+    - disengage
+    - hide

@@ -1,0 +1,17 @@
+schema_version: "1.0"
+type: trait
+id: sneak_attack
+name:
+  fr: Attaque sournoise
+  en: Sneak Attack
+mechanics:
+  once_per_turn: true
+  requires:
+    - hit
+    - finesse_or_ranged_weapon
+  trigger:
+    - advantage_on_attack
+    - ally_within_5ft_no_disadvantage
+  dice_progression:
+    - { min: 1, max: 2, dice: 1 }
+    - { min: 3, max: 4, dice: 2 }

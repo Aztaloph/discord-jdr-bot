@@ -1,0 +1,10 @@
+schema_version: "1.0"
+type: trait
+id: roguish_archetype
+name:
+  fr: Archétype de roublard
+  en: Roguish Archetype
+mechanics:
+  choice:
+    level: 3
+    srd_note: "Sous-classe non implémentée Phase 4.7"

@@ -1,0 +1,15 @@
+schema_version: "1.0"
+type: trait
+id: expertise
+name:
+  fr: Expertise
+  en: Expertise
+mechanics:
+  effects:
+    - type: double_proficiency
+      context: ability_check
+      when: expertise_skill
+      requires_proficiency: true
+      multiplier: 2
+  choice:
+    skill_count: 2

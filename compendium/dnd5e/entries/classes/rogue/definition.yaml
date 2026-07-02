@@ -35,3 +35,7 @@ mechanics:
     - expertise
     - sneak_attack
     - thieves_cant
+    '2':
+    - cunning_action
+    '3':
+    - roguish_archetype
