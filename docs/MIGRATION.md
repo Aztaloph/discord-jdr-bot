@@ -14,6 +14,7 @@ Voir [ARCHITECTURE_V2.md](ARCHITECTURE_V2.md) pour la vision complète.
 | **4.5** | ✅ Terminée | Hook d20 + traits actifs (Halfelin, Rôdeur niv.1) |
 | **4.6** | ✅ Terminée | `/roll` Discord branché sur hook d20 + traits |
 | **4.7 A** | ✅ Terminée | 4 classes non-lanceuses niv. 1-3 (SRD 2014) |
+| **4.8** | ✅ Terminée | Traits combat Lot A visibles sur `/roll` Discord |
 | 5 | ⬜ | Backgrounds, skills |
 
 ## Phase 0 — Fondations (2026-07-02)
