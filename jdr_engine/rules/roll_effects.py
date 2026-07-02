@@ -68,8 +68,8 @@ def enrich_roll_request(request, character: Character):
 
     return replace(
         request,
-        rage_active=rage_active(choices),
-        reckless_attack=reckless_active(choices),
+        rage_active=request.rage_active or rage_active(choices),
+        reckless_attack=request.reckless_attack or reckless_active(choices),
         expertise_skills=expertise_tuple,
     )
 
