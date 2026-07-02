@@ -12,6 +12,7 @@ Voir [ARCHITECTURE_V2.md](ARCHITECTURE_V2.md) pour la vision complète.
 | **3** | ✅ Terminée | Discord branché sur moteur v2 (feature flag) |
 | **4** | ✅ Terminée | Affichage enrichi (lore + portraits Compendium) |
 | **4.5** | ✅ Terminée | Hook d20 + traits actifs (Halfelin, Rôdeur niv.1) |
+| **4.6** | ✅ Terminée | `/roll` Discord branché sur hook d20 + traits |
 | 5 | ⬜ | Backgrounds, skills |
 
 ## Phase 0 — Fondations (2026-07-02)
@@ -312,3 +313,48 @@ python tools/validate_compendium.py dnd5e
 | Rôdeur | Ennemi juré — langue | choix joueur, hors hook d20 |
 | Rôdeur | Explorateur-né — voyage | règles exploration, hors jet d20 |
 | Rôdeur | Style de combat, sorts | hors périmètre Phase 4.5 |
+
+---
+
+## Phase 4.6 — `/roll` Discord + traits (2026-07-03) ✅
+
+Branchement de la commande slash `/roll` sur le hook d20 du moteur v2.
+
+### Livrables
+
+- [x] `interfaces/discord/handlers/dice.py` — `execute_roll()` + résolution personnage
+- [x] `bot/cogs/dice.py` — paramètre optionnel `perso` (autocomplete)
+- [x] d20 + personnage → traits actifs (Chanceux, Brave, etc.)
+- [x] Embed enrichi : titre perso, champ 🍀 Chanceux, traits appliqués
+- [x] 8 tests (`test_discord_dice_handler.py`)
+
+### Comportement `/roll`
+
+| Situation | Comportement |
+|---|---|
+| `d20` / `1d20+5` + 1 seul perso | traits auto (sans paramètre) |
+| `d20` + paramètre `perso:Doudou` | traits du perso nommé |
+| Plusieurs persos sans `perso` | jet classique + hint footer |
+| `3d6`, `2d20`, etc. | jet classique (pas de hook traits) |
+
+### Test Discord (Chanceux)
+
+```powershell
+.\venv\Scripts\activate
+python main.py
+```
+
+Dans Discord :
+
+```
+/roll dé:d20 perso:Doudou
+```
+
+Répéter jusqu'à un **1 naturel** → embed doré avec champ **🍀 Chanceux** et deux d20 affichés (1 barré + relance).
+
+### Validation
+
+```powershell
+python -m unittest discover -s tests -v   # 126 tests
+python main.py
+```
