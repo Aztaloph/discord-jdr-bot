@@ -1,0 +1,13 @@
+schema_version: "1.0"
+type: trait
+id: second_wind
+name:
+  fr: Second souffle
+  en: Second Wind
+mechanics:
+  resource:
+    recharge: short_or_long_rest
+    action: bonus_action
+  healing:
+    dice: 1d10
+    plus_level: true

@@ -1,0 +1,12 @@
+schema_version: "1.0"
+type: trait
+id: fighting_style_archery
+name:
+  fr: Style de combat — Archerie
+  en: Archery
+mechanics:
+  effects:
+    - type: attack_roll_bonus
+      context: attack
+      when: ranged_weapon
+      value: 2

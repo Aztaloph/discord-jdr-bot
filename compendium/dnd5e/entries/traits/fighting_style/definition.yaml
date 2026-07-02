@@ -1,0 +1,18 @@
+schema_version: "1.0"
+type: trait
+id: fighting_style
+name:
+  fr: Style de combat
+  en: Fighting Style
+mechanics:
+  choice:
+    level: 1
+    options:
+      - archery
+      - defense
+      - dueling
+      - great_weapon_fighting
+      - protection
+      - two_weapon_fighting
+    implemented_hooks:
+      - archery

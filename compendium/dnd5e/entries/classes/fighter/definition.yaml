@@ -32,3 +32,7 @@ mechanics:
     '1':
     - fighting_style
     - second_wind
+    '2':
+    - action_surge
+    '3':
+    - martial_archetype

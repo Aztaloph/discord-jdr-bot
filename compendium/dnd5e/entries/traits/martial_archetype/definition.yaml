@@ -1,0 +1,10 @@
+schema_version: "1.0"
+type: trait
+id: martial_archetype
+name:
+  fr: Archétype martial
+  en: Martial Archetype
+mechanics:
+  choice:
+    level: 3
+    srd_note: "Sous-classe non implémentée Phase 4.7"

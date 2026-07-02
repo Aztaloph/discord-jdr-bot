@@ -71,6 +71,16 @@ class D20RollRequest:
     tracking: bool = False
     recalling_favored_enemy_info: bool = False
     favored_terrain_related: bool = False
+    # ── Contexte features Lot A (SRD 2014) ──
+    rage_active: bool = False
+    reckless_attack: bool = False
+    target_reckless: bool = False
+    visible_effect: bool = False
+    ranged_weapon: bool = False
+    melee_weapon: bool = False
+    finesse_weapon: bool = False
+    str_melee_attack: bool = False
+    expertise_skills: tuple[str, ...] = ()
 
 
 @dataclass
@@ -126,13 +136,30 @@ def _effect_matches(
         if context == "saving_throw":
             if request.roll_type != "saving_throw":
                 return False
+            when = effect.get("when")
+            if when == "rage_active":
+                return request.rage_active and request.ability == effect.get("ability")
+            if when == "danger_sense_visible":
+                return request.visible_effect and request.ability == "dex"
             versus = effect.get("versus")
             return (
                 versus is not None
                 and request.save_versus_condition == versus
             )
+        if context == "attack":
+            when = effect.get("when")
+            if when == "reckless_attack_melee_str":
+                return (
+                    request.reckless_attack
+                    and request.str_melee_attack
+                )
+            if when == "target_is_reckless":
+                return request.target_reckless
+            return False
         if context == "ability_check":
             when = effect.get("when")
+            if when == "rage_active":
+                return request.rage_active and request.ability == effect.get("ability")
             if when == "tracking_favored_enemy":
                 return (
                     request.roll_type == "ability_check"
@@ -154,6 +181,14 @@ def _effect_matches(
             return request.roll_type == "ability_check"
         return False
 
+    if effect_type == "attack_roll_bonus":
+        if request.roll_type != "attack":
+            return False
+        when = effect.get("when")
+        if when == "ranged_weapon" and not request.ranged_weapon:
+            return False
+        return True
+
     if effect_type == "reroll_natural_1":
         contexts = effect.get("contexts") or effect.get("roll_types") or []
         return request.roll_type in contexts
@@ -166,6 +201,11 @@ def _effect_matches(
         when = effect.get("when")
         if when == "favored_terrain_related" and not request.favored_terrain_related:
             return False
+        if when == "expertise_skill":
+            return (
+                request.skill is not None
+                and request.skill in request.expertise_skills
+            )
         abilities = effect.get("abilities") or []
         if abilities and request.ability not in abilities:
             return False
@@ -218,6 +258,16 @@ def _resolve_modifier(
 
     prof = request.proficiency_bonus * prof_multiplier if request.is_proficient else 0
     modifier = request.ability_modifier + prof
+
+    for effect in effects:
+        if effect.get("type") != "attack_roll_bonus":
+            continue
+        if not _effect_matches(effect, request):
+            continue
+        bonus = int(effect.get("value", 0))
+        modifier += bonus
+        source = effect.get("source_id") or "attack_roll_bonus"
+        applied.append(f"+{bonus} jet d'attaque ({source})")
 
     parts: list[str] = []
     if request.ability_modifier:
