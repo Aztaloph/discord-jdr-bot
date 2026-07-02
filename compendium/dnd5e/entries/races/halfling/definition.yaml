@@ -10,6 +10,8 @@ mechanics:
       value: 2
   size: small
   speed: 25
-  traits: []  # TODO Phase 4.5: traits (Brave, Lucky, Halfling Nimbleness, Naturally Stealthy)
+  traits:
+    - ref: traits/brave
+    - ref: traits/lucky
   languages:
     fixed: [common, halfling]

@@ -87,6 +87,31 @@ class RuleEngine:
             return []
         return resolve_trait_refs(self._registry, entry.definition.mechanics)
 
+    def get_class_features(
+        self,
+        class_id: str,
+        level: int,
+    ) -> list[CompendiumEntry]:
+        """Retourne les features de classe débloquées (refs trait/*)."""
+        entry = self.get_entity("class", class_id)
+        if entry is None:
+            return []
+        features_by_level = entry.definition.mechanics.get("features_by_level") or {}
+        feature_ids: list[str] = []
+        for lvl_str, ids in features_by_level.items():
+            try:
+                lvl = int(lvl_str)
+            except (TypeError, ValueError):
+                continue
+            if lvl <= level and isinstance(ids, list):
+                feature_ids.extend(str(fid) for fid in ids)
+        resolved: list[CompendiumEntry] = []
+        for fid in feature_ids:
+            trait = self.get_entity("trait", fid)
+            if trait is not None:
+                resolved.append(trait)
+        return resolved
+
     def get_ability_bonuses(self, race_id: str) -> dict[str, int]:
         """Bonus raciaux aux caractéristiques (ex. elf → {dex: 2})."""
         entry = self.get_entity("race", race_id)

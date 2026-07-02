@@ -1,0 +1,11 @@
+schema_version: "1.0"
+type: trait
+id: brave
+name:
+  fr: Brave
+  en: Brave
+mechanics:
+  effects:
+    - type: advantage
+      context: saving_throw
+      versus: frightened

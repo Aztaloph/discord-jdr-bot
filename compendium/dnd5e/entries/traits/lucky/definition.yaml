@@ -1,0 +1,13 @@
+schema_version: "1.0"
+type: trait
+id: lucky
+name:
+  fr: Chanceux
+  en: Lucky
+mechanics:
+  effects:
+    - type: reroll_natural_1
+      contexts:
+        - attack
+        - ability_check
+        - saving_throw
