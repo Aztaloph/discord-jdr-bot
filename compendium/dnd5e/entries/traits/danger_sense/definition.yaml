@@ -1,0 +1,12 @@
+schema_version: "1.0"
+type: trait
+id: danger_sense
+name:
+  fr: Sens du danger
+  en: Danger Sense
+mechanics:
+  effects:
+    - type: advantage
+      context: saving_throw
+      ability: dex
+      when: danger_sense_visible

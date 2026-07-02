@@ -1,0 +1,30 @@
+schema_version: "1.0"
+type: class
+id: barbarian
+name:
+  fr: Barbare
+  en: Barbarian
+mechanics:
+  hit_die: d12
+  primary_abilities:
+    - str
+    - con
+  saving_throw_proficiencies:
+    - str
+    - con
+  armor_proficiencies:
+    - light
+    - medium
+    - shields
+  weapon_proficiencies:
+    - simple
+    - martial
+  features_by_level:
+    "1":
+      - rage
+      - unarmored_defense_barbarian
+    "2":
+      - reckless_attack
+      - danger_sense
+    "3":
+      - primal_path

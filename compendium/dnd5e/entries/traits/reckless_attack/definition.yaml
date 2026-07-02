@@ -1,0 +1,14 @@
+schema_version: "1.0"
+type: trait
+id: reckless_attack
+name:
+  fr: Attaque impétueuse
+  en: Reckless Attack
+mechanics:
+  effects:
+    - type: advantage
+      context: attack
+      when: reckless_attack_melee_str
+    - type: advantage
+      context: attack
+      when: target_is_reckless

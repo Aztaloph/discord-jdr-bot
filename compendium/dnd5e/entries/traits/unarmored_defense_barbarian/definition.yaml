@@ -1,0 +1,13 @@
+schema_version: "1.0"
+type: trait
+id: unarmored_defense_barbarian
+name:
+  fr: Défense sans armure
+  en: Unarmored Defense
+mechanics:
+  ac_formula:
+    base: 10
+    plus:
+      - dex
+      - con
+    requires_no_armor: true

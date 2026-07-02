@@ -1,0 +1,25 @@
+schema_version: "1.0"
+type: trait
+id: rage
+name:
+  fr: Rage
+  en: Rage
+mechanics:
+  effects:
+    - type: advantage
+      context: ability_check
+      ability: str
+      when: rage_active
+    - type: advantage
+      context: saving_throw
+      ability: str
+      when: rage_active
+  damage_bonus:
+    ability: str
+    weapon: melee
+    by_level:
+      - { min: 1, max: 8, value: 2 }
+  resistances:
+    - bludgeoning
+    - piercing
+    - slashing
