@@ -9,6 +9,7 @@ from discord.ext import commands
 
 from bot.utils.dice_parser import DiceError, MAX_DICE, MAX_FACES
 from interfaces.discord.handlers.character import character_name_autocomplete
+from interfaces.discord.handlers.combat_roll import CombatRollFlags
 from interfaces.discord.handlers.dice import RollDisplay, execute_roll
 
 log = logging.getLogger(__name__)
@@ -108,7 +109,8 @@ def _build_error_embed(error_msg: str) -> discord.Embed:
             f"• Faces max : **{MAX_FACES}**\n"
             "• **Avantage** : lance 2d20, garde le plus élevé\n"
             "• **Désavantage** : lance 2d20, garde le plus faible\n"
-            "• **Perso** : active les traits (ex. Chanceux halfelin) sur un `d20`"
+            "• **Perso** : active les traits (ex. Chanceux halfelin) sur un `d20`\n"
+            "• **Combat** : `arme_à_distance`, `rage`, `impétueux`, `attaque_sournoise`"
         ),
         inline=False,
     )
@@ -150,6 +152,10 @@ class DiceCog(commands.Cog):
         dé="Notation du dé (ex : 3d6+2, d20, 2d8-1, 4d6)",
         mode="Normal, Avantage (2d20 meilleur) ou Désavantage (2d20 pire)",
         perso="Personnage dont appliquer les traits (d20 uniquement)",
+        arme_distance="Attaque à distance → Archerie +2 au toucher (Guerrier)",
+        rage="Rage active → bonus dégâts + résistances (Barbare)",
+        impetueux="Attaque impétueuse → avantage FOR mêlée (Barbare niv.2+)",
+        attaque_sournoise="Conditions Attaque sournoise réunies (Roublard)",
     )
     @app_commands.choices(mode=MODE_CHOICES)
     @app_commands.autocomplete(perso=_perso_autocomplete)
@@ -159,17 +165,28 @@ class DiceCog(commands.Cog):
         dé: str,
         mode: str = "normal",
         perso: str | None = None,
+        arme_distance: bool = False,
+        rage: bool = False,
+        impetueux: bool = False,
+        attaque_sournoise: bool = False,
     ):
         await interaction.response.defer(ephemeral=False)
 
         try:
             ctx = self._jdr()
+            combat = CombatRollFlags(
+                ranged_weapon=arme_distance,
+                rage_active=rage,
+                reckless=impetueux,
+                sneak_attack_eligible=attaque_sournoise,
+            )
             result = execute_roll(
                 dé,
                 mode,
                 ctx,
                 interaction.user.id,
                 perso=perso,
+                combat=combat,
             )
             embed = _build_embed(result)
             await interaction.followup.send(embed=embed)
