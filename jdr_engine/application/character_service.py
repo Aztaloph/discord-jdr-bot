@@ -132,3 +132,11 @@ class CharacterService:
         if character is None or character.owner_id != str(cmd.owner_id):
             raise CharacterNotFoundError("Personnage introuvable.")
         return self._repo.delete(cmd.character_id)
+
+    def save(self, character: Character) -> Character:
+        """Persiste l'état d'un personnage existant (ex. emplacements de sorts)."""
+        existing = self._repo.get_by_id(character.id)
+        if existing is None:
+            raise CharacterNotFoundError("Personnage introuvable.")
+        self._repo.save(character)
+        return character
