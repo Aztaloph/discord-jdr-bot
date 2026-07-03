@@ -26,6 +26,7 @@ class Character:
     ruleset_version: str = "1.0.0"
     schema_version: str = "1.0"
     id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
+    guild_id: str = "0"
     ability_scores: AbilityScores = field(default_factory=AbilityScores)
     hp_current: int | None = None
     hp_max: int | None = None
@@ -38,6 +39,7 @@ class Character:
         return {
             "id": self.id,
             "owner_id": self.owner_id,
+            "guild_id": self.guild_id,
             "name": self.name,
             "race_id": self.race_id,
             "class_id": self.class_id,
@@ -60,6 +62,7 @@ class Character:
         return cls(
             id=data["id"],
             owner_id=str(data["owner_id"]),
+            guild_id=str(data.get("guild_id", "0")),
             name=data["name"],
             race_id=data["race_id"],
             class_id=data["class_id"],

@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 
 from jdr_engine.application.character_service import CharacterService
-from jdr_engine.persistence.character_repository import JsonCharacterRepository
+from jdr_engine.persistence.database import get_db_path, run_startup_migrations
+from jdr_engine.persistence.sqlite_character_repository import SqliteCharacterRepository
 from jdr_engine.rules.engine import RuleEngine
 
 from interfaces.discord.container import DiscordJdrContext
@@ -18,7 +19,9 @@ def init_discord_jdr(config: dict | None = None) -> DiscordJdrContext:
     """
     Charge le moteur v2 si USE_ENGINE_V2 est activé.
     Valide le Compendium au démarrage (strict configurable).
+    Initialise SQLite et migre les données JSON / fixtures existantes.
     """
+    config = config or {}
     settings = DiscordSettings.from_config(config)
     ctx = DiscordJdrContext(settings=settings)
 
@@ -27,12 +30,14 @@ def init_discord_jdr(config: dict | None = None) -> DiscordJdrContext:
         return ctx
 
     try:
+        default_guild_id = str(config.get("guild_id", "0") or "0")
+        db_path = run_startup_migrations(default_guild_id=default_guild_id)
         engine = RuleEngine.load(
             settings.default_ruleset,
             validate=True,
             strict=settings.compendium_strict,
         )
-        repo = JsonCharacterRepository()
+        repo = SqliteCharacterRepository(db_path)
         service = CharacterService(repo, engine)
         ctx.rule_engine = engine
         ctx.character_service = service
@@ -44,6 +49,7 @@ def init_discord_jdr(config: dict | None = None) -> DiscordJdrContext:
             len(engine.registry),
         )
         logger.info("Sorts chargés : %d entrée(s)", spell_count)
+        logger.info("Stockage SQLite : %s", get_db_path())
     except Exception as exc:
         logger.error("Échec init moteur v2 : %s — fallback legacy", exc)
         ctx.settings = DiscordSettings(

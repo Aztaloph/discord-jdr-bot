@@ -14,7 +14,7 @@ from jdr_engine.application.dto.character_commands import (
 from jdr_engine.domain.character.ability_scores import AbilityScores
 from jdr_engine.domain.character.character import Character
 from jdr_engine.domain.character.character_sheet import CharacterSheet
-from jdr_engine.persistence.character_repository import JsonCharacterRepository
+from jdr_engine.persistence.character_repository import CharacterRepository
 from jdr_engine.rules.calculator import build_character_sheet
 from jdr_engine.rules.engine import RuleEngine
 
@@ -38,7 +38,7 @@ class CharacterService:
 
     def __init__(
         self,
-        repository: JsonCharacterRepository,
+        repository: CharacterRepository,
         rule_engine: RuleEngine,
     ):
         self._repo = repository

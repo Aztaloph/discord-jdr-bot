@@ -1,5 +1,5 @@
 # jdr_engine/persistence/character_repository.py
-"""Repository JSON pour les personnages v2."""
+"""Repository personnages — JSON (legacy tests) et SQLite (production)."""
 from __future__ import annotations
 
 import json
@@ -7,6 +7,7 @@ import logging
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Protocol
 
 from jdr_engine.compendium.paths import get_project_root
 from jdr_engine.domain.character.character import Character
@@ -14,6 +15,32 @@ from jdr_engine.domain.character.character import Character
 logger = logging.getLogger(__name__)
 
 PERSISTENCE_SCHEMA_VERSION = "1.0"
+
+
+class CharacterRepository(Protocol):
+    """Contrat commun JSON / SQLite."""
+
+    def save(self, character: Character) -> None: ...
+    def get_by_id(self, character_id: str) -> Character | None: ...
+    def get_by_name(
+        self,
+        name: str,
+        owner_id: str,
+        guild_id: str | None = None,
+    ) -> Character | None: ...
+    def list_by_owner(
+        self,
+        owner_id: str,
+        guild_id: str | None = None,
+    ) -> list[Character]: ...
+    def delete(self, character_id: str) -> bool: ...
+    def name_exists(
+        self,
+        name: str,
+        owner_id: str,
+        exclude_id: str | None = None,
+        guild_id: str | None = None,
+    ) -> bool: ...
 
 
 def get_v2_characters_path() -> Path:
@@ -59,21 +86,33 @@ class JsonCharacterRepository:
             return None
         return Character.from_dict(raw)
 
-    def get_by_name(self, name: str, owner_id: str) -> Character | None:
+    def get_by_name(
+        self,
+        name: str,
+        owner_id: str,
+        guild_id: str | None = None,
+    ) -> Character | None:
         owner = str(owner_id)
         name_lower = name.strip().lower()
-        for char in self.list_by_owner(owner):
+        for char in self.list_by_owner(owner, guild_id=guild_id):
             if char.name.lower() == name_lower:
                 return char
         return None
 
-    def list_by_owner(self, owner_id: str) -> list[Character]:
+    def list_by_owner(
+        self,
+        owner_id: str,
+        guild_id: str | None = None,
+    ) -> list[Character]:
         owner = str(owner_id)
         data = self._load_raw()
         result: list[Character] = []
         for raw in data.get("characters", {}).values():
-            if str(raw.get("owner_id")) == owner:
-                result.append(Character.from_dict(raw))
+            if str(raw.get("owner_id")) != owner:
+                continue
+            if guild_id is not None and str(raw.get("guild_id", "0")) != str(guild_id):
+                continue
+            result.append(Character.from_dict(raw))
         result.sort(key=lambda c: c.name.lower())
         return result
 
@@ -91,8 +130,9 @@ class JsonCharacterRepository:
         name: str,
         owner_id: str,
         exclude_id: str | None = None,
+        guild_id: str | None = None,
     ) -> bool:
-        existing = self.get_by_name(name, owner_id)
+        existing = self.get_by_name(name, owner_id, guild_id=guild_id)
         if existing is None:
             return False
         if exclude_id and existing.id == exclude_id:
