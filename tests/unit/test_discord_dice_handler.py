@@ -71,7 +71,7 @@ class TestDiscordDiceHandler(unittest.TestCase):
     def test_is_single_d20(self):
         self.assertTrue(is_single_d20("d20"))
         self.assertTrue(is_single_d20("1d20+5"))
-        self.assertFalse(is_single_d20("2d20"))
+        self.assertTrue(is_single_d20("2d20+4"))  # avantage normalisé hook
         self.assertFalse(is_single_d20("3d6"))
 
     def test_legacy_roll_without_v2_context(self):

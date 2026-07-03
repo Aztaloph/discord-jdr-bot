@@ -21,6 +21,9 @@ from interfaces.discord.handlers.combat_roll import (
     CombatRollFlags,
     build_trait_display_lines,
 )
+from interfaces.discord.handlers.d20_notation import (
+    normalize_d20_roll_input,
+)
 
 log = logging.getLogger(__name__)
 
@@ -45,9 +48,10 @@ class RollDisplay:
 
 
 def is_single_d20(dice_str: str) -> bool:
-    """True si la notation est un unique d20 (éventuellement + modificateur)."""
-    count, faces, _, _ = parse(dice_str)
-    return count == 1 and faces == 20
+    """True si la notation est un jet d20 hook (1d20 ou 2d20 avantage explicite)."""
+    from interfaces.discord.handlers.d20_notation import is_hook_eligible_d20
+
+    return is_hook_eligible_d20(dice_str)
 
 
 def resolve_character_for_roll(
@@ -170,16 +174,21 @@ def execute_roll(
         )
 
     combat_flags = combat or CombatRollFlags()
-    _, _, modifier, sign = parse(dice_str)
+    normalized = normalize_d20_roll_input(dice_str, mode, combat_flags)
 
     character: Character | None = None
-    if ctx is not None and is_single_d20(dice_str):
+    if ctx is not None and normalized is not None:
         character = resolve_character_for_roll(ctx, owner_id, perso)
 
-    if character is not None and ctx is not None and ctx.rule_engine is not None:
+    if (
+        character is not None
+        and ctx is not None
+        and ctx.rule_engine is not None
+        and normalized is not None
+    ):
         request = _build_d20_request(
-            modifier=modifier,
-            mode=mode,
+            modifier=normalized.ability_modifier,
+            mode=normalized.mode,
             combat=combat_flags,
         )
         result = roll_d20_for_character(
@@ -196,16 +205,17 @@ def execute_roll(
             engine=ctx.rule_engine,
         )
         log.info(
-            "Roll d20 traits : %s (%s) total=%s effects=%s display=%s",
+            "Roll d20 traits : %s (%s) total=%s mode=%s effects=%s display=%s",
             character.name,
             character.class_id,
             result.total,
+            result.mode,
             result.applied_effects,
             display_lines,
         )
         return _from_d20_result(
             result,
-            sign=sign,
+            sign=normalized.sign,
             character_name=character.name,
             display_effects=display_lines,
         )

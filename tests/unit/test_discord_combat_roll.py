@@ -129,9 +129,48 @@ class TestDiscordCombatRoll(unittest.TestCase):
         )
         self.assertEqual(result.mode, "avantage")
         self.assertEqual(result.total, 21)
+        self.assertEqual(result.character_name, "Barb2")
+        self.assertTrue(result.traits_active)
         self.assertTrue(
             any("Attaque impétueuse → avantage" in e for e in result.applied_effects)
         )
+
+    def test_2d20_notation_keeps_best_not_sum(self):
+        """Bug 1 : 2d20+4 doit garder le max (avantage), pas additionner."""
+        self._create(name="CROM", class_id="barbarian", level=2)
+        result = execute_roll(
+            "2d20+4",
+            "normal",
+            self.ctx,
+            self.owner_id,
+            perso="CROM",
+            combat=CombatRollFlags(reckless=True),
+            rng=SequenceRng([8, 17]),
+        )
+        self.assertEqual(result.mode, "avantage")
+        self.assertEqual(result.kept_value if hasattr(result, "kept_value") else max(
+            r for r, k in zip(result.rolls, result.is_kept) if k
+        ), 17)
+        self.assertEqual(result.total, 21)
+        self.assertEqual(result.character_name, "CROM")
+        self.assertTrue(
+            any("Attaque impétueuse → avantage" in e for e in result.applied_effects)
+        )
+
+    def test_d20_impetueux_not_2d20_recommended(self):
+        """Chemin attendu : d20+4 + impetueux (pas 2d20 saisi manuellement)."""
+        self._create(name="CROM", class_id="barbarian", level=2)
+        result = execute_roll(
+            "d20+4",
+            "normal",
+            self.ctx,
+            self.owner_id,
+            perso="CROM",
+            combat=CombatRollFlags(reckless=True),
+            rng=SequenceRng([8, 17]),
+        )
+        self.assertEqual(result.total, 21)
+        self.assertIn("2d20 (meilleur gardé)", result.dice_notation)
 
     def test_sneak_attack_eligible_display_level_3(self):
         self._create(name="Rog", class_id="rogue", level=3)

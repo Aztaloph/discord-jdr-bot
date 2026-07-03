@@ -116,11 +116,8 @@ def build_trait_display_lines(
             add("Rage → avantage sur tests et sauvegardes de FOR")
 
     # ── Attaque impétueuse (hook d20) ──
-    if flags.reckless and _has_feature(engine, character, "reckless_attack"):
-        if roll_mode == "avantage":
-            add("Attaque impétueuse → avantage (FOR mêlée)")
-        else:
-            add("Attaque impétueuse → avantage FOR mêlée (si attaque au corps à corps)")
+    if flags.reckless:
+        add("Attaque impétueuse → avantage (FOR mêlée)")
 
     # ── Attaque sournoise (module roublard — dégâts si touché) ──
     if flags.sneak_attack_eligible and _has_feature(engine, character, "sneak_attack"):

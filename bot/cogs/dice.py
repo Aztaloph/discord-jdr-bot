@@ -154,7 +154,7 @@ class DiceCog(commands.Cog):
         perso="Personnage dont appliquer les traits (d20 uniquement)",
         arme_distance="Attaque à distance → Archerie +2 au toucher (Guerrier)",
         rage="Rage active → bonus dégâts + résistances (Barbare)",
-        impetueux="Attaque impétueuse → avantage FOR mêlée (Barbare niv.2+)",
+        impetueux="Attaque impétueuse → avantage auto (tapez d20+mod, pas 2d20)",
         attaque_sournoise="Conditions Attaque sournoise réunies (Roublard)",
     )
     @app_commands.choices(mode=MODE_CHOICES)
