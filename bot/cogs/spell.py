@@ -12,9 +12,8 @@ from jdr_engine.dice import DiceError
 from interfaces.discord.handlers.character import character_name_autocomplete
 from interfaces.discord.handlers.spell import (
     SpellDisplay,
+    build_lot_b_spell_autocomplete_choices,
     execute_spell_cast,
-    list_available_spells,
-    resolve_character_for_spell,
 )
 
 log = logging.getLogger(__name__)
@@ -53,41 +52,34 @@ def _build_error_embed(message: str) -> discord.Embed:
     )
 
 
-async def spell_name_autocomplete(
-    interaction: discord.Interaction,
-    current: str,
-) -> list[app_commands.Choice[str]]:
-    ctx = interaction.client.jdr  # type: ignore[attr-defined]
-    if not ctx.use_engine_v2 or ctx.character_service is None:
-        return []
-    perso_values = interaction.namespace.perso if hasattr(interaction.namespace, "perso") else None
-    if not perso_values:
-        return []
-    try:
-        character = resolve_character_for_spell(ctx, interaction.user.id, str(perso_values))
-    except DiceError:
-        return []
-    spells = list_available_spells(character)
-    current_lower = (current or "").lower()
-    choices: list[app_commands.Choice[str]] = []
-    engine = ctx.rule_engine
-    for spell_id in spells:
-        if current_lower and current_lower not in spell_id.replace("_", " "):
-            if engine:
-                name = engine.get_display_name("spell", spell_id, locale=ctx.locale)
-                if not name or current_lower not in name.lower():
-                    continue
-        label = engine.get_display_name("spell", spell_id, locale=ctx.locale) if engine else spell_id
-        choices.append(app_commands.Choice(name=label or spell_id, value=spell_id))
-        if len(choices) >= 25:
-            break
-    return choices
-
-
 class SpellCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         log.info("SpellCog initialisé.")
+
+    async def _perso_autocomplete(
+        self,
+        interaction: discord.Interaction,
+        current: str,
+    ) -> list[app_commands.Choice[str]]:
+        ctx = getattr(self.bot, "jdr", None)
+        if ctx is None or not ctx.use_engine_v2:
+            return []
+        return await character_name_autocomplete(interaction, current, ctx)
+
+    async def _sort_autocomplete(
+        self,
+        interaction: discord.Interaction,
+        current: str,
+    ) -> list[app_commands.Choice[str]]:
+        ctx = getattr(self.bot, "jdr", None)
+        if ctx is None or not ctx.use_engine_v2 or ctx.rule_engine is None:
+            return []
+        return build_lot_b_spell_autocomplete_choices(
+            ctx.rule_engine,
+            current,
+            locale=ctx.locale,
+        )
 
     @app_commands.command(
         name="sort",
@@ -97,7 +89,7 @@ class SpellCog(commands.Cog):
         perso="Nom de votre personnage magicien",
         sort="Identifiant du sort (ex. fire_bolt)",
     )
-    @app_commands.autocomplete(perso=character_name_autocomplete, sort=spell_name_autocomplete)
+    @app_commands.autocomplete(perso=_perso_autocomplete, sort=_sort_autocomplete)
     async def sort_cmd(
         self,
         interaction: discord.Interaction,

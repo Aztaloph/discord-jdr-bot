@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "characters": {
+    "joe00001": {
+      "id": "joe00001",
+      "owner_id": "REPLACE_WITH_YOUR_DISCORD_USER_ID",
+      "name": "Joe le mage",
+      "race_id": "human",
+      "class_id": "wizard",
+      "level": 3,
+      "ruleset_id": "dnd5e",
+      "ruleset_version": "1.0.0",
+      "schema_version": "1.0",
+      "ability_scores": {
+        "str": 8,
+        "dex": 14,
+        "con": 12,
+        "int": 16,
+        "wis": 10,
+        "cha": 10
+      },
+      "hp_current": 20,
+      "xp": 0,
+      "image_url": null,
+      "inventory": [],
+      "choices": {
+        "spellcasting": {
+          "cantrips_known": ["fire_bolt"],
+          "spells_prepared": [
+            "chromatic_orb",
+            "burning_hands",
+            "detect_magic",
+            "scorching_ray"
+          ],
+          "slots_used": {}
+        }
+      }
+    }
+  }
+}

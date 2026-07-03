@@ -9,7 +9,11 @@ from jdr_engine.application.dto.character_commands import GetCharacterQuery
 from jdr_engine.application.character_service import CharacterNotFoundError
 from jdr_engine.dice import DiceError
 from jdr_engine.domain.character.character import Character
+from discord import app_commands
+
+from jdr_engine.rules.engine import RuleEngine
 from jdr_engine.rules.spellcasting.cast import SpellCastError, SpellCastResult, cast_spell
+from jdr_engine.rules.spellcasting.spells_lot_b import LOT_B_SPELL_IDS
 from jdr_engine.rules.spellcasting.state import get_cantrips_known, get_spells_prepared
 
 from interfaces.discord.container import DiscordJdrContext
@@ -39,6 +43,45 @@ class SpellDisplay:
 def list_available_spells(character: Character) -> list[str]:
     """Ids de sorts lançables (tours de magie + préparés)."""
     return get_cantrips_known(character) + get_spells_prepared(character)
+
+
+def _spell_matches_query(spell_id: str, label: str, query: str) -> bool:
+    if not query:
+        return True
+    haystack = " ".join(
+        (
+            spell_id,
+            spell_id.replace("_", " "),
+            spell_id.replace("_", ""),
+            label,
+        )
+    ).lower()
+    return query in haystack
+
+
+def build_lot_b_spell_autocomplete_choices(
+    engine: RuleEngine,
+    current: str,
+    *,
+    locale: str = "fr",
+) -> list[app_commands.Choice[str]]:
+    """
+    Propose les 5 sorts Lot B depuis le Compendium (test / autocomplétion globale).
+
+    Accepte une saisie partielle (ex. ``fire``, ``trait``, ``fire_bolt``).
+    """
+    query = (current or "").strip().lower()
+    choices: list[app_commands.Choice[str]] = []
+    for spell_id in LOT_B_SPELL_IDS:
+        if engine.get_entity("spell", spell_id) is None:
+            continue
+        label = engine.get_display_name("spell", spell_id, locale=locale) or spell_id
+        if not _spell_matches_query(spell_id, label, query):
+            continue
+        choices.append(
+            app_commands.Choice(name=f"{label} ({spell_id})", value=spell_id)
+        )
+    return choices[:25]
 
 
 def resolve_character_for_spell(

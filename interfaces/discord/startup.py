@@ -36,12 +36,14 @@ def init_discord_jdr(config: dict | None = None) -> DiscordJdrContext:
         service = CharacterService(repo, engine)
         ctx.rule_engine = engine
         ctx.character_service = service
+        spell_count = len(engine.registry.list_entries("spell"))
         logger.info(
             "Moteur v2 activé — ruleset=%s@%s, %d entrées Compendium",
             engine.ruleset_id,
             engine.ruleset_version,
             len(engine.registry),
         )
+        logger.info("Sorts chargés : %d entrée(s)", spell_count)
     except Exception as exc:
         logger.error("Échec init moteur v2 : %s — fallback legacy", exc)
         ctx.settings = DiscordSettings(
