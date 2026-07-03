@@ -1,5 +1,5 @@
 # bot/cogs/spell.py
-"""Cog Discord — commande slash /sort (Magicien Lot B)."""
+"""Cog Discord — commande slash /sort (Magicien & Clerc)."""
 from __future__ import annotations
 
 import logging
@@ -12,8 +12,9 @@ from jdr_engine.dice import DiceError
 from interfaces.discord.handlers.character import character_name_autocomplete
 from interfaces.discord.handlers.spell import (
     SpellDisplay,
-    build_lot_b_spell_autocomplete_choices,
+    build_spell_autocomplete_choices,
     execute_spell_cast,
+    resolve_character_for_spell,
 )
 
 log = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ def _build_spell_embed(display: SpellDisplay) -> discord.Embed:
             value="\n".join(f"• {line}" for line in display.display_lines),
             inline=False,
         )
-    embed.set_footer(text="JDR Bot — D&D 5e SRD 2014 · Magicien")
+    embed.set_footer(text="JDR Bot — D&D 5e SRD 2014 · Lanceur de sorts")
     return embed
 
 
@@ -75,19 +76,30 @@ class SpellCog(commands.Cog):
         ctx = getattr(self.bot, "jdr", None)
         if ctx is None or not ctx.use_engine_v2 or ctx.rule_engine is None:
             return []
-        return build_lot_b_spell_autocomplete_choices(
+        class_id: str | None = None
+        perso_value = getattr(interaction.namespace, "perso", None)
+        if perso_value:
+            try:
+                character = resolve_character_for_spell(
+                    ctx, interaction.user.id, str(perso_value)
+                )
+                class_id = character.class_id
+            except DiceError:
+                pass
+        return build_spell_autocomplete_choices(
             ctx.rule_engine,
             current,
             locale=ctx.locale,
+            class_id=class_id,
         )
 
     @app_commands.command(
         name="sort",
-        description="Lance un sort (Magicien niv. 1-3, SRD 2014)",
+        description="Lance un sort (Magicien ou Clerc niv. 1-3, SRD 2014)",
     )
     @app_commands.describe(
-        perso="Nom de votre personnage magicien",
-        sort="Identifiant du sort (ex. fire_bolt)",
+        perso="Nom de votre personnage lanceur de sorts",
+        sort="Identifiant du sort (ex. fire_bolt, sacred_flame)",
     )
     @app_commands.autocomplete(perso=_perso_autocomplete, sort=_sort_autocomplete)
     async def sort_cmd(

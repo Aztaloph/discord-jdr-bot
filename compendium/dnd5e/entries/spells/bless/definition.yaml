@@ -1,0 +1,28 @@
+schema_version: "1.0"
+type: spell
+id: bless
+name:
+  fr: Bénédiction
+  en: Bless
+mechanics:
+  level: 1
+  school: enchantment
+  concentration: true
+  casting_time:
+    fr: "1 action"
+    en: "1 action"
+  range:
+    fr: "9 mètres"
+    en: "30 feet"
+  components:
+    verbal: true
+    somatic: true
+    material: false
+  duration:
+    fr: "Concentration, jusqu'à 1 minute"
+    en: "Concentration, up to 1 minute"
+  effect:
+    type: buff
+  buff_effect:
+    fr: "Jusqu'à 3 créatures : +1d4 aux jets d'attaque et de sauvegarde (SRD 2014)."
+    en: "Up to 3 creatures: +1d4 to attack rolls and saving throws (SRD 2014)."

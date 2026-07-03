@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "characters": {
+    "marie001": {
+      "id": "marie001",
+      "owner_id": "REPLACE_WITH_YOUR_DISCORD_USER_ID",
+      "name": "Marie la prêtresse",
+      "race_id": "human",
+      "class_id": "cleric",
+      "level": 3,
+      "ruleset_id": "dnd5e",
+      "ruleset_version": "1.0.0",
+      "schema_version": "1.0",
+      "ability_scores": {
+        "str": 10,
+        "dex": 12,
+        "con": 14,
+        "int": 10,
+        "wis": 16,
+        "cha": 12
+      },
+      "hp_current": 18,
+      "hp_max": 24,
+      "xp": 0,
+      "image_url": null,
+      "inventory": [],
+      "choices": {
+        "spellcasting": {
+          "cantrips_known": ["sacred_flame"],
+          "spells_prepared": [
+            "cure_wounds",
+            "inflict_wounds",
+            "bless",
+            "spiritual_weapon"
+          ],
+          "slots_used": {}
+        }
+      }
+    }
+  }
+}

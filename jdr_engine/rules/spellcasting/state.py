@@ -112,7 +112,7 @@ def format_slots_display(character: Character) -> str:
     """Texte compact pour embed Discord."""
     max_slots = get_max_spell_slots(character.class_id, character.level)
     if not max_slots:
-        return "Aucun emplacement (non-magicien ou niv. > 3)"
+        return "Aucun emplacement (non-lanceur ou niv. > 3)"
     used = get_slots_used(character)
     remaining = get_remaining_slots(character.class_id, character.level, used)
     parts = []

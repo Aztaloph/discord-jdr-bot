@@ -1,5 +1,5 @@
 # jdr_engine/rules/spellcasting/cast.py
-"""Lancement de sorts SRD 2014 — Magicien niv. 1-3 (Lot B)."""
+"""Lancement de sorts SRD 2014 — Magicien & Clerc niv. 1-3."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -9,11 +9,14 @@ from jdr_engine.dice.d20 import D20RollContext, D20RollRequest, D20RollResult, r
 from jdr_engine.dice.roller import roll
 from jdr_engine.domain.character.ability_scores import ability_modifier
 from jdr_engine.domain.character.character import Character
+from jdr_engine.rules.calculator import build_character_sheet
 from jdr_engine.rules.engine import RuleEngine
 from jdr_engine.rules.spellcasting.slots import get_max_spell_slots, get_remaining_slots
+from jdr_engine.rules.spellcasting.spells_catalog import SUPPORTED_SPELLCASTING_CLASSES
 from jdr_engine.rules.spellcasting.state import (
     consume_spell_slot,
     get_slots_used,
+    get_spellcasting_state,
     spell_is_available,
 )
 from jdr_engine.rules.spellcasting.stats import spell_attack_bonus, spell_save_dc
@@ -52,11 +55,21 @@ class SpellCastResult:
     damage_total: int | None = None
     damage_notation: str | None = None
     damage_rolls: list[int] = field(default_factory=list)
+    healing_total: int | None = None
+    healing_applied: int | None = None
+    healing_rolls: list[int] = field(default_factory=list)
+    hp_before: int | None = None
+    hp_after: int | None = None
+    hp_max: int | None = None
+    healing_capped: bool = False
     utility_text: str | None = None
+    buff_text: str | None = None
+    concentration: bool = False
     slot_consumed_level: int | None = None
     slots_max: dict[int, int] = field(default_factory=dict)
     slots_remaining: dict[int, int] = field(default_factory=dict)
     damage_type: str = ""
+    half_on_save: bool = True
     display_lines: list[str] = field(default_factory=list)
     updated_character: Character | None = None
 
@@ -83,8 +96,13 @@ def get_spellcasting_stats(
     engine: RuleEngine,
 ) -> tuple[int, int, int]:
     """Retourne (mod carac., bonus attaque sort, DD sauvegarde)."""
-    if character.class_id != "wizard" or character.level < 1 or character.level > 3:
-        raise SpellCastError("Lot B : Magicien niveaux 1 à 3 uniquement.")
+    if character.class_id not in SUPPORTED_SPELLCASTING_CLASSES:
+        raise SpellCastError(
+            f"Lanceur de sorts non pris en charge : {character.class_id!r}."
+        )
+    if character.level < 1 or character.level > 3:
+        raise SpellCastError("Niveaux 1 à 3 uniquement pour cette phase.")
+
     prof = engine.get_proficiency_bonus(character.level)
     mod = _ability_mod_for_spellcasting(character, engine)
     return mod, spell_attack_bonus(prof, mod), spell_save_dc(prof, mod)
@@ -114,6 +132,7 @@ def _roll_spell_attack(
     attack_bonus: int,
     ability_mod: int,
     proficiency: int,
+    ability_id: str,
     *,
     rng: RandInt | None = None,
 ) -> D20RollResult:
@@ -122,12 +141,12 @@ def _roll_spell_attack(
         ability_modifier=ability_mod,
         proficiency_bonus=proficiency,
         is_proficient=True,
-        ability="int",
+        ability=ability_id,
     )
     return roll_d20(D20RollContext(request=request), rng=rng)
 
 
-def _roll_damage(notation: str, *, rng: RandInt | None = None) -> tuple[int, list[int]]:
+def _roll_dice(notation: str, *, rng: RandInt | None = None) -> tuple[int, list[int]]:
     if rng is not None:
         from jdr_engine.dice.parser import parse
 
@@ -139,6 +158,36 @@ def _roll_damage(notation: str, *, rng: RandInt | None = None) -> tuple[int, lis
         return total, rolls
     result = roll(notation)
     return result.total, result.rolls
+
+
+def _apply_healing(
+    character: Character,
+    engine: RuleEngine,
+    amount: int,
+) -> tuple[Character, int, int, int, int, bool]:
+    """
+    Applique un soin SRD 2014 : PV = min(PV + soin, PV_max).
+
+    Retourne (perso, pv_avant, pv_après, pv_max, soin_effectif, plafonné).
+    """
+    sheet = build_character_sheet(character, engine)
+    hp_max = sheet.hp_max
+    hp_before = character.hp_current if character.hp_current is not None else hp_max
+    hp_before = min(hp_before, hp_max)
+    hp_after = min(hp_max, hp_before + amount)
+    healing_applied = hp_after - hp_before
+    capped = healing_applied < amount
+    character.hp_current = hp_after
+    return character, hp_before, hp_after, hp_max, healing_applied, capped
+
+
+def _set_concentration(character: Character, spell_id: str, spell_name: str) -> Character:
+    choices = dict(character.choices or {})
+    state = dict(get_spellcasting_state(character))
+    state["concentration"] = {"spell_id": spell_id, "spell_name": spell_name}
+    choices["spellcasting"] = state
+    character.choices = choices
+    return character
 
 
 def cast_spell(
@@ -153,12 +202,14 @@ def cast_spell(
     """
     Lance un sort connu/préparé, consomme l'emplacement si niv. ≥ 1.
 
-    ``persist_slots`` : si True, ``updated_character`` contient slots_used mis à jour.
+    ``persist_slots`` : si True, ``updated_character`` contient l'état mis à jour.
     """
-    if character.class_id != "wizard":
-        raise SpellCastError("Lot B : seul le Magicien est pris en charge.")
+    if character.class_id not in SUPPORTED_SPELLCASTING_CLASSES:
+        raise SpellCastError(
+            f"Lanceur de sorts non pris en charge : {character.class_id!r}."
+        )
     if character.level < 1 or character.level > 3:
-        raise SpellCastError("Lot B : Magicien niveaux 1 à 3 uniquement.")
+        raise SpellCastError("Niveaux 1 à 3 uniquement pour cette phase.")
 
     entry = engine.get_entity("spell", spell_id)
     if entry is None:
@@ -187,6 +238,7 @@ def cast_spell(
         ):
             raise SpellCastError("Aucun emplacement de sort disponible.")
 
+    ability_id = _spellcasting_ability(character, engine)
     ability_mod, attack_bonus, save_dc = get_spellcasting_stats(character, engine)
     proficiency = engine.get_proficiency_bonus(character.level)
     effect = _get_effect(spell_def)
@@ -199,6 +251,7 @@ def cast_spell(
     casting_time = _localized(spell_def, "casting_time", locale)
     range_text = _localized(spell_def, "range", locale)
     duration = _localized(spell_def, "duration", locale)
+    concentration = bool(mechanics.get("concentration", False))
 
     result = SpellCastResult(
         spell_id=spell_id,
@@ -210,21 +263,27 @@ def cast_spell(
         duration=duration,
         effect_type=effect_type,
         damage_type=damage_type,
+        concentration=concentration,
         slots_max=get_max_spell_slots(character.class_id, character.level),
     )
+
+    updated = character
 
     if effect_type == "spell_attack":
         attacks = int(effect.get("attacks", 1))
         damage_notation = str(effect.get("damage", ""))
+        add_mod = bool(effect.get("add_ability_mod", False))
         attack_rolls: list[SpellAttackRoll] = []
         total_damage = 0
         all_damage_rolls: list[int] = []
 
         for index in range(1, attacks + 1):
             d20 = _roll_spell_attack(
-                attack_bonus, ability_mod, proficiency, rng=rng
+                attack_bonus, ability_mod, proficiency, ability_id, rng=rng
             )
-            dmg_total, dmg_rolls = _roll_damage(damage_notation, rng=rng)
+            dmg_total, dmg_rolls = _roll_dice(damage_notation, rng=rng)
+            if add_mod:
+                dmg_total += ability_mod
             total_damage += dmg_total
             all_damage_rolls.extend(dmg_rolls)
             attack_rolls.append(
@@ -233,7 +292,8 @@ def cast_spell(
                     attack_bonus=attack_bonus,
                     d20_result=d20,
                     damage_total=dmg_total,
-                    damage_notation=damage_notation,
+                    damage_notation=damage_notation
+                    + (f"+{ability_mod}" if add_mod else ""),
                     damage_rolls=dmg_rolls,
                 )
             )
@@ -241,18 +301,45 @@ def cast_spell(
         result.attack_bonus = attack_bonus
         result.attack_rolls = attack_rolls
         result.damage_total = total_damage
-        result.damage_notation = damage_notation
+        result.damage_notation = damage_notation + (f"+mod {ability_id}" if add_mod else "")
         result.damage_rolls = all_damage_rolls
+        if effect.get("invocation"):
+            result.utility_text = _localized(spell_def, "invocation_effect", locale)
 
     elif effect_type == "saving_throw":
         save_ability = str(effect.get("ability", "dex"))
         damage_notation = str(effect.get("damage", ""))
-        dmg_total, dmg_rolls = _roll_damage(damage_notation, rng=rng)
+        half_on_save = bool(effect.get("half_on_save", True))
+        dmg_total, dmg_rolls = _roll_dice(damage_notation, rng=rng)
         result.save_dc = save_dc
         result.save_ability = save_ability
         result.damage_total = dmg_total
         result.damage_notation = damage_notation
         result.damage_rolls = dmg_rolls
+        result.half_on_save = half_on_save
+
+    elif effect_type == "healing":
+        heal_notation = str(effect.get("healing", "1d8"))
+        add_mod = bool(effect.get("add_ability_mod", True))
+        heal_total, heal_rolls = _roll_dice(heal_notation, rng=rng)
+        if add_mod:
+            heal_total += ability_mod
+        updated, hp_before, hp_after, hp_max, healing_applied, capped = _apply_healing(
+            updated, engine, heal_total
+        )
+        result.healing_total = heal_total
+        result.healing_applied = healing_applied
+        result.healing_rolls = heal_rolls
+        result.hp_before = hp_before
+        result.hp_after = hp_after
+        result.hp_max = hp_max
+        result.healing_capped = capped
+        result.damage_notation = heal_notation + (f"+mod {ability_id}" if add_mod else "")
+
+    elif effect_type == "buff":
+        result.buff_text = _localized(spell_def, "buff_effect", locale)
+        if concentration:
+            updated = _set_concentration(updated, spell_id, spell_name)
 
     elif effect_type == "utility":
         result.utility_text = _localized(spell_def, "utility_effect", locale)
@@ -260,11 +347,10 @@ def cast_spell(
     else:
         raise SpellCastError(f"Type d'effet non pris en charge : {effect_type!r}")
 
-    updated = character
     slot_consumed: int | None = None
     if spell_level > 0:
-        before_used = dict(get_slots_used(character))
-        updated = consume_spell_slot(character, spell_level)
+        before_used = dict(get_slots_used(updated))
+        updated = consume_spell_slot(updated, spell_level)
         after_used = get_slots_used(updated)
         for level in sorted(after_used.keys()):
             if after_used.get(level, 0) > before_used.get(level, 0):
@@ -309,6 +395,8 @@ def build_spell_display_lines(
         lines.append(
             f"Dégâts{dmg_label} : **{result.damage_total}** ({result.damage_notation})"
         )
+        if result.utility_text:
+            lines.append(result.utility_text)
 
     elif result.effect_type == "saving_throw":
         ability = (result.save_ability or "dex").upper()
@@ -317,9 +405,47 @@ def build_spell_display_lines(
         lines.append(
             f"Dégâts{dmg_label} (échec) : **{result.damage_total}** ({result.damage_notation})"
         )
-        lines.append("Demi-dégâts en cas de réussite (SRD 2014)")
+        if result.half_on_save:
+            lines.append("Demi-dégâts en cas de réussite (SRD 2014)")
+        else:
+            lines.append("Aucun dégât en cas de réussite (SRD 2014)")
+
+    elif result.effect_type == "healing" and result.healing_total is not None:
+        notation = result.damage_notation or "1d8+mod"
+        applied = result.healing_applied if result.healing_applied is not None else 0
+        if applied <= 0 and result.hp_before == result.hp_max:
+            lines.append(
+                f"PV : **{result.hp_before}** / **{result.hp_max}** (déjà au maximum)"
+            )
+        else:
+            if result.healing_capped and applied < result.healing_total:
+                lines.append(
+                    f"Soins : **+{applied} PV** (jet {result.healing_total}, plafonné — {notation})"
+                )
+            else:
+                lines.append(f"Soins : **+{applied} PV** ({notation})")
+            if (
+                result.hp_before is not None
+                and result.hp_after is not None
+                and result.hp_max is not None
+            ):
+                if result.hp_after >= result.hp_max:
+                    lines.append(
+                        f"PV : **{result.hp_before}** → **{result.hp_after}** / **{result.hp_max}** (maximum atteint)"
+                    )
+                else:
+                    lines.append(
+                        f"PV : **{result.hp_before}** → **{result.hp_after}** / **{result.hp_max}**"
+                    )
+
+    elif result.effect_type == "buff" and result.buff_text:
+        if result.concentration:
+            lines.append(f"**Concentration** — {result.duration}")
+        lines.append(result.buff_text)
 
     elif result.effect_type == "utility" and result.utility_text:
+        if result.concentration:
+            lines.append(f"**Concentration** — {result.duration}")
         lines.append(result.utility_text)
 
     if result.spell_level == 0:
@@ -349,6 +475,9 @@ def _damage_type_label(damage_type: str) -> str:
         "lightning": " foudre",
         "poison": " poison",
         "thunder": " tonnerre",
+        "radiant": " radiants",
+        "necrotic": " nécrotiques",
+        "force": " de force",
         "variable": " (type au choix)",
     }
     return labels.get(damage_type, f" {damage_type}")

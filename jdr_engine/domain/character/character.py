@@ -28,6 +28,7 @@ class Character:
     id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
     ability_scores: AbilityScores = field(default_factory=AbilityScores)
     hp_current: int | None = None
+    hp_max: int | None = None
     xp: int = 0
     image_url: str | None = None
     inventory: list[dict[str, Any]] = field(default_factory=list)
@@ -46,6 +47,7 @@ class Character:
             "schema_version": self.schema_version,
             "ability_scores": self.ability_scores.to_dict(),
             "hp_current": self.hp_current,
+            "hp_max": self.hp_max,
             "xp": self.xp,
             "image_url": self.image_url,
             "inventory": list(self.inventory),
@@ -67,6 +69,7 @@ class Character:
             schema_version=data.get("schema_version", "1.0"),
             ability_scores=AbilityScores.from_dict(ability_raw),
             hp_current=data.get("hp_current"),
+            hp_max=data.get("hp_max"),
             xp=int(data.get("xp", 0)),
             image_url=data.get("image_url"),
             inventory=list(data.get("inventory", [])),

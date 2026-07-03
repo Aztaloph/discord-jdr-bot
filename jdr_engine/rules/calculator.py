@@ -92,6 +92,9 @@ def build_character_sheet(
         hp_max += (character.level - 1) * (hit_die_faces // 2 + 1 + con_mod)
         hp_max = max(1, hp_max)
 
+    if character.hp_max is not None:
+        hp_max = max(1, int(character.hp_max))
+
     hp_current = character.hp_current if character.hp_current is not None else hp_max
     hp_current = min(hp_current, hp_max)
 

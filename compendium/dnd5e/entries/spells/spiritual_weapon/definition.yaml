@@ -1,0 +1,32 @@
+schema_version: "1.0"
+type: spell
+id: spiritual_weapon
+name:
+  fr: Arme spirituelle
+  en: Spiritual Weapon
+mechanics:
+  level: 2
+  school: evocation
+  casting_time:
+    fr: "1 action bonus"
+    en: "1 bonus action"
+  range:
+    fr: "18 mètres"
+    en: "60 feet"
+  components:
+    verbal: true
+    somatic: true
+    material: false
+  duration:
+    fr: "1 minute"
+    en: "1 minute"
+  effect:
+    type: spell_attack
+    attack_type: melee
+    damage: 1d8
+    damage_type: force
+    add_ability_mod: true
+    invocation: true
+  invocation_effect:
+    fr: "Arme spectrale créée — attaque initiale incluse ; action bonus pour déplacer et réattaquer (SRD 2014)."
+    en: "Spectral weapon created — initial attack included; bonus action to move and reattack (SRD 2014)."

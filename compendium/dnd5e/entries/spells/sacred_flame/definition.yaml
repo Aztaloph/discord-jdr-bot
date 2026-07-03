@@ -1,0 +1,28 @@
+schema_version: "1.0"
+type: spell
+id: sacred_flame
+name:
+  fr: Flamme sacrée
+  en: Sacred Flame
+mechanics:
+  level: 0
+  school: evocation
+  casting_time:
+    fr: "1 action"
+    en: "1 action"
+  range:
+    fr: "18 mètres"
+    en: "60 feet"
+  components:
+    verbal: true
+    somatic: true
+    material: false
+  duration:
+    fr: Instantané
+    en: Instantaneous
+  effect:
+    type: saving_throw
+    ability: dex
+    damage: 1d8
+    damage_type: radiant
+    half_on_save: false

@@ -1,5 +1,5 @@
 # interfaces/discord/handlers/spell.py
-"""Handler /sort Discord — lanceur de sorts Magicien (Lot B)."""
+"""Handler /sort Discord — lanceurs de sorts Magicien & Clerc."""
 from __future__ import annotations
 
 import logging
@@ -13,7 +13,10 @@ from discord import app_commands
 
 from jdr_engine.rules.engine import RuleEngine
 from jdr_engine.rules.spellcasting.cast import SpellCastError, SpellCastResult, cast_spell
-from jdr_engine.rules.spellcasting.spells_lot_b import LOT_B_SPELL_IDS
+from jdr_engine.rules.spellcasting.spells_catalog import (
+    all_spellcasting_spell_ids,
+    get_spell_ids_for_class,
+)
 from jdr_engine.rules.spellcasting.state import get_cantrips_known, get_spells_prepared
 
 from interfaces.discord.container import DiscordJdrContext
@@ -59,20 +62,22 @@ def _spell_matches_query(spell_id: str, label: str, query: str) -> bool:
     return query in haystack
 
 
-def build_lot_b_spell_autocomplete_choices(
+def build_spell_autocomplete_choices(
     engine: RuleEngine,
     current: str,
     *,
     locale: str = "fr",
+    class_id: str | None = None,
 ) -> list[app_commands.Choice[str]]:
     """
-    Propose les 5 sorts Lot B depuis le Compendium (test / autocomplétion globale).
+    Propose les sorts Lot B depuis le Compendium.
 
-    Accepte une saisie partielle (ex. ``fire``, ``trait``, ``fire_bolt``).
+    Si ``class_id`` est fourni (wizard/cleric), filtre la liste ; sinon les 10 sorts.
     """
     query = (current or "").strip().lower()
+    spell_ids = get_spell_ids_for_class(class_id) if class_id else all_spellcasting_spell_ids()
     choices: list[app_commands.Choice[str]] = []
-    for spell_id in LOT_B_SPELL_IDS:
+    for spell_id in spell_ids:
         if engine.get_entity("spell", spell_id) is None:
             continue
         label = engine.get_display_name("spell", spell_id, locale=locale) or spell_id
@@ -82,6 +87,16 @@ def build_lot_b_spell_autocomplete_choices(
             app_commands.Choice(name=f"{label} ({spell_id})", value=spell_id)
         )
     return choices[:25]
+
+
+def build_lot_b_spell_autocomplete_choices(
+    engine: RuleEngine,
+    current: str,
+    *,
+    locale: str = "fr",
+) -> list[app_commands.Choice[str]]:
+    """Alias rétrocompat — tous les sorts lanceurs."""
+    return build_spell_autocomplete_choices(engine, current, locale=locale)
 
 
 def resolve_character_for_spell(

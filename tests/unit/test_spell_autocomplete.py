@@ -13,11 +13,15 @@ class TestSpellAutocomplete(unittest.TestCase):
     def setUpClass(cls):
         cls.engine = RuleEngine.load("dnd5e", validate=True, strict=True)
 
-    def test_all_five_spells_when_empty_query(self):
+    def test_all_ten_spells_when_empty_query(self):
         choices = build_lot_b_spell_autocomplete_choices(self.engine, "")
-        values = [c.value for c in choices]
-        self.assertEqual(len(values), 5)
-        self.assertIn("fire_bolt", values)
+        self.assertEqual(len(choices), 10)
+
+    def test_all_five_wizard_spells_when_empty_query(self):
+        from interfaces.discord.handlers.spell import build_spell_autocomplete_choices
+
+        choices = build_spell_autocomplete_choices(self.engine, "", class_id="wizard")
+        self.assertEqual(len(choices), 5)
 
     def test_partial_fire_matches_fire_bolt(self):
         choices = build_lot_b_spell_autocomplete_choices(self.engine, "fire")
