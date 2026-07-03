@@ -1,0 +1,27 @@
+schema_version: "1.0"
+type: spell
+id: chromatic_orb
+name:
+  fr: Orbe chromatique
+  en: Chromatic Orb
+mechanics:
+  level: 1
+  school: evocation
+  casting_time:
+    fr: "1 action"
+    en: "1 action"
+  range:
+    fr: "27 mètres"
+    en: "90 feet"
+  components:
+    verbal: true
+    somatic: true
+    material: "diamond worth at least 50 gp"
+  duration:
+    fr: Instantané
+    en: Instantaneous
+  effect:
+    type: spell_attack
+    attack_type: ranged
+    damage: 3d8
+    damage_type: variable

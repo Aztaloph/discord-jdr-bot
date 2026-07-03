@@ -1,0 +1,28 @@
+schema_version: "1.0"
+type: spell
+id: detect_magic
+name:
+  fr: Détection de la magie
+  en: Detect Magic
+mechanics:
+  level: 1
+  school: divination
+  ritual: true
+  casting_time:
+    fr: "1 action"
+    en: "1 action"
+  range:
+    fr: Personnel
+    en: Self
+  components:
+    verbal: true
+    somatic: true
+    material: false
+  duration:
+    fr: "Concentration, jusqu'à 10 minutes"
+    en: "Concentration, up to 10 minutes"
+  utility_effect:
+    fr: "Vous sentez la présence de magie dans un rayon de 9 mètres (SRD 2014)."
+    en: "You sense the presence of magic within 30 feet (SRD 2014)."
+  effect:
+    type: utility

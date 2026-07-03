@@ -1,0 +1,28 @@
+schema_version: "1.0"
+type: spell
+id: burning_hands
+name:
+  fr: Mains brûlantes
+  en: Burning Hands
+mechanics:
+  level: 1
+  school: evocation
+  casting_time:
+    fr: "1 action"
+    en: "1 action"
+  range:
+    fr: "Personnel (cône de 4,5 m)"
+    en: "Self (15-foot cone)"
+  components:
+    verbal: true
+    somatic: true
+    material: false
+  duration:
+    fr: Instantané
+    en: Instantaneous
+  effect:
+    type: saving_throw
+    ability: dex
+    damage: 3d6
+    damage_type: fire
+    half_on_save: true

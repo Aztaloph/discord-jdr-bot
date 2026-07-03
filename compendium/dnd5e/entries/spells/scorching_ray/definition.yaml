@@ -1,0 +1,28 @@
+schema_version: "1.0"
+type: spell
+id: scorching_ray
+name:
+  fr: Rayon ardent
+  en: Scorching Ray
+mechanics:
+  level: 2
+  school: evocation
+  casting_time:
+    fr: "1 action"
+    en: "1 action"
+  range:
+    fr: "36 mètres"
+    en: "120 feet"
+  components:
+    verbal: true
+    somatic: true
+    material: false
+  duration:
+    fr: Instantané
+    en: Instantaneous
+  effect:
+    type: spell_attack
+    attack_type: ranged
+    attacks: 3
+    damage: 2d6
+    damage_type: fire

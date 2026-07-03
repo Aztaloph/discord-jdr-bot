@@ -14,4 +14,5 @@ entry_types:
   - races
   - classes
   - traits
+  - spells
 dependencies: []
