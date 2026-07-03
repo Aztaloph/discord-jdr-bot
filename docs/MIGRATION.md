@@ -395,34 +395,19 @@ Traits Lot A visibles en jeu Discord (même bloc **✨ Traits actifs** que Chanc
 |---|---|---|
 | `arme_distance` | `ranged_weapon` | Guerrier (Archerie) |
 | `rage` | `rage_active` | Barbare |
-| `impetueux` | `reckless` | Barbare niv.2+ |
+| `impetueux` | `reckless` | Barbare niv.2+ — tapez `d20+mod`, pas `2d20` |
 | `attaque_sournoise` | `sneak_attack_eligible` | Roublard |
+
+### Bugfix impétueux / 2d20
+
+- `2d20+mod` → normalisé avantage SRD (**meilleur gardé**, jamais somme).
+- `impetueux:True` + `d20+mod` → avantage auto + trait affiché.
+- Prérequis flags : [COMBAT_ROLL_PREREQUISITES.md](COMBAT_ROLL_PREREQUISITES.md) (doc, non implémenté).
 
 ### Validation
 
 ```powershell
-python -m unittest discover -s tests -v   # 162 tests
+python -m unittest discover -s tests -v   # 169 tests
 python main.py   # resync slash commands
 ```
 
----
-
-## Phase 4.8 — Visibilité combat `/roll` (2026-07-03) ✅
-
-Traits Lot A visibles en jeu Discord (même bloc **✨ Traits actifs** que Chanceux).
-
-### Paramètres `/roll`
-
-| Paramètre | Flag interne | Classe |
-|---|---|---|
-| `arme_distance` | `ranged_weapon` | Guerrier (Archerie) |
-| `rage` | `rage_active` | Barbare |
-| `impetueux` | `reckless` | Barbare niv.2+ |
-| `attaque_sournoise` | `sneak_attack_eligible` | Roublard |
-
-### Validation
-
-```powershell
-python -m unittest discover -s tests -v   # 162 tests
-python main.py   # resync slash commands
-```
