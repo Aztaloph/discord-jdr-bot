@@ -1,0 +1,12 @@
+schema_version: "1.0"
+type: trait
+id: gnome_cunning
+name:
+  fr: Ruse gnome
+  en: Gnome Cunning
+mechanics:
+  effects:
+    - type: advantage
+      context: saving_throw
+      versus: magic
+      abilities: [int, wis, cha]

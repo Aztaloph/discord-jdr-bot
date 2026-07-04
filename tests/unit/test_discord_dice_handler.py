@@ -108,7 +108,7 @@ class TestDiscordDiceHandler(unittest.TestCase):
         self.assertFalse(result.rerolled)
         self.assertEqual(result.total, 17)
 
-    def test_auto_single_character(self):
+    def test_auto_single_character_without_guild(self):
         self._create_halfling("Solo")
         result = execute_roll(
             "d20",
@@ -120,6 +120,31 @@ class TestDiscordDiceHandler(unittest.TestCase):
         self.assertTrue(result.traits_active)
         self.assertEqual(result.character_name, "Solo")
 
+    def test_active_character_used_on_guild(self):
+        guild_id = "0"
+        self._create_halfling("A")
+        b = self.service.create(
+            CreateCharacterCommand(
+                owner_id=str(self.owner_id),
+                name="B",
+                race_id="human",
+                class_id="fighter",
+                level=1,
+                guild_id=guild_id,
+            )
+        )
+        self.service.set_active_character(str(self.owner_id), guild_id, b.id)
+        result = execute_roll(
+            "d20",
+            "normal",
+            self.ctx,
+            self.owner_id,
+            guild_id=guild_id,
+            rng=SequenceRng([12]),
+        )
+        self.assertTrue(result.traits_active)
+        self.assertEqual(result.character_name, "B")
+
     def test_unknown_perso_raises(self):
         with self.assertRaises(DiceError):
             execute_roll("d20", "normal", self.ctx, self.owner_id, perso="Inconnu")
@@ -130,7 +155,8 @@ class TestDiscordDiceHandler(unittest.TestCase):
         self.assertIsNotNone(resolved)
         self.assertEqual(resolved.name, char.name)
 
-    def test_multiple_characters_hint_without_perso(self):
+    def test_multiple_characters_hint_without_active(self):
+        guild_id = "0"
         self._create_halfling("A")
         self.service.create(
             CreateCharacterCommand(
@@ -139,9 +165,18 @@ class TestDiscordDiceHandler(unittest.TestCase):
                 race_id="human",
                 class_id="fighter",
                 level=1,
+                guild_id=guild_id,
             )
         )
-        result = execute_roll("d20", "normal", self.ctx, self.owner_id, rng=SequenceRng([10]))
+        self.repo.clear_active_character(str(self.owner_id), guild_id)
+        result = execute_roll(
+            "d20",
+            "normal",
+            self.ctx,
+            self.owner_id,
+            guild_id=guild_id,
+            rng=SequenceRng([10]),
+        )
         self.assertFalse(result.traits_active)
         self.assertTrue(any("plusieurs_persos" in h for h in result.applied_effects))
 

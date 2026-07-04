@@ -1,0 +1,10 @@
+schema_version: "1.0"
+type: trait
+id: hellish_resistance
+name:
+  fr: Résistance infernale
+  en: Hellish Resistance
+mechanics:
+  effects:
+    - type: damage_resistance
+      damage_type: fire

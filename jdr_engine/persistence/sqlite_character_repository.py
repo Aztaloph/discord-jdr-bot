@@ -7,9 +7,14 @@ from pathlib import Path
 
 from jdr_engine.domain.character.character import Character
 from jdr_engine.persistence.database import (
+    clear_active_character,
+    clear_active_for_character,
+    get_active_character_id,
     get_connection,
     get_db_path,
+    list_characters_by_guild,
     row_to_character,
+    set_active_character_id,
     upsert_character,
 )
 
@@ -73,12 +78,35 @@ class SqliteCharacterRepository:
             rows = conn.execute(query, params).fetchall()
         return [row_to_character(row) for row in rows]
 
+    def list_by_guild(self, guild_id: str) -> list[Character]:
+        with get_connection(self.db_path) as conn:
+            return list_characters_by_guild(conn, str(guild_id))
+
     def delete(self, character_id: str) -> bool:
         with get_connection(self.db_path) as conn:
+            clear_active_for_character(conn, character_id)
             cursor = conn.execute(
                 "DELETE FROM personnages WHERE id = ?", (character_id,)
             )
             return cursor.rowcount > 0
+
+    def get_active_character_id(self, owner_id: str, guild_id: str) -> str | None:
+        with get_connection(self.db_path) as conn:
+            return get_active_character_id(conn, str(owner_id), str(guild_id))
+
+    def set_active_character_id(
+        self, owner_id: str, guild_id: str, character_id: str
+    ) -> None:
+        with get_connection(self.db_path) as conn:
+            set_active_character_id(conn, str(owner_id), str(guild_id), character_id)
+
+    def clear_active_for_character(self, character_id: str) -> None:
+        with get_connection(self.db_path) as conn:
+            clear_active_for_character(conn, character_id)
+
+    def clear_active_character(self, owner_id: str, guild_id: str) -> None:
+        with get_connection(self.db_path) as conn:
+            clear_active_character(conn, str(owner_id), str(guild_id))
 
     def name_exists(
         self,

@@ -1,0 +1,11 @@
+schema_version: "1.0"
+type: trait
+id: half_elf_versatility
+name:
+  fr: Polyvalence
+  en: Skill Versatility
+mechanics:
+  choice:
+    level: 1
+    type: ability_and_skills
+    srd_note: "+1 à 2 caractéristiques (hors CHA) et 2 compétences au choix"

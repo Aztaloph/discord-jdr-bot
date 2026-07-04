@@ -5,6 +5,7 @@ from jdr_engine.domain.character.ability_scores import (
     ability_modifier,
     format_modifier,
 )
+from jdr_engine.domain.character.choices_schema import normalize_character_choices
 from jdr_engine.domain.character.character import Character
 from jdr_engine.domain.character.character_sheet import CharacterSheet
 

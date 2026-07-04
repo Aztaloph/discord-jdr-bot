@@ -17,7 +17,7 @@ from jdr_engine.rules.spellcasting.state import (
     consume_spell_slot,
     get_slots_used,
     get_spellcasting_state,
-    spell_is_available,
+    spell_is_known,
 )
 from jdr_engine.rules.spellcasting.stats import spell_attack_bonus, spell_save_dc
 
@@ -217,10 +217,15 @@ def cast_spell(
 
     spell_def = entry.definition.model_dump()
     spell_level = _get_spell_level(spell_def)
-    if not spell_is_available(character, spell_id):
+    spell_name = entry.get_name(locale, engine.registry.manifest.default_locale)
+
+    # TODO (lot préparation) : vérifier spell_id in get_spells_prepared() en plus de known.
+    if not spell_is_known(character, spell_id):
         if spell_level == 0:
-            raise SpellCastError(f"Tour de magie non connu : {spell_id!r}.")
-        raise SpellCastError(f"Sort non préparé : {spell_id!r}.")
+            raise SpellCastError(
+                f"Vous ne connaissez pas ce tour de magie : **{spell_name}**."
+            )
+        raise SpellCastError(f"Vous ne connaissez pas ce sort : **{spell_name}**.")
 
     if spell_level > 0:
         max_slots = get_max_spell_slots(character.class_id, character.level)
@@ -244,7 +249,6 @@ def cast_spell(
     effect = _get_effect(spell_def)
     effect_type = str(effect.get("type", ""))
     damage_type = str(effect.get("damage_type", ""))
-    spell_name = entry.get_name(locale, engine.registry.manifest.default_locale)
 
     mechanics = spell_def.get("mechanics", {})
     school = str(mechanics.get("school", ""))

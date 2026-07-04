@@ -1,0 +1,21 @@
+schema_version: "1.0"
+type: trait
+id: draconic_ancestry
+name:
+  fr: Ascendance draconique
+  en: Draconic Ancestry
+mechanics:
+  choice:
+    level: 1
+    options:
+      - black
+      - blue
+      - brass
+      - bronze
+      - copper
+      - gold
+      - green
+      - red
+      - silver
+      - white
+    srd_note: "SRD 2014 — 10 couleurs, souffle et résistance associés"

@@ -18,6 +18,7 @@ from discord.ext import commands
 from bot.models.character import Personnage, stockage
 
 from interfaces.discord.handlers import character as character_v2
+from interfaces.discord.handlers import mj_delete as mj_delete_handler
 
 
 
@@ -32,9 +33,6 @@ COULEUR_PRINCIPALE = 0x8B4513  # Marron saddlebrown (ambiance D&D)
 COULEUR_SUCCES = 0x228B22     # Vert forêt
 COULEUR_ERREUR = 0xDC143C     # Rouge Crimson
 COULEUR_INFO = 0x4169E1       # Bleu Royal
-
-# Clés obligatoires avant la création finale (modal Combat)
-CLES_CREATION_REQUISES = ("nom", "race", "classe", "niveau", "caracteristiques")
 
 # Ordre des caractéristiques D&D 5e
 NOMS_CARAC = ["force", "dexterite", "constitution", "intelligence", "sagesse", "charisme"]
@@ -621,12 +619,13 @@ class CharacterCog(commands.Cog):
     Cog pour la gestion des fiches de personnages D&D 5e.
     
     Commandes disponibles (toutes en français) :
-    - /perso-creer          : Lance l'assistant de création multi-étapes
+    - /creer-perso           : Création de personnage (voir cog creation)
     - /perso-liste          : Liste les personnages de l'utilisateur (éphémère)
-    - /perso-afficher [nom] : Affiche la fiche dans le canal
+    - /perso-choisir        : Choisit le personnage actif en jeu sur ce serveur
+    - /perso-afficher [nom] : Affiche la fiche (perso actif si omis)
     - /perso-mp [nom]       : Envoie la fiche par MP
     - /perso-modifier [nom] : Modifie un personnage existant
-    - /perso-supprimer [nom] : Supprime avec confirmation
+    - /perso-supprimer [personnage] : [MJ] Supprime un personnage par son identifiant
     - /perso-attaque-ajouter [nom] : Ajoute une attaque
     """
     
@@ -670,21 +669,24 @@ class CharacterCog(commands.Cog):
             if len(choices) >= 25:
                 break
         return choices
-    
-    # =========================================================================
-    # COMMANDE : /perso-creer
-    # =========================================================================
-    
-    @app_commands.command(name="perso-creer", description="Créer un nouveau personnage D&D 5e")
-    async def perso_creer(self, interaction: discord.Interaction):
-        """Lance l'assistant de création de personnage en plusieurs étapes."""
-        if self._use_v2():
-            await character_v2.perso_creer(interaction, self._jdr)
-            return
-        view = AssistantCreationView(owner_id=interaction.user.id)
-        modal = ModalIdentite(view)
-        await interaction.response.send_modal(modal)
 
+    async def _perso_id_autocomplete(
+        self, interaction: discord.Interaction, current: str
+    ) -> list[app_commands.Choice[str]]:
+        if not self._use_v2():
+            return []
+        return await character_v2.character_id_autocomplete(
+            interaction, current, self._jdr
+        )
+
+    async def _perso_guild_autocomplete(
+        self, interaction: discord.Interaction, current: str
+    ) -> list[app_commands.Choice[str]]:
+        if not self._use_v2():
+            return []
+        return await mj_delete_handler.guild_character_autocomplete(
+            interaction, current, self._jdr
+        )
     
     # =========================================================================
     # COMMANDE : /perso-liste
@@ -702,7 +704,7 @@ class CharacterCog(commands.Cog):
             embed = discord.Embed(
                 title="📋 Vos personnages",
                 description="Vous n'avez pas encore de personnage.\n"
-                           "Utilisez `/perso-creer` pour créer votre premier personnage !",
+                           "Utilisez `/creer-perso` pour créer votre premier personnage !",
                 color=COULEUR_INFO
             )
             await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -725,17 +727,38 @@ class CharacterCog(commands.Cog):
         
         await interaction.response.send_message(embed=embed, ephemeral=True)
     
+    @app_commands.command(
+        name="perso-choisir",
+        description="Choisit votre personnage actif en jeu sur ce serveur",
+    )
+    @app_commands.describe(
+        personnage="Votre personnage (nom ou id court, ex. marie001)",
+    )
+    @app_commands.autocomplete(personnage=_perso_id_autocomplete)
+    async def perso_choisir(self, interaction: discord.Interaction, personnage: str):
+        """Définit le personnage actif pour /roll, /sort, etc."""
+        if self._use_v2():
+            await character_v2.perso_choisir(interaction, self._jdr, personnage)
+            return
+        await self._v2_unavailable(interaction, "Choix du personnage actif")
+
     # =========================================================================
     # COMMANDE : /perso-afficher
     # =========================================================================
-    
-    @app_commands.command(name="perso-afficher", description="Affiche la fiche complète d'un personnage")
-    @app_commands.describe(nom="Nom du personnage")
+
+    @app_commands.command(
+        name="perso-afficher",
+        description="Affiche la fiche complète d'un personnage (actif si omis)",
+    )
+    @app_commands.describe(nom="Nom du personnage (optionnel — utilise le perso actif)")
     @app_commands.autocomplete(nom=_nom_autocomplete)
-    async def perso_afficher(self, interaction: discord.Interaction, nom: str):
+    async def perso_afficher(self, interaction: discord.Interaction, nom: str | None = None):
         """Affiche la fiche complète du personnage dans le canal."""
         if self._use_v2():
             await character_v2.perso_afficher(interaction, self._jdr, nom)
+            return
+        if not nom:
+            await self._v2_unavailable(interaction, "Affichage du personnage actif")
             return
         perso = stockage.obtenir(nom, interaction.user.id)
         
@@ -839,34 +862,20 @@ class CharacterCog(commands.Cog):
     # COMMANDE : /perso-supprimer
     # =========================================================================
     
-    @app_commands.command(name="perso-supprimer", description="Supprimer un personnage (avec confirmation)")
-    @app_commands.describe(nom="Nom du personnage à supprimer")
-    @app_commands.autocomplete(nom=_nom_autocomplete)
-    async def perso_supprimer(self, interaction: discord.Interaction, nom: str):
-        """Supprime un personnage après confirmation par boutons."""
+    @app_commands.command(
+        name="perso-supprimer",
+        description="[MJ] Supprime un personnage de ce serveur par son identifiant",
+    )
+    @app_commands.describe(
+        personnage="Identifiant du personnage (ex. 7fcf37cd, marie001)",
+    )
+    @app_commands.autocomplete(personnage=_perso_guild_autocomplete)
+    async def perso_supprimer(self, interaction: discord.Interaction, personnage: str):
+        """Supprime un personnage par son id (MJ uniquement)."""
         if self._use_v2():
-            await character_v2.perso_supprimer(interaction, self._jdr, nom)
+            await mj_delete_handler.mj_perso_supprimer(interaction, self._jdr, personnage)
             return
-        perso = stockage.obtenir(nom, interaction.user.id)
-        
-        if not perso:
-            embed = discord.Embed(
-                title="❌ Personnage introuvable",
-                description=f"Aucun personnage nommé « {nom} » trouvé.",
-                color=COULEUR_ERREUR
-            )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
-        
-        embed = discord.Embed(
-            title="⚠️ Confirmation requise",
-            description=f"Êtes-vous sûr de vouloir supprimer **{perso.nom}** ?\n"
-                       "Cette action est irréversible.",
-            color=COULEUR_ERREUR
-        )
-        
-        view = ConfirmDeleteView(owner_id=interaction.user.id, nom_personnage=nom)
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        await self._v2_unavailable(interaction, "Suppression de personnage par le MJ")
     
     # =========================================================================
     # COMMANDE : /perso-attaque-ajouter

@@ -5,7 +5,7 @@ from jdr_engine.compendium.paths import get_ruleset_path
 from jdr_engine.domain.character.character_sheet import CharacterSheet
 from jdr_engine.rules import RuleEngine
 
-from interfaces.discord.formatters.character_embed import build_character_display
+from interfaces.discord.formatters.character_embed import FOOTER, build_character_display
 
 
 def _sample_sheet(**overrides) -> CharacterSheet:
@@ -56,12 +56,17 @@ class TestCharacterDisplay(unittest.TestCase):
             _sample_sheet(
                 trait_ids=["darkvision"],
                 trait_names=["Vision dans le noir"],
+                saving_throws=("FOR +0", "DEX +1 ●"),
+                proficient_skill_labels=("Discrétion",),
             ),
             self.engine,
         )
         field_names = [f.name for f in display.embed.fields]
         self.assertIn("✨ Traits raciaux", field_names)
         self.assertIn("⚔️ Attaques", field_names)
+        self.assertIn("🛡️ Jets de sauvegarde", field_names)
+        self.assertIn("🎯 Compétences maîtrisées", field_names)
+        self.assertIn(FOOTER, display.embed.footer.text)
 
 
 if __name__ == "__main__":

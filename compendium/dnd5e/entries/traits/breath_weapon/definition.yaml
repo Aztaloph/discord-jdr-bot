@@ -1,0 +1,12 @@
+schema_version: "1.0"
+type: trait
+id: breath_weapon
+name:
+  fr: Souffle draconique
+  en: Breath Weapon
+mechanics:
+  effects:
+    - type: racial_action
+      action_id: breath_weapon
+      recharge: short_or_long_rest
+      srd_note: "2d6 niv.1-5, DD CON — voir /souffle"

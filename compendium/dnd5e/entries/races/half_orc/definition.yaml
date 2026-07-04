@@ -1,0 +1,21 @@
+schema_version: "1.0"
+type: race
+id: half_orc
+name:
+  fr: Demi-orc
+  en: Half-Orc
+mechanics:
+  ability_score_increase:
+    - ability: str
+      value: 2
+    - ability: con
+      value: 1
+  size: medium
+  speed: 30
+  traits:
+    - ref: traits/darkvision
+    - ref: traits/menacing
+    - ref: traits/relentless_endurance
+    - ref: traits/savage_attacks
+  languages:
+    fixed: [common, orc]

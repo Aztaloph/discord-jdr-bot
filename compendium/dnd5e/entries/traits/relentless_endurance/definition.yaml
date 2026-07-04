@@ -1,0 +1,12 @@
+schema_version: "1.0"
+type: trait
+id: relentless_endurance
+name:
+  fr: Endurance implacable
+  en: Relentless Endurance
+mechanics:
+  effects:
+    - type: special
+      id: relentless_endurance
+      recharge: long_rest
+      srd_note: "1×/repos long — tombe à 1 PV au lieu de 0"

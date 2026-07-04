@@ -29,6 +29,7 @@ class TestCogLoading(unittest.TestCase):
 
         self.assertEqual(loaded, list(COGS))
         self.assertIn("bot.cogs.spell", loaded)
+        self.assertIn("bot.cogs.rest", loaded)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,10 @@
+schema_version: "1.0"
+type: trait
+id: draconic_damage_resistance
+name:
+  fr: Résistance draconique
+  en: Draconic Damage Resistance
+mechanics:
+  effects:
+    - type: damage_resistance
+      source: draconic_ancestry

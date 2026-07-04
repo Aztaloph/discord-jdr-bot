@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from jdr_engine.domain.character.ability_scores import AbilityScores
+from jdr_engine.domain.character.choices_schema import normalize_character_choices
 
 
 @dataclass
@@ -53,7 +54,7 @@ class Character:
             "xp": self.xp,
             "image_url": self.image_url,
             "inventory": list(self.inventory),
-            "choices": dict(self.choices),
+            "choices": normalize_character_choices(dict(self.choices)),
         }
 
     @classmethod
@@ -76,5 +77,5 @@ class Character:
             xp=int(data.get("xp", 0)),
             image_url=data.get("image_url"),
             inventory=list(data.get("inventory", [])),
-            choices=dict(data.get("choices", {})),
+            choices=normalize_character_choices(dict(data.get("choices", {}))),
         )

@@ -142,6 +142,14 @@ def _effect_matches(
             if when == "danger_sense_visible":
                 return request.visible_effect and request.ability == "dex"
             versus = effect.get("versus")
+            if versus == "magic":
+                return (
+                    request.save_versus_condition == "magic"
+                    or getattr(request, "save_versus_magic", False)
+                )
+            abilities = effect.get("abilities") or []
+            if abilities and request.ability not in abilities:
+                return False
             return (
                 versus is not None
                 and request.save_versus_condition == versus

@@ -1,0 +1,27 @@
+schema_version: "1.0"
+type: spell
+id: hellish_rebuke
+name:
+  fr: Réprimande infernale
+  en: Hellish Rebuke
+mechanics:
+  level: 1
+  school: evocation
+  casting_time:
+    fr: "1 réaction"
+    en: "1 reaction"
+  range:
+    fr: "18 mètres"
+    en: "60 feet"
+  components:
+    verbal: true
+    somatic: true
+    material: false
+  duration:
+    fr: Instantané
+    en: Instantaneous
+  effect:
+    type: damage
+    damage: 2d10
+    damage_type: fire
+    srd_note: "Sort inné Tieffelin niv. 3+ — 1/repos long"

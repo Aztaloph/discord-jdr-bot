@@ -186,6 +186,7 @@ class DiceCog(commands.Cog):
                 ctx,
                 interaction.user.id,
                 perso=perso,
+                guild_id=str(interaction.guild.id) if interaction.guild else None,
                 combat=combat,
             )
             embed = _build_embed(result)

@@ -14,7 +14,7 @@ from jdr_engine.rules.spellcasting import (
     spell_attack_bonus,
     spell_save_dc,
 )
-from jdr_engine.rules.spellcasting.cast import build_spell_display_lines
+from jdr_engine.rules.spellcasting.cast import SpellCastError, build_spell_display_lines
 from jdr_engine.rules.spellcasting.state import (
     consume_spell_slot,
     get_slots_used,
@@ -165,6 +165,30 @@ class TestWizardSpellCast(unittest.TestCase):
         text = "\n".join(lines)
         self.assertIn("DD de sauvegarde DEX : **13**", text)
         self.assertIn("Emplacements restants", text)
+
+
+class TestSpellKnownVsCatalog(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.engine = RuleEngine.load("dnd5e", validate=True, strict=True)
+
+    def test_known_spell_casts(self):
+        char = _wizard(
+            1,
+            prepared=["chromatic_orb", "burning_hands", "detect_magic"],
+        )
+        result = cast_spell(char, "burning_hands", self.engine, rng=SequenceRng([4, 3, 2, 1]))
+        self.assertEqual(result.spell_id, "burning_hands")
+
+    def test_unknown_spell_clear_error(self):
+        char = _wizard(
+            1,
+            prepared=["chromatic_orb", "burning_hands", "detect_magic"],
+        )
+        with self.assertRaises(SpellCastError) as ctx:
+            cast_spell(char, "scorching_ray", self.engine)
+        self.assertIn("ne connaissez pas", str(ctx.exception).lower())
+        self.assertNotIn("préparé", str(ctx.exception).lower())
 
 
 class TestSpellCompendium(unittest.TestCase):

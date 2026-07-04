@@ -8,6 +8,7 @@ from pathlib import Path
 import discord
 
 from jdr_engine.core.assets import AssetResolver
+from jdr_engine.domain.character.ability_scores import format_modifier
 from jdr_engine.domain.character.character_sheet import CharacterSheet
 from jdr_engine.rules.engine import RuleEngine
 
@@ -17,6 +18,8 @@ COULEUR_PRINCIPALE = 0x8B4513
 COULEUR_SUCCES = 0x228B22
 COULEUR_ERREUR = 0xDC143C
 COULEUR_INFO = 0x4169E1
+
+FOOTER = "JDR Bot — D&D 5e SRD 2014"
 
 ABILITY_ORDER = ("str", "dex", "con", "int", "wis", "cha")
 ABILITY_ABBREV = {
@@ -47,6 +50,18 @@ def _format_caracs(sheet: CharacterSheet) -> str:
         mod_str = sheet.format_modifier(ability_id)
         lines.append(f"{abbrev} {score:2d} ({mod_str})")
     return "\n".join(lines)
+
+
+def _format_saving_throws(sheet: CharacterSheet) -> str:
+    if not sheet.saving_throws:
+        return "_Non calculés_"
+    return " · ".join(sheet.saving_throws)
+
+
+def _format_skills(sheet: CharacterSheet) -> str:
+    if not sheet.proficient_skill_labels:
+        return "_Aucune compétence enregistrée_"
+    return ", ".join(sheet.proficient_skill_labels)
 
 
 def _resolve_portrait_path(
@@ -94,23 +109,30 @@ def _base_embed(
     titre = titre or f"📜 Fiche de {sheet.name}"
     embed = discord.Embed(title=titre, color=couleur, description=description)
 
+    identity_lines = [
+        f"**Race :** {sheet.race_name}",
+        f"**Classe :** {sheet.class_display}",
+        f"**Niveau :** {sheet.level}",
+    ]
+    if sheet.fighting_style_label:
+        identity_lines.append(f"**Style de combat :** {sheet.fighting_style_label}")
+
     embed.add_field(
         name="⚔️ Identité",
-        value=(
-            f"**Race :** {sheet.race_name}\n"
-            f"**Classe :** {sheet.class_name}\n"
-            f"**Niveau :** {sheet.level}"
-        ),
+        value="\n".join(identity_lines),
         inline=True,
     )
 
+    init_mod = format_modifier(sheet.initiative)
     embed.add_field(
         name="❤️ Combat",
         value=(
             f"**PV :** {sheet.hp_current}/{sheet.hp_max}\n"
             f"**CA :** {sheet.ac}\n"
+            f"**Initiative :** {init_mod}\n"
             f"**Vitesse :** {sheet.speed} ft\n"
-            f"**Bonus de maîtrise :** +{sheet.proficiency_bonus}"
+            f"**Maîtrise :** +{sheet.proficiency_bonus}\n"
+            f"**Dés de vie :** {sheet.hit_dice_display}"
         ),
         inline=True,
     )
@@ -121,9 +143,35 @@ def _base_embed(
         inline=False,
     )
 
+    embed.add_field(
+        name="🛡️ Jets de sauvegarde",
+        value=_format_saving_throws(sheet) + "\n_● = maîtrise de classe_",
+        inline=False,
+    )
+
+    embed.add_field(
+        name="🎯 Compétences maîtrisées",
+        value=_format_skills(sheet),
+        inline=False,
+    )
+
     if sheet.trait_names:
         traits = ", ".join(sheet.trait_names)
         embed.add_field(name="✨ Traits raciaux", value=traits, inline=False)
+
+    if sheet.damage_resistances:
+        embed.add_field(
+            name="🛡️ Résistances aux dégâts",
+            value=sheet.damage_resistances,
+            inline=False,
+        )
+
+    if sheet.innate_spells_text:
+        embed.add_field(
+            name="🔮 Sorts innés",
+            value=sheet.innate_spells_text,
+            inline=False,
+        )
 
     embed.add_field(
         name="⚔️ Attaques",
@@ -131,7 +179,7 @@ def _base_embed(
         inline=False,
     )
 
-    embed.set_footer(text=f"ID personnage : {sheet.character_id} · moteur v2")
+    embed.set_footer(text=f"{FOOTER} · ID : {sheet.character_id}")
     return embed
 
 
@@ -180,7 +228,8 @@ def build_character_display(
 
 def list_entry_line(sheet: CharacterSheet) -> str:
     return (
-        f"**Race :** {sheet.race_name} | **Classe :** {sheet.class_name}\n"
-        f"**Niveau :** {sheet.level} | **PV :** {sheet.hp_current}/{sheet.hp_max}\n"
+        f"**Race :** {sheet.race_name} | **Classe :** {sheet.class_display}\n"
+        f"**Niveau :** {sheet.level} | **PV :** {sheet.hp_current}/{sheet.hp_max} | "
+        f"**CA :** {sheet.ac}\n"
         f"__{sheet.character_id}__"
     )

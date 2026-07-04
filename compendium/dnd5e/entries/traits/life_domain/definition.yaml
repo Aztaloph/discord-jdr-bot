@@ -1,0 +1,11 @@
+schema_version: "1.0"
+type: trait
+id: life_domain
+name:
+  fr: Domaine de la Vie
+  en: Life Domain
+mechanics:
+  choice:
+    level: 1
+    parent: divine_domain
+    srd_note: "Capacités de domaine — implémentation future"

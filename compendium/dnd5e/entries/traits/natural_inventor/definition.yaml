@@ -1,0 +1,13 @@
+schema_version: "1.0"
+type: trait
+id: natural_inventor
+name:
+  fr: Bricoleur naturel
+  en: Artificer's Lore
+mechanics:
+  effects:
+    - type: grant_proficiency
+      tool: tinkers_tools
+    - type: special
+      id: artificers_lore
+      srd_note: "Double maîtrise sur jets d'Histoire liés aux artefacts technologiques"

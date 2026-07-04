@@ -117,6 +117,35 @@ class TestStartupMigration(unittest.TestCase):
             path = run_startup_migrations(db, default_guild_id="0")
             self.assertTrue(path.is_file())
 
+    def test_deleted_character_not_reimported_on_restart(self):
+        """Suppression définitive : le redémarrage ne réimporte pas le JSON."""
+        char_data = {
+            "id": "abc12345",
+            "owner_id": "42",
+            "guild_id": "100",
+            "name": "Fantôme",
+            "race_id": "human",
+            "class_id": "wizard",
+            "level": 1,
+            "ability_scores": {"str": 10, "dex": 10, "con": 10, "int": 10, "wis": 10, "cha": 10},
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "bot.db"
+            json_path = Path(tmp) / "characters.json"
+            json_path.write_text(
+                json.dumps({"characters": {"abc12345": char_data}}),
+                encoding="utf-8",
+            )
+            run_startup_migrations(db, default_guild_id="100", json_path=json_path)
+            repo = SqliteCharacterRepository(db)
+            self.assertIsNotNone(repo.get_by_id("abc12345"))
+
+            repo.delete("abc12345")
+            self.assertIsNone(repo.get_by_id("abc12345"))
+
+            run_startup_migrations(db, default_guild_id="100", json_path=json_path)
+            self.assertIsNone(repo.get_by_id("abc12345"))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

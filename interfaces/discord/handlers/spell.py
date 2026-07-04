@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 
-from jdr_engine.application.dto.character_commands import GetCharacterQuery
 from jdr_engine.application.character_service import CharacterNotFoundError
 from jdr_engine.dice import DiceError
 from jdr_engine.domain.character.character import Character
@@ -17,7 +16,7 @@ from jdr_engine.rules.spellcasting.spells_catalog import (
     all_spellcasting_spell_ids,
     get_spell_ids_for_class,
 )
-from jdr_engine.rules.spellcasting.state import get_cantrips_known, get_spells_prepared
+from jdr_engine.rules.spellcasting.state import list_castable_spell_ids
 
 from interfaces.discord.container import DiscordJdrContext
 
@@ -44,8 +43,8 @@ class SpellDisplay:
 
 
 def list_available_spells(character: Character) -> list[str]:
-    """Ids de sorts lançables (tours de magie + préparés)."""
-    return get_cantrips_known(character) + get_spells_prepared(character)
+    """Ids de sorts lançables (tours de magie + sorts connus niv. 1+)."""
+    return list_castable_spell_ids(character)
 
 
 def _spell_matches_query(spell_id: str, label: str, query: str) -> bool:
@@ -68,14 +67,22 @@ def build_spell_autocomplete_choices(
     *,
     locale: str = "fr",
     class_id: str | None = None,
+    known_spell_ids: list[str] | None = None,
 ) -> list[app_commands.Choice[str]]:
     """
-    Propose les sorts Lot B depuis le Compendium.
+    Propose les sorts filtrés pour l'autocomplete /sort.
 
-    Si ``class_id`` est fourni (wizard/cleric), filtre la liste ; sinon les 10 sorts.
+    Si ``known_spell_ids`` est fourni (y compris liste vide), seuls ces sorts
+    apparaissent — même source de vérité que ``cast_spell`` / ``spell_is_known``.
+    Sinon repli catalogue classe ou global (tests / rétrocompat).
     """
     query = (current or "").strip().lower()
-    spell_ids = get_spell_ids_for_class(class_id) if class_id else all_spellcasting_spell_ids()
+    if known_spell_ids is not None:
+        spell_ids = tuple(known_spell_ids)
+    elif class_id:
+        spell_ids = get_spell_ids_for_class(class_id)
+    else:
+        spell_ids = all_spellcasting_spell_ids()
     choices: list[app_commands.Choice[str]] = []
     for spell_id in spell_ids:
         if engine.get_entity("spell", spell_id) is None:
@@ -87,6 +94,40 @@ def build_spell_autocomplete_choices(
             app_commands.Choice(name=f"{label} ({spell_id})", value=spell_id)
         )
     return choices[:25]
+
+
+def build_sort_autocomplete_choices(
+    ctx: DiscordJdrContext,
+    *,
+    owner_id: int,
+    perso: str | None,
+    guild_id: str | None,
+    current: str,
+) -> list[app_commands.Choice[str]]:
+    """
+    Autocomplete /sort : sorts lançables du personnage actif uniquement.
+
+    Retourne ``[]`` sans lever d'exception si perso introuvable, sans sorts, ou erreur.
+    """
+    if ctx.rule_engine is None:
+        return []
+    known_spell_ids: list[str] = []
+    try:
+        character = resolve_character_for_spell(
+            ctx, owner_id, perso, guild_id=guild_id
+        )
+        known_spell_ids = list_available_spells(character)
+    except DiceError:
+        pass
+    except Exception:
+        log.exception("Autocomplete /sort — échec inattendu")
+        return []
+    return build_spell_autocomplete_choices(
+        ctx.rule_engine,
+        current,
+        locale=ctx.locale,
+        known_spell_ids=known_spell_ids,
+    )
 
 
 def build_lot_b_spell_autocomplete_choices(
@@ -102,16 +143,19 @@ def build_lot_b_spell_autocomplete_choices(
 def resolve_character_for_spell(
     ctx: DiscordJdrContext,
     owner_id: int,
-    perso: str,
+    perso: str | None,
+    guild_id: str | None = None,
 ) -> Character:
     if not ctx.use_engine_v2 or ctx.character_service is None:
         raise DiceError("Moteur v2 requis pour lancer des sorts.")
+    if guild_id is None:
+        raise DiceError("Cette commande doit être utilisée sur un serveur.")
     try:
-        return ctx.character_service.get(
-            GetCharacterQuery(owner_id=str(owner_id), name=perso.strip())
+        return ctx.character_service.resolve_for_game(
+            str(owner_id), guild_id, perso
         )
-    except CharacterNotFoundError:
-        raise DiceError(f"Aucun personnage nommé « {perso.strip()} » trouvé.") from None
+    except CharacterNotFoundError as exc:
+        raise DiceError(str(exc)) from exc
 
 
 def _slots_remaining_text(result: SpellCastResult) -> str:
@@ -149,10 +193,11 @@ def execute_spell_cast(
     ctx: DiscordJdrContext,
     *,
     owner_id: int,
-    perso: str,
+    perso: str | None,
     spell_id: str,
+    guild_id: str | None = None,
 ) -> SpellDisplay:
-    character = resolve_character_for_spell(ctx, owner_id, perso)
+    character = resolve_character_for_spell(ctx, owner_id, perso, guild_id=guild_id)
     engine = ctx.rule_engine
     if engine is None:
         raise DiceError("Moteur de règles indisponible.")

@@ -47,7 +47,9 @@ def collect_roll_effects(
     """
     effects: list[dict[str, Any]] = []
 
-    for trait in engine.get_race_traits(character.race_id):
+    from jdr_engine.rules.racial.resolve import resolve_race_traits
+
+    for trait in resolve_race_traits(character, engine):
         effects.extend(_effects_from_entry(trait, source_id=trait.entry_id))
 
     for feature in engine.get_class_features(character.class_id, character.level):

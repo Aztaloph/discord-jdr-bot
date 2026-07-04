@@ -1,0 +1,11 @@
+schema_version: "1.0"
+type: trait
+id: savage_attacks
+name:
+  fr: Attaques sauvages
+  en: Savage Attacks
+mechanics:
+  effects:
+    - type: critical_extra_damage
+      dice: 1
+      srd_note: "Critique au corps à corps → +1 dé de dégâts de l'arme"

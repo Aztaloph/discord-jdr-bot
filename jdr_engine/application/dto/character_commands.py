@@ -14,6 +14,7 @@ class CreateCharacterCommand:
     class_id: str
     level: int = 1
     ruleset_id: str = "dnd5e"
+    guild_id: str = "0"
     ability_scores: AbilityScores | None = None
     image_url: str | None = None
     hp_current: int | None = None
@@ -35,6 +36,7 @@ class GetCharacterQuery:
 @dataclass(frozen=True)
 class ListCharactersQuery:
     owner_id: str
+    guild_id: str | None = None
 
 
 @dataclass(frozen=True)

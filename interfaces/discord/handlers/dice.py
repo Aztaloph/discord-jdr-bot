@@ -58,12 +58,13 @@ def resolve_character_for_roll(
     ctx: DiscordJdrContext,
     owner_id: int,
     perso: str | None,
+    guild_id: str | None = None,
 ) -> Character | None:
     """
     Retourne le personnage dont appliquer les traits.
 
-    - ``perso`` renseigné → ce personnage (obligatoire s'il existe).
-    - Sinon → auto si l'utilisateur n'a qu'un seul personnage.
+    - ``perso`` renseigné → ce personnage.
+    - Sinon → personnage **actif** sur le serveur (``guild_id``).
     """
     if not ctx.use_engine_v2 or ctx.character_service is None:
         return None
@@ -73,9 +74,17 @@ def resolve_character_for_roll(
 
     if perso:
         try:
+            if guild_id:
+                return service.resolve_owned_on_guild(owner, guild_id, perso.strip())
             return service.get(GetCharacterQuery(owner_id=owner, name=perso.strip()))
         except CharacterNotFoundError:
             raise DiceError(f"Aucun personnage nommé « {perso.strip()} » trouvé.") from None
+
+    if guild_id:
+        try:
+            return service.resolve_for_game(owner, guild_id, None)
+        except CharacterNotFoundError:
+            return None
 
     characters = service.list_by_owner(ListCharactersQuery(owner_id=owner))
     if len(characters) == 1:
@@ -159,6 +168,7 @@ def execute_roll(
     owner_id: int,
     perso: str | None = None,
     *,
+    guild_id: str | None = None,
     combat: CombatRollFlags | None = None,
     rng: RandInt | None = None,
 ) -> RollDisplay:
@@ -178,7 +188,7 @@ def execute_roll(
 
     character: Character | None = None
     if ctx is not None and normalized is not None:
-        character = resolve_character_for_roll(ctx, owner_id, perso)
+        character = resolve_character_for_roll(ctx, owner_id, perso, guild_id=guild_id)
 
     if (
         character is not None
@@ -223,13 +233,22 @@ def execute_roll(
     legacy = roll(dice_str, mode=mode)
     display = _from_legacy_roll(legacy, mode)
     if is_single_d20(dice_str) and ctx is not None and ctx.use_engine_v2 and not perso:
-        chars = []
-        if ctx.character_service:
+        if guild_id and ctx.character_service:
+            active = ctx.character_service.get_active_character(str(owner_id), guild_id)
+            if active is None:
+                chars = ctx.character_service.list_by_owner(
+                    ListCharactersQuery(owner_id=str(owner_id), guild_id=guild_id)
+                )
+                if len(chars) > 1:
+                    display.applied_effects.append(
+                        "hint:plusieurs_persos — utilisez `/perso-choisir` ou le paramètre `perso`"
+                    )
+        elif ctx.character_service:
             chars = ctx.character_service.list_by_owner(
                 ListCharactersQuery(owner_id=str(owner_id))
             )
-        if len(chars) > 1:
-            display.applied_effects.append(
-                "hint:plusieurs_persos — précisez le paramètre `perso` pour vos traits"
-            )
+            if len(chars) > 1:
+                display.applied_effects.append(
+                    "hint:plusieurs_persos — précisez le paramètre `perso` pour vos traits"
+                )
     return display

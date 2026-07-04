@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from jdr_engine.compendium.paths import get_project_root
+from jdr_engine.domain.character.choices_schema import normalize_character_choices
 from jdr_engine.domain.character.character import Character
 from jdr_engine.persistence.character_repository import (
     get_v2_characters_path,
@@ -24,6 +25,10 @@ logger = logging.getLogger(__name__)
 
 DB_SCHEMA_VERSION = 1
 DEFAULT_DB_PATH = get_project_root() / "data" / "bot.db"
+
+# Marqueurs one-shot — SQLite est la source de vérité après le premier import.
+META_JSON_V2_IMPORT_DONE = "json_v2_import_done"
+META_FIXTURES_IMPORT_DONE = "fixtures_import_done"
 
 _CREATE_PERSONNAGES = """
 CREATE TABLE IF NOT EXISTS personnages (
@@ -68,6 +73,16 @@ CREATE TABLE IF NOT EXISTS schema_meta (
 );
 """
 
+_CREATE_PERSO_ACTIF = """
+CREATE TABLE IF NOT EXISTS perso_actif (
+    discord_user_id TEXT NOT NULL,
+    guild_id TEXT NOT NULL,
+    character_id TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (discord_user_id, guild_id)
+);
+"""
+
 
 def get_db_path() -> Path:
     return DEFAULT_DB_PATH
@@ -94,6 +109,28 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def get_schema_meta(conn: sqlite3.Connection, key: str) -> str | None:
+    row = conn.execute(
+        "SELECT value FROM schema_meta WHERE key = ?", (key,)
+    ).fetchone()
+    return str(row["value"]) if row else None
+
+
+def set_schema_meta(conn: sqlite3.Connection, key: str, value: str) -> None:
+    conn.execute(
+        "INSERT OR REPLACE INTO schema_meta (key, value) VALUES (?, ?)",
+        (key, value),
+    )
+
+
+def is_one_shot_import_done(conn: sqlite3.Connection, key: str) -> bool:
+    return get_schema_meta(conn, key) == "1"
+
+
+def mark_one_shot_import_done(conn: sqlite3.Connection, key: str) -> None:
+    set_schema_meta(conn, key, "1")
+
+
 def init_database(db_path: Path | None = None) -> Path:
     """Crée le schéma si absent. Retourne le chemin de la base."""
     path = db_path or get_db_path()
@@ -101,6 +138,7 @@ def init_database(db_path: Path | None = None) -> Path:
         conn.executescript(_CREATE_META)
         conn.executescript(_CREATE_PERSONNAGES)
         conn.executescript(_CREATE_INDEX)
+        conn.executescript(_CREATE_PERSO_ACTIF)
         conn.execute(
             "INSERT OR REPLACE INTO schema_meta (key, value) VALUES (?, ?)",
             ("schema_version", str(DB_SCHEMA_VERSION)),
@@ -134,7 +172,7 @@ def _merge_spell_slots_into_choices(
 
 def character_to_row(character: Character) -> dict[str, Any]:
     scores = character.ability_scores.to_dict()
-    choices = dict(character.choices or {})
+    choices = normalize_character_choices(dict(character.choices or {}))
     emplacements = _extract_spell_slots(choices)
     specialization = choices.get("specialization") or choices.get("subclass")
     if isinstance(specialization, dict):
@@ -170,7 +208,7 @@ def character_to_row(character: Character) -> dict[str, Any]:
 
 
 def row_to_character(row: sqlite3.Row) -> Character:
-    choices = json.loads(row["choices"] or "{}")
+    choices = normalize_character_choices(json.loads(row["choices"] or "{}"))
     emplacements = json.loads(row["emplacements_sorts"] or "{}")
     if emplacements:
         choices = _merge_spell_slots_into_choices(choices, emplacements)
@@ -277,6 +315,69 @@ def migrate_json_v2_to_sqlite(
     return count
 
 
+def list_characters_by_guild(conn: sqlite3.Connection, guild_id: str) -> list[Character]:
+    """Liste tous les personnages d'un serveur Discord."""
+    rows = conn.execute(
+        "SELECT * FROM personnages WHERE guild_id = ? ORDER BY nom COLLATE NOCASE",
+        (str(guild_id),),
+    ).fetchall()
+    return [row_to_character(row) for row in rows]
+
+
+def get_active_character_id(
+    conn: sqlite3.Connection,
+    owner_id: str,
+    guild_id: str,
+) -> str | None:
+    row = conn.execute(
+        """
+        SELECT character_id FROM perso_actif
+        WHERE discord_user_id = ? AND guild_id = ?
+        """,
+        (str(owner_id), str(guild_id)),
+    ).fetchone()
+    return str(row["character_id"]) if row else None
+
+
+def set_active_character_id(
+    conn: sqlite3.Connection,
+    owner_id: str,
+    guild_id: str,
+    character_id: str,
+) -> None:
+    conn.execute(
+        """
+        INSERT INTO perso_actif (discord_user_id, guild_id, character_id, updated_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(discord_user_id, guild_id) DO UPDATE SET
+            character_id = excluded.character_id,
+            updated_at = excluded.updated_at
+        """,
+        (str(owner_id), str(guild_id), character_id, _utc_now()),
+    )
+
+
+def clear_active_for_character(conn: sqlite3.Connection, character_id: str) -> None:
+    conn.execute(
+        "DELETE FROM perso_actif WHERE character_id = ?",
+        (character_id,),
+    )
+
+
+def clear_active_character(
+    conn: sqlite3.Connection,
+    owner_id: str,
+    guild_id: str,
+) -> None:
+    conn.execute(
+        """
+        DELETE FROM perso_actif
+        WHERE discord_user_id = ? AND guild_id = ?
+        """,
+        (str(owner_id), str(guild_id)),
+    )
+
+
 def migrate_fixtures_to_sqlite(
     conn: sqlite3.Connection,
     *,
@@ -311,16 +412,44 @@ def run_startup_migrations(
     db_path: Path | None = None,
     *,
     default_guild_id: str = "0",
+    json_path: Path | None = None,
+    include_fixtures: bool = False,
 ) -> Path:
-    """Init DB + migration JSON v2 + fixtures."""
+    """
+    Init DB + import one-shot JSON v2 (si jamais fait).
+
+    SQLite est la source de vérité : les imports ne s'exécutent qu'une fois.
+    Les fixtures ne sont jamais injectées en production (include_fixtures=False).
+    """
     path = init_database(db_path)
     with get_connection(path) as conn:
-        json_count = migrate_json_v2_to_sqlite(
-            conn, default_guild_id=default_guild_id
-        )
-        fixture_count = migrate_fixtures_to_sqlite(
-            conn, default_guild_id=default_guild_id
-        )
+        json_count = 0
+        fixture_count = 0
+
+        if not is_one_shot_import_done(conn, META_JSON_V2_IMPORT_DONE):
+            existing = conn.execute("SELECT COUNT(*) FROM personnages").fetchone()[0]
+            if existing == 0:
+                json_count = migrate_json_v2_to_sqlite(
+                    conn,
+                    json_path=json_path,
+                    default_guild_id=default_guild_id,
+                )
+            else:
+                logger.info(
+                    "Base déjà peuplée — import JSON v2 ignoré (bootstrap one-shot)"
+                )
+            mark_one_shot_import_done(conn, META_JSON_V2_IMPORT_DONE)
+        else:
+            logger.debug("Import JSON v2 déjà effectué — ignoré")
+
+        if include_fixtures and not is_one_shot_import_done(conn, META_FIXTURES_IMPORT_DONE):
+            existing = conn.execute("SELECT COUNT(*) FROM personnages").fetchone()[0]
+            if existing == 0:
+                fixture_count = migrate_fixtures_to_sqlite(
+                    conn, default_guild_id=default_guild_id
+                )
+            mark_one_shot_import_done(conn, META_FIXTURES_IMPORT_DONE)
+
         total = conn.execute("SELECT COUNT(*) FROM personnages").fetchone()[0]
         logger.info(
             "Personnages en base : %d (json=%d, fixtures=%d)",

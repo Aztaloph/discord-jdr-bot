@@ -1,0 +1,20 @@
+schema_version: "1.0"
+type: race
+id: tiefling
+name:
+  fr: Tieffelin
+  en: Tiefling
+mechanics:
+  ability_score_increase:
+    - ability: cha
+      value: 2
+    - ability: int
+      value: 1
+  size: medium
+  speed: 30
+  traits:
+    - ref: traits/darkvision
+    - ref: traits/hellish_resistance
+    - ref: traits/infernal_legacy
+  languages:
+    fixed: [common, infernal]

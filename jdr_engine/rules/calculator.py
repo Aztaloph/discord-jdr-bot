@@ -10,7 +10,36 @@ from jdr_engine.domain.character.ability_scores import (
 )
 from jdr_engine.domain.character.character import Character
 from jdr_engine.domain.character.character_sheet import CharacterSheet
+from jdr_engine.rules.derived_stats import (
+    build_saving_throws,
+    calculate_armor_class,
+    calculate_hp_max,
+    calculate_initiative,
+    collect_proficient_skills,
+    read_hit_dice,
+    resolve_fighting_style_label,
+    resolve_specialization_label,
+    skill_label_fr,
+)
 from jdr_engine.rules.engine import RuleEngine
+from jdr_engine.rules.racial.resolve import (
+    format_innate_spells_display,
+    format_resistances_display,
+    get_damage_resistances,
+    get_racial_ability_bonuses,
+    resolve_race_trait_labels,
+)
+
+# Réexport compatibilité tests / imports existants
+__all__ = [
+    "CharacterBuildError",
+    "ability_modifier",
+    "apply_racial_bonuses",
+    "build_character_sheet",
+    "calculate_ac_unarmored",
+    "calculate_hp_max_level_1",
+    "parse_hit_die",
+]
 
 
 class CharacterBuildError(Exception):
@@ -41,7 +70,7 @@ def calculate_hp_max_level_1(hit_die_faces: int, con_modifier: int) -> int:
 
 
 def calculate_ac_unarmored(dex_modifier: int) -> int:
-    """CA sans armure (simplifié Phase 2) : 10 + mod DEX."""
+    """CA sans armure (fallback) : 10 + mod DEX."""
     return 10 + dex_modifier
 
 
@@ -72,7 +101,7 @@ def build_character_sheet(
     )
     base_scores = character.ability_scores.with_defaults(ability_ids).scores
 
-    racial_bonuses = engine.get_ability_bonuses(character.race_id)
+    racial_bonuses = get_racial_ability_bonuses(character, engine)
     effective_scores = apply_racial_bonuses(base_scores, racial_bonuses)
     modifiers = {aid: ability_modifier(score) for aid, score in effective_scores.items()}
 
@@ -84,29 +113,50 @@ def build_character_sheet(
     con_mod = modifiers.get("con", 0)
     proficiency = engine.get_proficiency_bonus(character.level)
 
-    if character.level == 1:
-        hp_max = calculate_hp_max_level_1(hit_die_faces, con_mod)
-    else:
-        # MVP Phase 2 : approximation niveaux > 1
-        hp_max = calculate_hp_max_level_1(hit_die_faces, con_mod)
-        hp_max += (character.level - 1) * (hit_die_faces // 2 + 1 + con_mod)
-        hp_max = max(1, hp_max)
-
-    if character.hp_max is not None:
-        hp_max = max(1, int(character.hp_max))
+    hp_max = calculate_hp_max(
+        character.level,
+        hit_die_faces,
+        con_mod,
+        persisted_hp_max=character.hp_max,
+    )
 
     hp_current = character.hp_current if character.hp_current is not None else hp_max
     hp_current = min(hp_current, hp_max)
 
     dex_mod = modifiers.get("dex", 0)
-    ac = calculate_ac_unarmored(dex_mod)
+    ac = calculate_armor_class(character, engine, modifiers)
+    initiative = calculate_initiative(dex_mod)
     speed = int(race.definition.mechanics.get("speed", 30))
 
-    traits = engine.get_race_traits(character.race_id)
-    trait_ids = [t.entry_id for t in traits]
-    trait_names = [
-        t.get_name(locale, engine.registry.manifest.default_locale) for t in traits
-    ]
+    from jdr_engine.rules.derived_stats import get_class_saving_throw_proficiencies
+
+    save_lines = build_saving_throws(
+        modifiers,
+        proficient_abilities=get_class_saving_throw_proficiencies(
+            engine, character.class_id
+        ),
+        proficiency_bonus=proficiency,
+    )
+    saving_display = tuple(line.format_display() for line in save_lines)
+
+    skill_ids = collect_proficient_skills(character, engine)
+    skill_labels = tuple(skill_label_fr(sid) for sid in skill_ids)
+
+    hit_dice_remaining, hit_dice_total = read_hit_dice(character)
+
+    spec_id, spec_label = resolve_specialization_label(
+        character.choices, engine, locale=locale
+    )
+    style_id, style_label = resolve_fighting_style_label(
+        character.choices, engine, locale=locale
+    )
+
+    traits = resolve_race_trait_labels(character, engine, locale=locale)
+    trait_ids = traits  # labels utilisés pour affichage ; ids détaillés via resolve_race_traits si besoin
+    trait_names = traits
+
+    damage_resistances = format_resistances_display(get_damage_resistances(character))
+    innate_spells_text = format_innate_spells_display(character, engine, locale=locale)
 
     race_name = race.get_name(locale, engine.registry.manifest.default_locale)
     class_name = class_entry.get_name(
@@ -132,8 +182,19 @@ def build_character_sheet(
         hp_current=hp_current,
         ac=ac,
         speed=speed,
+        initiative=initiative,
+        saving_throws=saving_display,
+        proficient_skill_labels=skill_labels,
+        hit_dice_remaining=hit_dice_remaining,
+        hit_dice_total=hit_dice_total,
+        specialization_id=spec_id,
+        specialization_label=spec_label,
+        fighting_style_id=style_id,
+        fighting_style_label=style_label,
         trait_ids=trait_ids,
         trait_names=trait_names,
+        damage_resistances=damage_resistances,
+        innate_spells_text=innate_spells_text,
         xp=character.xp,
         image_url=character.image_url,
     )

@@ -14,13 +14,13 @@ class TestRuleEngine(unittest.TestCase):
 
     def test_list_races(self):
         races = self.engine.list_entities("race")
-        self.assertEqual(len(races), 4)
+        self.assertEqual(len(races), 9)
         ids = {r.entry_id for r in races}
         self.assertIn("elf", ids)
 
     def test_list_races_plural_alias(self):
         races = self.engine.list_entities("races")
-        self.assertEqual(len(races), 4)
+        self.assertEqual(len(races), 9)
 
     def test_get_elf(self):
         elf = self.engine.get_entity("race", "elf")

@@ -81,6 +81,9 @@ COGS = [
     "bot.cogs.dice",
     "bot.cogs.character",
     "bot.cogs.spell",
+    "bot.cogs.creation",
+    "bot.cogs.rest",
+    "bot.cogs.racial",
     # "bot.cogs.fiches",      # ← Étape 2
     # "bot.cogs.combat",      # ← Étape 3
     # "bot.cogs.npc",         # ← Étape 4

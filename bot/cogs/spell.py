@@ -12,9 +12,8 @@ from jdr_engine.dice import DiceError
 from interfaces.discord.handlers.character import character_name_autocomplete
 from interfaces.discord.handlers.spell import (
     SpellDisplay,
-    build_spell_autocomplete_choices,
+    build_sort_autocomplete_choices,
     execute_spell_cast,
-    resolve_character_for_spell,
 )
 
 log = logging.getLogger(__name__)
@@ -74,23 +73,16 @@ class SpellCog(commands.Cog):
         current: str,
     ) -> list[app_commands.Choice[str]]:
         ctx = getattr(self.bot, "jdr", None)
-        if ctx is None or not ctx.use_engine_v2 or ctx.rule_engine is None:
+        if ctx is None or not ctx.use_engine_v2:
             return []
-        class_id: str | None = None
         perso_value = getattr(interaction.namespace, "perso", None)
-        if perso_value:
-            try:
-                character = resolve_character_for_spell(
-                    ctx, interaction.user.id, str(perso_value)
-                )
-                class_id = character.class_id
-            except DiceError:
-                pass
-        return build_spell_autocomplete_choices(
-            ctx.rule_engine,
-            current,
-            locale=ctx.locale,
-            class_id=class_id,
+        guild_id = str(interaction.guild.id) if interaction.guild else None
+        return build_sort_autocomplete_choices(
+            ctx,
+            owner_id=interaction.user.id,
+            perso=perso_value,
+            guild_id=guild_id,
+            current=current,
         )
 
     @app_commands.command(
@@ -98,24 +90,26 @@ class SpellCog(commands.Cog):
         description="Lance un sort (Magicien ou Clerc niv. 1-3, SRD 2014)",
     )
     @app_commands.describe(
-        perso="Nom de votre personnage lanceur de sorts",
+        perso="Personnage (optionnel — utilise le perso actif par défaut)",
         sort="Identifiant du sort (ex. fire_bolt, sacred_flame)",
     )
     @app_commands.autocomplete(perso=_perso_autocomplete, sort=_sort_autocomplete)
     async def sort_cmd(
         self,
         interaction: discord.Interaction,
-        perso: str,
         sort: str,
+        perso: str | None = None,
     ):
         await interaction.response.defer(thinking=True)
         ctx = self.bot.jdr  # type: ignore[attr-defined]
+        guild_id = str(interaction.guild.id) if interaction.guild else None
         try:
             display = execute_spell_cast(
                 ctx,
                 owner_id=interaction.user.id,
                 perso=perso,
                 spell_id=sort.strip().lower(),
+                guild_id=guild_id,
             )
         except DiceError as exc:
             await interaction.followup.send(embed=_build_error_embed(str(exc)), ephemeral=True)

@@ -33,6 +33,7 @@ class CharacterRepository(Protocol):
         owner_id: str,
         guild_id: str | None = None,
     ) -> list[Character]: ...
+    def list_by_guild(self, guild_id: str) -> list[Character]: ...
     def delete(self, character_id: str) -> bool: ...
     def name_exists(
         self,
@@ -41,6 +42,14 @@ class CharacterRepository(Protocol):
         exclude_id: str | None = None,
         guild_id: str | None = None,
     ) -> bool: ...
+    def get_active_character_id(
+        self, owner_id: str, guild_id: str
+    ) -> str | None: ...
+    def set_active_character_id(
+        self, owner_id: str, guild_id: str, character_id: str
+    ) -> None: ...
+    def clear_active_for_character(self, character_id: str) -> None: ...
+    def clear_active_character(self, owner_id: str, guild_id: str) -> None: ...
 
 
 def get_v2_characters_path() -> Path:
@@ -57,6 +66,7 @@ class JsonCharacterRepository:
     def __init__(self, json_path: Path | None = None):
         self.json_path = json_path or get_v2_characters_path()
         self.json_path.parent.mkdir(parents=True, exist_ok=True)
+        self._active: dict[tuple[str, str], str] = {}
 
     def _load_raw(self) -> dict:
         if not self.json_path.exists():
@@ -116,6 +126,17 @@ class JsonCharacterRepository:
         result.sort(key=lambda c: c.name.lower())
         return result
 
+    def list_by_guild(self, guild_id: str) -> list[Character]:
+        gid = str(guild_id)
+        data = self._load_raw()
+        result: list[Character] = []
+        for raw in data.get("characters", {}).values():
+            if str(raw.get("guild_id", "0")) != gid:
+                continue
+            result.append(Character.from_dict(raw))
+        result.sort(key=lambda c: c.name.lower())
+        return result
+
     def delete(self, character_id: str) -> bool:
         data = self._load_raw()
         chars = data.get("characters", {})
@@ -123,7 +144,26 @@ class JsonCharacterRepository:
             return False
         del chars[character_id]
         self._save_raw(data)
+        self.clear_active_for_character(character_id)
         return True
+
+    def get_active_character_id(self, owner_id: str, guild_id: str) -> str | None:
+        return self._active.get((str(owner_id), str(guild_id)))
+
+    def set_active_character_id(
+        self, owner_id: str, guild_id: str, character_id: str
+    ) -> None:
+        self._active[(str(owner_id), str(guild_id))] = character_id
+
+    def clear_active_for_character(self, character_id: str) -> None:
+        to_remove = [
+            key for key, cid in self._active.items() if cid == character_id
+        ]
+        for key in to_remove:
+            del self._active[key]
+
+    def clear_active_character(self, owner_id: str, guild_id: str) -> None:
+        self._active.pop((str(owner_id), str(guild_id)), None)
 
     def name_exists(
         self,

@@ -1,0 +1,12 @@
+schema_version: "1.0"
+type: trait
+id: divine_domain
+name:
+  fr: Domaine divin
+  en: Divine Domain
+mechanics:
+  choice:
+    level: 1
+    options:
+      - life
+    srd_note: "SRD 2014 — Domaine de la Vie uniquement"

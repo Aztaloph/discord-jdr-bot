@@ -1,0 +1,15 @@
+schema_version: "1.0"
+type: trait
+id: infernal_legacy
+name:
+  fr: Legs infernal
+  en: Infernal Legacy
+mechanics:
+  effects:
+    - type: innate_spells
+      cantrips:
+        - thaumaturgy
+      spells_by_level:
+        "3": [hellish_rebuke]
+        "5": [darkness]
+      casting_ability: cha

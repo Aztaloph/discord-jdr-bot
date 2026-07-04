@@ -1,0 +1,25 @@
+schema_version: "1.0"
+type: spell
+id: darkness
+name:
+  fr: Ténèbres
+  en: Darkness
+mechanics:
+  level: 2
+  school: evocation
+  casting_time:
+    fr: "1 action"
+    en: "1 action"
+  range:
+    fr: "18 mètres"
+    en: "60 feet"
+  components:
+    verbal: true
+    somatic: false
+    material: true
+  duration:
+    fr: "Concentration, 10 minutes"
+    en: "Concentration, up to 10 minutes"
+  effect:
+    type: utility
+    srd_note: "Sort inné Tieffelin niv. 5+ — 1/repos long"

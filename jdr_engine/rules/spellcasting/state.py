@@ -32,23 +32,50 @@ def get_cantrips_known(character: Character) -> list[str]:
     return [str(s) for s in raw] if isinstance(raw, list) else []
 
 
-def get_spells_prepared(character: Character) -> list[str]:
+def get_spells_known(character: Character) -> list[str]:
+    """
+    Sorts niv. 1+ **connus** par le personnage (lançables si emplacement dispo).
+
+    TODO (lot préparation) : distinguer ``spells_known`` (grimoire) et
+    ``spells_prepared`` (sous-ensemble préparé). Pour l'instant, tout sort
+    connu est lançable ; on lit ``spells_known`` ou, à défaut, ``spells_prepared``.
+    """
     state = get_spellcasting_state(character)
-    raw = state.get("spells_prepared") or []
+    raw = state.get("spells_known") or state.get("spells_prepared") or []
     return [str(s) for s in raw] if isinstance(raw, list) else []
 
 
+def get_spells_prepared(character: Character) -> list[str]:
+    """
+    Rétrocompat — voir ``get_spells_known``.
+
+    TODO (lot préparation) : ne retourner que le sous-ensemble préparé.
+    """
+    # TODO (lot préparation) : séparer spells_known / spells_prepared en persistance.
+    return get_spells_known(character)
+
+
+def spell_is_known(character: Character, spell_id: str) -> bool:
+    """True si le personnage connaît ce sort (tour de magie ou sort niv. 1+)."""
+    if spell_id in get_cantrips_known(character):
+        return True
+    return spell_id in get_spells_known(character)
+
+
 def spell_is_available(character: Character, spell_id: str) -> bool:
-    spell_level = _spell_level_from_lists(character, spell_id)
-    if spell_level == 0:
-        return spell_id in get_cantrips_known(character)
-    return spell_id in get_spells_prepared(character)
+    """Alias de ``spell_is_known`` — préparation non implémentée."""
+    return spell_is_known(character, spell_id)
+
+
+def list_castable_spell_ids(character: Character) -> list[str]:
+    """Tours de magie + sorts connus (liste pour /sort et autocomplete)."""
+    return get_cantrips_known(character) + get_spells_known(character)
 
 
 def _spell_level_from_lists(character: Character, spell_id: str) -> int | None:
     if spell_id in get_cantrips_known(character):
         return 0
-    if spell_id in get_spells_prepared(character):
+    if spell_id in get_spells_known(character):
         return None  # resolved from compendium at cast time
     return None
 

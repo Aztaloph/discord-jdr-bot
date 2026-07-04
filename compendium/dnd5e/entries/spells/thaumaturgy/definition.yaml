@@ -1,0 +1,25 @@
+schema_version: "1.0"
+type: spell
+id: thaumaturgy
+name:
+  fr: Thaumaturgie
+  en: Thaumaturgy
+mechanics:
+  level: 0
+  school: transmutation
+  casting_time:
+    fr: "1 action"
+    en: "1 action"
+  range:
+    fr: "9 mètres"
+    en: "30 feet"
+  components:
+    verbal: true
+    somatic: false
+    material: false
+  duration:
+    fr: "1 minute"
+    en: "1 minute"
+  effect:
+    type: utility
+    srd_note: "Sort inné Tieffelin — Legs infernal"

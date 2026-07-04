@@ -1,0 +1,18 @@
+schema_version: "1.0"
+type: race
+id: half_elf
+name:
+  fr: Demi-elfe
+  en: Half-Elf
+mechanics:
+  ability_score_increase:
+    - ability: cha
+      value: 2
+  size: medium
+  speed: 30
+  traits:
+    - ref: traits/darkvision
+    - ref: traits/fey_ancestry
+    - ref: traits/half_elf_versatility
+  languages:
+    fixed: [common, elvish]
