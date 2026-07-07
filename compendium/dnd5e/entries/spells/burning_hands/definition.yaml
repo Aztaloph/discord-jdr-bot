@@ -20,6 +20,17 @@ mechanics:
   duration:
     fr: Instantané
     en: Instantaneous
+  concentration: false
+  attack_roll: false
+  damage_dice: 3d6
+  damage_type: fire
+  save: DEX
+  description:
+    fr: "Un cône de flammes jaillit de vos mains. Jet de sauvegarde de Dextérité : échec = 3d6 feu, réussite = moitié."
+    en: "A cone of flames shoots from your hands. Dexterity save: fail = 3d6 fire, success = half."
+  slot_scaling:
+    per_slot_above_base:
+      damage_dice: 1d6
   effect:
     type: saving_throw
     ability: dex

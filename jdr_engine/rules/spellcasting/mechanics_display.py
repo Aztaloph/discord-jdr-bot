@@ -1,5 +1,5 @@
 # jdr_engine/rules/spellcasting/mechanics_display.py
-"""Affichage des métadonnées mécaniques structurées (Lot A — cantrips)."""
+"""Affichage des métadonnées mécaniques structurées (Lots A & B)."""
 from __future__ import annotations
 
 from typing import Any
@@ -87,6 +87,43 @@ def format_cantrip_scaling_summary(
     return "Montée cantrip : " + " · ".join(parts) + suffix
 
 
+def format_slot_scaling_summary(
+    mechanics: dict[str, Any],
+    *,
+    locale: str = "fr",
+) -> str | None:
+    scaling = mechanics.get("slot_scaling")
+    if not isinstance(scaling, dict):
+        return None
+    increment = scaling.get("per_slot_above_base")
+    if not isinstance(increment, dict):
+        return None
+    parts: list[str] = []
+    if increment.get("damage_dice"):
+        parts.append(f"+{increment['damage_dice']} dégâts / niveau")
+    if increment.get("healing_dice"):
+        parts.append(f"+{increment['healing_dice']} soins / niveau")
+    if increment.get("missiles"):
+        count = int(increment["missiles"])
+        label = "dard" if count == 1 else "dards"
+        parts.append(f"+{count} {label} / niveau")
+    if increment.get("temp_hp") and increment.get("cold_damage"):
+        parts.append(
+            f"+{increment['temp_hp']} PV temp. et +{increment['cold_damage']} froid / niveau"
+        )
+    elif increment.get("temp_hp"):
+        parts.append(f"+{increment['temp_hp']} PV temp. / niveau")
+    elif increment.get("cold_damage"):
+        parts.append(f"+{increment['cold_damage']} froid / niveau")
+    if increment.get("extra_targets"):
+        count = int(increment["extra_targets"])
+        label = "cible" if count == 1 else "cibles"
+        parts.append(f"+{count} {label} / niveau")
+    if not parts:
+        return None
+    return "Emplacement supérieur : " + " · ".join(parts)
+
+
 def build_spell_mechanics_reference_lines(
     mechanics: dict[str, Any],
     *,
@@ -125,5 +162,9 @@ def build_spell_mechanics_reference_lines(
     )
     if scaling_line:
         lines.append(scaling_line)
+
+    slot_line = format_slot_scaling_summary(mechanics, locale=locale)
+    if slot_line:
+        lines.append(slot_line)
 
     return lines

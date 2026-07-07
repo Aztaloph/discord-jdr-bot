@@ -20,6 +20,17 @@ mechanics:
   duration:
     fr: Instantané
     en: Instantaneous
+  concentration: false
+  attack_roll: false
+  damage_dice: 2d10
+  damage_type: fire
+  save: DEX
+  description:
+    fr: "Réaction lorsque vous subissez des dégâts d'une créature visible. Jet de sauvegarde de Dextérité : échec = 2d10 feu, réussite = moitié."
+    en: "Reaction when damaged by a visible creature. Dexterity save: fail = 2d10 fire, success = half."
+  slot_scaling:
+    per_slot_above_base:
+      damage_dice: 1d10
   effect:
     type: saving_throw
     ability: dex

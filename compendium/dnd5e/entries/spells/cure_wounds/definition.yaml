@@ -20,6 +20,17 @@ mechanics:
   duration:
     fr: Instantané
     en: Instantaneous
+  concentration: false
+  attack_roll: false
+  damage_dice: null
+  damage_type: null
+  save: null
+  description:
+    fr: "Une créature que vous touchez récupère 1d8 + modificateur de caractéristique d'incantation PV."
+    en: "A creature you touch regains 1d8 + spellcasting ability modifier hit points."
+  slot_scaling:
+    per_slot_above_base:
+      healing_dice: 1d8
   effect:
     type: healing
     healing: 1d8

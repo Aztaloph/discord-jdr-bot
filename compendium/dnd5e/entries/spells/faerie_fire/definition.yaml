@@ -21,6 +21,14 @@ mechanics:
   duration:
     fr: "Concentration, jusqu'à 1 minute"
     en: "Concentration, up to 1 minute"
+  attack_roll: false
+  damage_dice: null
+  damage_type: null
+  save: DEX
+  description:
+    fr: "Cube de 6 m de lumière colorée. Jet de sauvegarde de Dextérité : échec = cible affectée (contour visible, attaquants avantage, jets DEX désavantage)."
+    en: "20-foot cube of colored light. Dexterity save: fail = outlined (visible, attackers have advantage, DEX saves at disadvantage)."
+  slot_scaling: null
   utility_effect:
     fr: "Jet de sauvegarde DEX ; échec : cible affectée par lumière faérique (SRD 2014)."
     en: "DEX save ; fail : target outlined by faerie fire (SRD 2014)."

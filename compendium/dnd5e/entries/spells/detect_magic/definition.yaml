@@ -8,6 +8,7 @@ mechanics:
   level: 1
   school: divination
   ritual: true
+  concentration: true
   casting_time:
     fr: "1 action"
     en: "1 action"
@@ -21,6 +22,14 @@ mechanics:
   duration:
     fr: "Concentration, jusqu'à 10 minutes"
     en: "Concentration, up to 10 minutes"
+  attack_roll: false
+  damage_dice: null
+  damage_type: null
+  save: null
+  description:
+    fr: "Vous percevez la présence de magie dans un rayon de 9 mètres ; vous pouvez utiliser une action pour discerner l'école de magie d'un aura visible (SRD 2014)."
+    en: "You sense magic within 30 feet; you can use an action to discern the school of a visible aura (SRD 2014)."
+  slot_scaling: null
   utility_effect:
     fr: "Vous sentez la présence de magie dans un rayon de 9 mètres (SRD 2014)."
     en: "You sense the presence of magic within 30 feet (SRD 2014)."

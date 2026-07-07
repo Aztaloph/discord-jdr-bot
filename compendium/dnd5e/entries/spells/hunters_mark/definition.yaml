@@ -21,6 +21,14 @@ mechanics:
   duration:
     fr: "Concentration, jusqu'à 1 heure"
     en: "Concentration, up to 1 hour"
+  attack_roll: false
+  damage_dice: null
+  damage_type: null
+  save: null
+  description:
+    fr: "Marque une cible : +1d6 dégâts à vos attaques d'arme contre elle ; avantage Survie pour la pister. Emplacements niv. 3–4 : concentration 8 h ; niv. 5+ : 24 h."
+    en: "Mark a target: +1d6 damage on weapon attacks against it; advantage on Survival to track. Slots 3–4: 8 h concentration; 5+: 24 h."
+  slot_scaling: null
   effect:
     type: buff
   buff_effect:

@@ -16,10 +16,24 @@ mechanics:
   components:
     verbal: true
     somatic: true
-    material: "diamond worth at least 50 gp"
+    material: true
+    material_description:
+      fr: "diamant d'une valeur d'au moins 50 po"
+      en: "diamond worth at least 50 gp"
   duration:
     fr: Instantané
     en: Instantaneous
+  concentration: false
+  attack_roll: true
+  damage_dice: 3d8
+  damage_type: variable
+  save: null
+  description:
+    fr: "Attaque de sort à distance ; en cas de réussite, 3d8 dégâts (acide, froid, feu, foudre, poison ou tonnerre au choix)."
+    en: "Ranged spell attack; on a hit, 3d8 damage (acid, cold, fire, lightning, poison, or thunder)."
+  slot_scaling:
+    per_slot_above_base:
+      damage_dice: 1d8
   effect:
     type: spell_attack
     attack_type: ranged

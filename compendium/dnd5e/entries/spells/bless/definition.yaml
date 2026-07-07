@@ -21,6 +21,16 @@ mechanics:
   duration:
     fr: "Concentration, jusqu'à 1 minute"
     en: "Concentration, up to 1 minute"
+  attack_roll: false
+  damage_dice: null
+  damage_type: null
+  save: null
+  description:
+    fr: "Jusqu'à 3 créatures à portée : +1d4 aux jets d'attaque et de sauvegarde jusqu'à la fin du sort."
+    en: "Up to 3 creatures in range: +1d4 to attack rolls and saving throws until the spell ends."
+  slot_scaling:
+    per_slot_above_base:
+      extra_targets: 1
   effect:
     type: buff
   buff_effect:

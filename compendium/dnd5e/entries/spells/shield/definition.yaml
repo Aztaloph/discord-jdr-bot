@@ -11,8 +11,8 @@ mechanics:
     fr: "1 réaction"
     en: "1 reaction"
   range:
-    fr: "Personnelle"
-    en: "Self"
+    fr: Personnelle
+    en: Self
   components:
     verbal: true
     somatic: true
@@ -20,6 +20,15 @@ mechanics:
   duration:
     fr: "1 round"
     en: "1 round"
+  concentration: false
+  attack_roll: false
+  damage_dice: null
+  damage_type: null
+  save: null
+  description:
+    fr: "Réaction lorsque vous êtes touché par une attaque ou ciblé par magic missile. +5 à la CA jusqu'à votre prochain tour, y compris contre l'attaque déclencheuse."
+    en: "Reaction when hit by an attack or targeted by magic missile. +5 AC until your next turn, including against the triggering attack."
+  slot_scaling: null
   effect:
     type: buff
     buff_effect:

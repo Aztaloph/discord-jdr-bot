@@ -20,6 +20,17 @@ mechanics:
   duration:
     fr: Instantané
     en: Instantaneous
+  concentration: false
+  attack_roll: true
+  damage_dice: 3d10
+  damage_type: necrotic
+  save: null
+  description:
+    fr: "Attaque de sort au corps à corps au contact. En cas de réussite, la cible subit 3d10 dégâts nécrotiques."
+    en: "Melee spell attack on touch. On a hit, the target takes 3d10 necrotic damage."
+  slot_scaling:
+    per_slot_above_base:
+      damage_dice: 1d10
   effect:
     type: spell_attack
     attack_type: melee

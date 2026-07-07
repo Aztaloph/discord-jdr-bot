@@ -20,6 +20,18 @@ mechanics:
   duration:
     fr: "1 heure"
     en: "1 hour"
+  concentration: false
+  attack_roll: false
+  damage_dice: null
+  damage_type: cold
+  save: null
+  description:
+    fr: "5 PV temporaires ; une créature qui vous touche en mêlée subit 5 dégâts de froid (SRD 2014)."
+    en: "5 temporary hit points; a creature that hits you in melee takes 5 cold damage (SRD 2014)."
+  slot_scaling:
+    per_slot_above_base:
+      temp_hp: 5
+      cold_damage: 5
   utility_effect:
     fr: "5 PV temporaires ; 5 dégâts de froid au contact en mêlée (SRD 2014)."
     en: "5 temp HP; 5 cold damage on melee hit (SRD 2014)."

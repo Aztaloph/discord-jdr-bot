@@ -131,9 +131,9 @@ class TestLotACantripMechanics(unittest.TestCase):
                 self.assertIn("somatic", components)
                 self.assertIn("material", components)
 
-    def test_level_one_plus_spells_not_enriched(self):
+    def test_level_two_plus_spells_not_lot_a_enriched(self):
         for spell_id, mech in self.spell_entries.items():
-            if int(mech.get("level", 0)) >= 1:
+            if int(mech.get("level", 0)) >= 2:
                 with self.subTest(spell_id=spell_id):
                     for key in LOT_A_KEYS:
                         self.assertNotIn(
@@ -142,14 +142,14 @@ class TestLotACantripMechanics(unittest.TestCase):
                             f"{spell_id} ne doit pas avoir le champ Lot A {key!r}",
                         )
 
-    def test_level_one_plus_yaml_files_unchanged_structure(self):
+    def test_level_two_plus_yaml_no_cantrip_scaling(self):
         spells_dir = Path("compendium/dnd5e/entries/spells")
         for spell_dir in spells_dir.iterdir():
             if not spell_dir.is_dir():
                 continue
             raw = yaml.safe_load((spell_dir / "definition.yaml").read_text(encoding="utf-8"))
             level = int(raw["mechanics"]["level"])
-            if level >= 1:
+            if level >= 2:
                 with self.subTest(spell_id=raw["id"]):
                     self.assertNotIn("cantrip_scaling", raw["mechanics"])
 

@@ -1,5 +1,5 @@
 # jdr_engine/compendium/schemas/spell.py
-"""Schéma typé mechanics pour les sorts (Passe 1 — Lot A cantrips)."""
+"""Schéma typé mechanics pour les sorts (Passe 1 — Lots A & B)."""
 from __future__ import annotations
 
 from typing import Any
@@ -40,13 +40,28 @@ class CantripScaling(BaseModel):
     tiers: list[CantripScalingTier] = Field(..., min_length=1)
 
 
+class SlotScalingIncrement(BaseModel):
+    """Gain par niveau d'emplacement au-dessus du niveau de base du sort."""
+
+    damage_dice: str | None = None
+    healing_dice: str | None = None
+    missiles: int | None = Field(default=None, ge=1)
+    temp_hp: int | None = Field(default=None, ge=0)
+    cold_damage: int | None = Field(default=None, ge=0)
+    extra_targets: int | None = Field(default=None, ge=1)
+
+
+class SlotScaling(BaseModel):
+    per_slot_above_base: SlotScalingIncrement
+
+
 class SpellMechanics(BaseModel):
     """
     Champs mécaniques structurés d'un sort.
 
-    Les champs Lot A (damage_dice, save, attack_roll, cantrip_scaling, description)
-    sont requis pour les cantrips enrichis ; optionnels pour les sorts niv. 1+.
-    Le bloc ``effect`` reste la source du moteur de lancement actuel.
+    Les champs Lot A/B (damage_dice, save, attack_roll, cantrip_scaling,
+    slot_scaling, description) enrichissent le compendium ; optionnels pour
+    rétrocompat. Le bloc ``effect`` reste la source du moteur de lancement.
     """
 
     level: int = Field(..., ge=0, le=9)
@@ -63,6 +78,7 @@ class SpellMechanics(BaseModel):
     save: str | None = None
     attack_roll: bool | None = None
     cantrip_scaling: CantripScaling | None = None
+    slot_scaling: SlotScaling | None = None
     description: dict[str, str] | str | None = None
 
     effect: dict[str, Any] | None = None

@@ -21,6 +21,14 @@ mechanics:
   duration:
     fr: "Concentration, jusqu'à 1 minute"
     en: "Concentration, up to 1 minute"
+  attack_roll: false
+  damage_dice: null
+  damage_type: null
+  save: STR
+  description:
+    fr: "Végétation entrave une zone de 6 m. Jet de sauvegarde de Force : échec = entravé ; réussite = la zone devient terrain difficile."
+    en: "Grasping weeds fill a 20-foot square. Strength save: fail = restrained; success = area is difficult terrain."
+  slot_scaling: null
   utility_effect:
     fr: "Jet de sauvegarde FOR ; échec : entravé dans une zone de végétation (SRD 2014)."
     en: "STR save ; fail : restrained in vegetation (SRD 2014)."
