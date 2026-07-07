@@ -110,6 +110,12 @@ class TraitMechanics(BaseModel):
     model_config = {"extra": "allow"}
 
 
+def _spell_mechanics_model():
+    from jdr_engine.compendium.schemas.spell import SpellMechanics
+
+    return SpellMechanics
+
+
 class DefinitionSchema(BaseModel):
     """Schéma commun de definition.yaml."""
 
@@ -134,4 +140,6 @@ class DefinitionSchema(BaseModel):
             return ClassMechanics.model_validate(self.mechanics)
         if self.type == "trait":
             return TraitMechanics.model_validate(self.mechanics)
+        if self.type == "spell":
+            return _spell_mechanics_model().model_validate(self.mechanics)
         return self.mechanics

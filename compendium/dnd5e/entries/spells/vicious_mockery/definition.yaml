@@ -20,6 +20,24 @@ mechanics:
   duration:
     fr: Instantané
     en: Instantaneous
+  concentration: false
+  attack_roll: false
+  damage_dice: 1d4
+  damage_type: psychic
+  save: WIS
+  description:
+    fr: "Vous lancez une pluie d'insultes enchantées à une créature à portée qui vous entend. Jet de sauvegarde de Sagesse : échec = dégâts psychiques et désavantage à la prochaine attaque de la cible avant la fin de son prochain tour."
+    en: "You unleash insults laced with enchantments at a creature within range that can hear you. Wisdom save: on a fail, psychic damage and disadvantage on the target's next attack before the end of its next turn."
+  cantrip_scaling:
+    tiers:
+      - character_level: 1
+        damage_dice: 1d4
+      - character_level: 5
+        damage_dice: 2d4
+      - character_level: 11
+        damage_dice: 3d4
+      - character_level: 17
+        damage_dice: 4d4
   effect:
     type: saving_throw
     ability: wis

@@ -20,6 +20,28 @@ mechanics:
   duration:
     fr: Instantané
     en: Instantaneous
+  concentration: false
+  attack_roll: true
+  damage_dice: 1d10
+  damage_type: force
+  save: null
+  description:
+    fr: "Un rayon d'énergie crépitante fonce vers une créature à portée. Faites une attaque de sort à distance pour chaque rayon ; en cas de réussite, la cible subit des dégâts de force."
+    en: "A beam of crackling energy streaks toward a creature within range. Make a ranged spell attack for each beam; on a hit, the target takes force damage."
+  cantrip_scaling:
+    tiers:
+      - character_level: 1
+        attacks: 1
+        damage_dice: 1d10
+      - character_level: 5
+        attacks: 2
+        damage_dice: 1d10
+      - character_level: 11
+        attacks: 3
+        damage_dice: 1d10
+      - character_level: 17
+        attacks: 4
+        damage_dice: 1d10
   effect:
     type: spell_attack
     attack_type: ranged

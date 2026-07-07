@@ -20,6 +20,24 @@ mechanics:
   duration:
     fr: Instantané
     en: Instantaneous
+  concentration: false
+  attack_roll: false
+  damage_dice: 1d8
+  damage_type: radiant
+  save: DEX
+  description:
+    fr: "Une radiance semblable à une flamme descend sur une créature visible à portée. La cible doit réussir un jet de sauvegarde de Dextérité ou subir des dégâts radiants (aucun dégât en cas de réussite). Le sort ignore les abris."
+    en: "Flame-like radiance descends on a creature you can see within range. The target must succeed on a Dexterity saving throw or take radiant damage (no damage on a success). The spell ignores cover."
+  cantrip_scaling:
+    tiers:
+      - character_level: 1
+        damage_dice: 1d8
+      - character_level: 5
+        damage_dice: 2d8
+      - character_level: 11
+        damage_dice: 3d8
+      - character_level: 17
+        damage_dice: 4d8
   effect:
     type: saving_throw
     ability: dex

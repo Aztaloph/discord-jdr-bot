@@ -20,6 +20,18 @@ mechanics:
   duration:
     fr: "1 minute"
     en: "1 minute"
+  concentration: false
+  attack_roll: false
+  damage_dice: null
+  damage_type: null
+  save: null
+  description:
+    fr: "Vous manifestez un petit prodige : voix amplifiée, yeux flamboyants, portes secouées, tonnerre, etc. (SRD 2014). Sort inné Tieffelin."
+    en: "You manifest a minor wonder: booming voice, flaming eyes, trembling doors, thunder, etc. (SRD 2014). Tiefling innate spell."
+  cantrip_scaling: null
+  utility_effect:
+    fr: "Effet thaumaturgique mineur (SRD 2014)."
+    en: "Minor thaumaturgic effect (SRD 2014)."
   effect:
     type: utility
     srd_note: "Sort inné Tieffelin — Legs infernal"

@@ -13,7 +13,7 @@ mechanics:
     en: "1 action"
   range:
     fr: "Contact"
-    en: "Touch"
+    en: Touch
   components:
     verbal: true
     somatic: true
@@ -21,6 +21,14 @@ mechanics:
   duration:
     fr: "Concentration, jusqu'à 1 minute"
     en: "Concentration, up to 1 minute"
+  attack_roll: false
+  damage_dice: null
+  damage_type: null
+  save: null
+  description:
+    fr: "Vous touchez une créature consentante. Une fois avant la fin du sort, la cible peut lancer 1d4 et ajouter le résultat à un jet de caractéristique de son choix."
+    en: "You touch one willing creature. Once before the spell ends, the target can roll a d4 and add the number rolled to one ability check of its choice."
+  cantrip_scaling: null
   effect:
     type: buff
   buff_effect:

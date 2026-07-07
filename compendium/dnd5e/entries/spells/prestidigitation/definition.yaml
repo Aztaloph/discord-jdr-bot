@@ -20,6 +20,15 @@ mechanics:
   duration:
     fr: "Jusqu'à 1 heure"
     en: "Up to 1 hour"
+  concentration: false
+  attack_roll: false
+  damage_dice: null
+  damage_type: null
+  save: null
+  description:
+    fr: "Effet magique mineur : étincelle, odeur, son, nettoyage, réchauffement, symbole, etc. (SRD 2014)."
+    en: "Minor magical trick: spark, odor, sound, clean, warm, mark, etc. (SRD 2014)."
+  cantrip_scaling: null
   utility_effect:
     fr: "Effet mineur magique (SRD 2014)."
     en: "Minor magical effect (SRD 2014)."

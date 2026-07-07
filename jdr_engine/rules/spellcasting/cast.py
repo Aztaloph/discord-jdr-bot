@@ -12,6 +12,9 @@ from jdr_engine.domain.character.character import Character
 from jdr_engine.rules.calculator import build_character_sheet
 from jdr_engine.rules.engine import RuleEngine
 from jdr_engine.rules.spellcasting.access import has_spellcasting_access
+from jdr_engine.rules.spellcasting.mechanics_display import (
+    build_spell_mechanics_reference_lines,
+)
 from jdr_engine.rules.spellcasting.slots import get_max_spell_slots, get_remaining_slots
 from jdr_engine.rules.spellcasting.spells_catalog import SUPPORTED_SPELLCASTING_CLASSES
 from jdr_engine.rules.spellcasting.state import (
@@ -478,13 +481,23 @@ def cast_spell(
                 f"**{METAMAGIC_LABELS_FR.get(m, m)}** ({cost} pt{'s' if cost > 1 else ''})"
                 for m, cost in meta
             ]
-            result.display_lines = build_spell_display_lines(result, locale=locale)
+            result.display_lines = build_spell_display_lines(
+                result,
+                locale=locale,
+                spell_mechanics=mechanics,
+                character_level=character.level,
+            )
             result.display_lines.append(
                 "Métamagie disponible : " + ", ".join(lines)
             )
             return result
 
-    result.display_lines = build_spell_display_lines(result, locale=locale)
+    result.display_lines = build_spell_display_lines(
+        result,
+        locale=locale,
+        spell_mechanics=mechanics,
+        character_level=character.level,
+    )
     return result
 
 
@@ -492,9 +505,19 @@ def build_spell_display_lines(
     result: SpellCastResult,
     *,
     locale: str = "fr",
+    spell_mechanics: dict[str, Any] | None = None,
+    character_level: int = 1,
 ) -> list[str]:
     """Lignes style « Traits actifs » pour embed Discord."""
     lines: list[str] = []
+    if spell_mechanics:
+        lines.extend(
+            build_spell_mechanics_reference_lines(
+                spell_mechanics,
+                locale=locale,
+                character_level=character_level,
+            )
+        )
     level_label = "tour de magie" if result.spell_level == 0 else f"sort niv. {result.spell_level}"
     lines.append(f"{result.spell_name} ({level_label}) — {result.school}")
 
@@ -597,6 +620,7 @@ def _damage_type_label(damage_type: str) -> str:
         "radiant": " radiants",
         "necrotic": " nécrotiques",
         "force": " de force",
+        "psychic": " psychiques",
         "variable": " (type au choix)",
     }
     return labels.get(damage_type, f" {damage_type}")
