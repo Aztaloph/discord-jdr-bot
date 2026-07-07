@@ -1,0 +1,8 @@
+schema_version: "1.0"
+type: trait
+id: totem_warrior
+name:
+  fr: Guerrier totémique
+  en: Totem Warrior
+mechanics:
+  parent_subclass: primal_path

@@ -1,0 +1,28 @@
+schema_version: "1.0"
+type: spell
+id: eldritch_blast
+name:
+  fr: Salve occulte
+  en: Eldritch Blast
+mechanics:
+  level: 0
+  school: evocation
+  casting_time:
+    fr: "1 action"
+    en: "1 action"
+  range:
+    fr: "36 mètres"
+    en: "120 feet"
+  components:
+    verbal: true
+    somatic: true
+    material: false
+  duration:
+    fr: Instantané
+    en: Instantaneous
+  effect:
+    type: spell_attack
+    attack_type: ranged
+    attacks: 1
+    damage: 1d10
+    damage_type: force

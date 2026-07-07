@@ -22,6 +22,16 @@ CHOICE_KEYS: frozenset[str] = frozenset(
         "racial_ability_bonuses",
         "racial_skills",
         "innate_spells",
+        "totem_spirit",
+        "favored_enemy_type",
+        "favored_terrain",
+        "hunter_prey",
+        "lore_bonus_skills",
+        "sorcerer_dragon_type",
+        "druid_land_terrain",
+        "metamagic_options",
+        "eldritch_invocations",
+        "pact_boon",
     }
 )
 

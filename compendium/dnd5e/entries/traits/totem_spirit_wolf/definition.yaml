@@ -1,0 +1,11 @@
+schema_version: "1.0"
+type: trait
+id: totem_spirit_wolf
+name:
+  fr: Esprit du loup
+  en: Wolf
+mechanics:
+  parent_totem: wolf
+  description_fr: >-
+    Pendant la Rage : vos alliés à 5 ft ont l'avantage sur leurs attaques de
+    mêlée contre une créature que vous avez attaquée ce tour (SRD 2014).

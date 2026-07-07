@@ -12,6 +12,10 @@ from jdr_engine.domain.character.ability_scores import format_modifier
 from jdr_engine.domain.character.character_sheet import CharacterSheet
 from jdr_engine.rules.engine import RuleEngine
 
+from interfaces.discord.formatters.embed_fields import (
+    add_field_chunked,
+    enforce_embed_limits,
+)
 from interfaces.discord.formatters.lore_text import combine_lore_sections
 
 COULEUR_PRINCIPALE = 0x8B4513
@@ -143,41 +147,69 @@ def _base_embed(
         inline=False,
     )
 
-    embed.add_field(
+    add_field_chunked(
+        embed,
         name="🛡️ Jets de sauvegarde",
         value=_format_saving_throws(sheet) + "\n_● = maîtrise de classe_",
-        inline=False,
     )
 
-    embed.add_field(
+    add_field_chunked(
+        embed,
         name="🎯 Compétences maîtrisées",
         value=_format_skills(sheet),
-        inline=False,
     )
 
+    add_field_chunked(
+        embed,
+        name="🛡️ Maîtrises d'équipement",
+        value=(
+            f"**Armures :** {sheet.armor_proficiencies_text}\n"
+            f"**Armes :** {sheet.weapon_proficiencies_text}"
+        ),
+    )
+
+    if sheet.spellcasting_summary:
+        add_field_chunked(
+            embed,
+            name="✨ Incantation",
+            value=sheet.spellcasting_summary,
+        )
+
+    if sheet.class_features_lines:
+        add_field_chunked(
+            embed,
+            name="⚔️ Aptitudes de classe",
+            value="\n".join(sheet.class_features_lines),
+        )
+
     if sheet.trait_names:
-        traits = ", ".join(sheet.trait_names)
-        embed.add_field(name="✨ Traits raciaux", value=traits, inline=False)
+        add_field_chunked(
+            embed,
+            name="✨ Traits raciaux",
+            value=", ".join(sheet.trait_names),
+        )
 
     if sheet.damage_resistances:
-        embed.add_field(
+        add_field_chunked(
+            embed,
             name="🛡️ Résistances aux dégâts",
             value=sheet.damage_resistances,
-            inline=False,
         )
 
     if sheet.innate_spells_text:
-        embed.add_field(
+        add_field_chunked(
+            embed,
             name="🔮 Sorts innés",
             value=sheet.innate_spells_text,
-            inline=False,
         )
 
-    embed.add_field(
+    add_field_chunked(
+        embed,
         name="⚔️ Attaques",
         value="*Aucune attaque enregistrée*",
-        inline=False,
     )
+
+    enforce_embed_limits(embed)
 
     embed.set_footer(text=f"{FOOTER} · ID : {sheet.character_id}")
     return embed

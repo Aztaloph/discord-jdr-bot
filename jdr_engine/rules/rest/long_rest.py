@@ -55,7 +55,82 @@ def apply_long_rest(
     if rage_active(character.choices or {}):
         character.choices = end_rage(character.choices or {})
 
+    from jdr_engine.rules.class_features.barbarian import reset_rage_uses_on_long_rest
+
+    character.choices = reset_rage_uses_on_long_rest(
+        character.choices or {},
+        level=character.level,
+    )
+
     character.choices = reset_short_rest_features(character.choices or {})
+
+    if character.class_id == "monk":
+        from jdr_engine.rules.class_features.monk import reset_ki_points
+
+        character.choices = reset_ki_points(
+            character.choices or {}, level=character.level
+        )
+
+    if character.class_id == "paladin":
+        from jdr_engine.rules.class_features.paladin import (
+            reset_channel_divinity_on_short_rest,
+            reset_divine_sense_on_long_rest,
+            reset_lay_on_hands_on_long_rest,
+        )
+
+        cha_score = sheet.ability_scores.get("cha", 10)
+        character.choices = reset_divine_sense_on_long_rest(
+            character.choices or {}, cha_score=cha_score
+        )
+        character.choices = reset_lay_on_hands_on_long_rest(
+            character.choices or {}, level=character.level
+        )
+        character.choices = reset_channel_divinity_on_short_rest(
+            character.choices or {}, level=character.level
+        )
+
+    if character.class_id == "bard":
+        from jdr_engine.rules.class_features.bard import reset_bardic_inspiration_on_long_rest
+
+        cha_score = sheet.ability_scores.get("cha", 10)
+        character.choices = reset_bardic_inspiration_on_long_rest(
+            character.choices or {}, cha_score=cha_score
+        )
+
+    if character.class_id == "cleric":
+        from jdr_engine.rules.class_features.cleric import reset_preserve_life_on_long_rest
+
+        character.choices = reset_preserve_life_on_long_rest(
+            character.choices or {}, level=character.level
+        )
+
+    if character.class_id == "wizard":
+        from jdr_engine.rules.class_features.wizard import reset_arcane_recovery_on_long_rest
+
+        character.choices = reset_arcane_recovery_on_long_rest(
+            character.choices or {}
+        )
+
+    if character.class_id == "sorcerer":
+        from jdr_engine.rules.class_features.sorcerer import reset_sorcery_points_on_long_rest
+
+        character.choices = reset_sorcery_points_on_long_rest(
+            character.choices or {}, level=character.level
+        )
+
+    if character.class_id == "druid":
+        from jdr_engine.rules.class_features.druid import (
+            reset_natural_recovery_on_long_rest,
+            reset_wild_shape_on_short_or_long_rest,
+        )
+
+        character.choices = reset_wild_shape_on_short_or_long_rest(
+            character.choices or {}, level=character.level
+        )
+        character.choices = reset_natural_recovery_on_long_rest(
+            character.choices or {}, level=character.level
+        )
+
     character = reset_racial_features_on_long_rest(character)
     character = reset_spell_slots(character)
     character.hp_max = hp_max

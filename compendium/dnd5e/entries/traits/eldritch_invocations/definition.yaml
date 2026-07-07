@@ -1,0 +1,22 @@
+schema_version: "1.0"
+type: trait
+id: eldritch_invocations
+name:
+  fr: Manifestations occultes
+  en: Eldritch Invocations
+mechanics:
+  choice:
+    level: 2
+    storage_key: eldritch_invocations
+    pick_count: 2
+    options:
+      - id: eldritch_sight
+        label_fr: Vision occulte
+      - id: devils_sight
+        label_fr: Vision du diable
+      - id: eldritch_spear
+        label_fr: Regard des lunes
+      - id: agonizing_blast
+        label_fr: Agonisant
+      - id: armor_of_shadows
+        label_fr: Armure d'ombres

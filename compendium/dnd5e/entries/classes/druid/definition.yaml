@@ -1,0 +1,90 @@
+schema_version: "1.0"
+
+type: class
+
+id: druid
+
+name:
+
+  fr: Druide
+
+  en: Druid
+
+mechanics:
+
+  hit_die: d8
+
+  primary_abilities:
+
+    - wis
+
+    - int
+
+  saving_throw_proficiencies:
+
+    - int
+
+    - wis
+
+  armor_proficiencies:
+
+    - light
+
+    - medium
+
+    - shields
+
+  weapon_proficiencies:
+
+    - simple
+
+    - scimitar
+
+  skill_choices:
+
+    count: 2
+
+    from:
+
+      - arcana
+
+      - animal_handling
+
+      - insight
+
+      - medicine
+
+      - nature
+
+      - perception
+
+      - religion
+
+      - survival
+
+  spellcasting:
+
+    level: 1
+
+    ability: wis
+
+    preparation: true
+
+  features_by_level:
+
+    "1":
+
+      - druidic
+
+      - spellcasting
+
+    "2":
+
+      - wild_shape
+
+      - druid_circle
+
+    "3":
+
+      - spellcasting
+

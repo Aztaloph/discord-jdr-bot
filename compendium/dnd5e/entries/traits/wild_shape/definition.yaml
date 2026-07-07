@@ -1,0 +1,8 @@
+schema_version: "1.0"
+type: trait
+id: wild_shape
+name:
+  fr: Forme sauvage
+  en: Wild Shape
+mechanics:
+  description_fr: "Transformation en bête (affichage seul — usages et CR max selon niveau)."

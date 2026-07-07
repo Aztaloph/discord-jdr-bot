@@ -234,8 +234,20 @@ class CharacterService:
         race_id: str,
         class_id: str,
         base_scores: dict[str, int],
+        level: int = 1,
         skills: list[str] | tuple[str, ...] | None = None,
+        expertise_skills: list[str] | tuple[str, ...] | None = None,
         specialization: str | None = None,
+        fighting_style: str | None = None,
+        totem_spirit: str | None = None,
+        favored_enemy_type: str | None = None,
+        favored_terrain: str | None = None,
+        lore_bonus_skills: list[str] | tuple[str, ...] | None = None,
+        sorcerer_dragon_type: str | None = None,
+        druid_land_terrain: str | None = None,
+        metamagic_options: list[str] | tuple[str, ...] | None = None,
+        eldritch_invocations: list[str] | tuple[str, ...] | None = None,
+        pact_boon: str | None = None,
         draconic_ancestry: str | None = None,
         racial_ability_bonuses: list[str] | tuple[str, ...] | None = None,
         racial_skills: list[str] | tuple[str, ...] | None = None,
@@ -258,8 +270,20 @@ class CharacterService:
                 guild_id=str(guild_id),
                 base_scores=base_scores,
                 engine=self._engine,
+                level=level,
                 skills=skills,
+                expertise_skills=expertise_skills,
                 specialization=specialization,
+                fighting_style=fighting_style,
+                totem_spirit=totem_spirit,
+                favored_enemy_type=favored_enemy_type,
+                favored_terrain=favored_terrain,
+                lore_bonus_skills=lore_bonus_skills,
+                sorcerer_dragon_type=sorcerer_dragon_type,
+                druid_land_terrain=druid_land_terrain,
+                metamagic_options=metamagic_options,
+                eldritch_invocations=eldritch_invocations,
+                pact_boon=pact_boon,
                 draconic_ancestry=draconic_ancestry,
                 racial_ability_bonuses=racial_ability_bonuses,
                 racial_skills=racial_skills,
@@ -318,14 +342,85 @@ class CharacterService:
         self._repo.save(updated)
         return result
 
-    def level_up_on_guild(self, character_id: str, guild_id: str):
-        """Montée de niveau SRD — persiste le personnage mis à jour (Lot 2)."""
-        from jdr_engine.rules.character_progression import LevelUpError, apply_level_up
+    def level_up_on_guild(
+        self,
+        character_id: str,
+        guild_id: str,
+        *,
+        subclass: str | None = None,
+        totem_spirit: str | None = None,
+        subchoice_value: str | None = None,
+        fighting_style: str | None = None,
+        lore_bonus_skills: list[str] | tuple[str, ...] | None = None,
+        expertise_skills: list[str] | tuple[str, ...] | None = None,
+        metamagic_options: list[str] | tuple[str, ...] | None = None,
+        eldritch_invocations: list[str] | tuple[str, ...] | None = None,
+        pact_boon: str | None = None,
+        base_character: Character | None = None,
+    ):
+        """Montée de niveau SRD — persiste le personnage mis à jour."""
+        from dataclasses import replace
+
+        from jdr_engine.rules.character_progression import (
+            LevelUpError,
+            LevelUpPendingChoice,
+            apply_level_up,
+        )
 
         character = self.get_on_guild(character_id, guild_id)
+        if base_character is not None:
+            merged = dict(character.choices or {})
+            merged.update(base_character.choices or {})
+            character = replace(character, choices=merged)
         try:
-            updated, result = apply_level_up(character, self._engine)
+            updated, result = apply_level_up(
+                character,
+                self._engine,
+                subclass=subclass,
+                totem_spirit=totem_spirit,
+                subchoice_value=subchoice_value,
+                fighting_style=fighting_style,
+                lore_bonus_skills=lore_bonus_skills,
+                expertise_skills=expertise_skills,
+                metamagic_options=metamagic_options,
+                eldritch_invocations=eldritch_invocations,
+                pact_boon=pact_boon,
+            )
+        except LevelUpPendingChoice:
+            raise
         except LevelUpError:
             raise
         self._repo.save(updated)
         return result
+
+    def complete_level_up_choice_on_guild(
+        self,
+        character_id: str,
+        guild_id: str,
+        *,
+        subclass: str | None = None,
+        totem_spirit: str | None = None,
+        subchoice_value: str | None = None,
+        fighting_style: str | None = None,
+        lore_bonus_skills: list[str] | tuple[str, ...] | None = None,
+        expertise_skills: list[str] | tuple[str, ...] | None = None,
+        metamagic_options: list[str] | tuple[str, ...] | None = None,
+        eldritch_invocations: list[str] | tuple[str, ...] | None = None,
+        pact_boon: str | None = None,
+        base_character: Character | None = None,
+    ):
+        """Finalise une montée de niveau après choix interactif."""
+        return self.level_up_on_guild(
+            character_id,
+            guild_id,
+            subclass=subclass,
+            totem_spirit=totem_spirit,
+            subchoice_value=subchoice_value,
+            fighting_style=fighting_style,
+            lore_bonus_skills=lore_bonus_skills,
+            expertise_skills=expertise_skills,
+            metamagic_options=metamagic_options,
+            eldritch_invocations=eldritch_invocations,
+            pact_boon=pact_boon,
+            base_character=base_character,
+        )

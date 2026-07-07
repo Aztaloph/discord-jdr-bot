@@ -19,9 +19,10 @@ class TestMonkMechanics(unittest.TestCase):
         self.assertEqual(martial_arts_die(1), 4)
         self.assertEqual(martial_arts_die(3), 4)
 
-    def test_ki_max_wisdom(self):
+    def test_ki_max_by_level(self):
+        self.assertEqual(ki_max(1), 0)
+        self.assertEqual(ki_max(2), 2)
         self.assertEqual(ki_max(3), 3)
-        self.assertEqual(ki_max(-1), 1)
 
     def test_ki_options_level_2(self):
         self.assertEqual(ki_options(1), frozenset())

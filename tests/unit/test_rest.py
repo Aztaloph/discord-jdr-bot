@@ -117,7 +117,12 @@ class TestRestRules(unittest.TestCase):
                 SqliteCharacterRepository(db), self.engine
             )
             init_database(db)
-            char = self._wizard(service)
+            char = service.create_from_wizard(
+                owner_id="1",
+                guild_id="100",
+                name="Clerc",
+                **cleric_creation_kwargs(),
+            )
             char.choices["spellcasting"]["slots_used"] = {"1": 1}
             service.save(char)
             updated, _ = apply_short_rest(char, self.engine, 0)

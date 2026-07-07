@@ -1,0 +1,9 @@
+schema_version: "1.0"
+type: trait
+id: turn_undead
+name:
+  fr: Renvoi des morts-vivants
+  en: Turn Undead
+mechanics:
+  parent_subclass: channel_divinity
+  description_fr: "Canalisation : les morts-vivants proches fuient (SRD 2014)."

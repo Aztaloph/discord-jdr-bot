@@ -11,6 +11,7 @@ from jdr_engine.domain.character.ability_scores import (
 from jdr_engine.domain.character.character import Character
 from jdr_engine.domain.character.character_sheet import CharacterSheet
 from jdr_engine.rules.derived_stats import (
+    apply_class_hp_bonus,
     build_saving_throws,
     calculate_armor_class,
     calculate_hp_max,
@@ -113,12 +114,15 @@ def build_character_sheet(
     con_mod = modifiers.get("con", 0)
     proficiency = engine.get_proficiency_bonus(character.level)
 
-    hp_max = calculate_hp_max(
-        character.level,
-        hit_die_faces,
-        con_mod,
-        persisted_hp_max=character.hp_max,
-    )
+    if character.hp_max is not None:
+        hp_max = max(1, int(character.hp_max))
+    else:
+        hp_max = calculate_hp_max(
+            character.level,
+            hit_die_faces,
+            con_mod,
+        )
+        hp_max = apply_class_hp_bonus(character, hp_max)
 
     hp_current = character.hp_current if character.hp_current is not None else hp_max
     hp_current = min(hp_current, hp_max)
@@ -127,7 +131,29 @@ def build_character_sheet(
     ac = calculate_armor_class(character, engine, modifiers)
     initiative = calculate_initiative(dex_mod)
     speed = int(race.definition.mechanics.get("speed", 30))
+    if character.class_id == "monk":
+        from jdr_engine.rules.class_features.monk import unarmored_movement_bonus
 
+        speed += unarmored_movement_bonus(character.level)
+
+    from jdr_engine.rules.character_creation.class_basics import (
+        format_armor_proficiencies,
+        format_spellcasting_summary,
+        format_weapon_proficiencies,
+    )
+
+    from jdr_engine.domain.character.choices_schema import get_specialization_id
+    from jdr_engine.rules.class_features.cleric import collect_bonus_armor_proficiencies
+    from jdr_engine.rules.spellcasting.state import format_spellcasting_detail
+
+    armor_bonus = collect_bonus_armor_proficiencies(
+        get_specialization_id(character.choices)
+    )
+    spell_summary = format_spellcasting_summary(
+        engine, character.class_id, character_level=character.level
+    )
+    if (character.choices or {}).get("spellcasting"):
+        spell_summary = format_spellcasting_detail(character)
     from jdr_engine.rules.derived_stats import get_class_saving_throw_proficiencies
 
     save_lines = build_saving_throws(
@@ -157,6 +183,12 @@ def build_character_sheet(
 
     damage_resistances = format_resistances_display(get_damage_resistances(character))
     innate_spells_text = format_innate_spells_display(character, engine, locale=locale)
+
+    from jdr_engine.rules.class_features.display import build_class_features_display
+
+    class_features_lines = build_class_features_display(
+        character, engine, locale=locale
+    )
 
     race_name = race.get_name(locale, engine.registry.manifest.default_locale)
     class_name = class_entry.get_name(
@@ -191,10 +223,16 @@ def build_character_sheet(
         specialization_label=spec_label,
         fighting_style_id=style_id,
         fighting_style_label=style_label,
+        armor_proficiencies_text=format_armor_proficiencies(
+            engine, character.class_id, bonus=armor_bonus
+        ),
+        weapon_proficiencies_text=format_weapon_proficiencies(engine, character.class_id),
+        spellcasting_summary=spell_summary,
         trait_ids=trait_ids,
         trait_names=trait_names,
         damage_resistances=damage_resistances,
         innate_spells_text=innate_spells_text,
+        class_features_lines=class_features_lines,
         xp=character.xp,
         image_url=character.image_url,
     )

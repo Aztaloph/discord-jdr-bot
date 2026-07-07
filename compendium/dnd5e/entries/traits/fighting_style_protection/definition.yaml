@@ -1,0 +1,8 @@
+schema_version: "1.0"
+type: trait
+id: fighting_style_protection
+name:
+  fr: Style de combat — Protection
+  en: Protection
+mechanics:
+  description_fr: "Réaction : imposez le désavantage à une attaque contre un allié adjacent (SRD 2014)."

@@ -1,0 +1,12 @@
+schema_version: "1.0"
+type: trait
+id: lore
+name:
+  fr: Collège du Savoir
+  en: College of Lore
+mechanics:
+  parent_subclass: bard_college
+  description_fr: "3 maîtrises supplémentaires + Mots cinglants (Inspiration en réaction, SRD 2014)."
+  grants_features:
+    - cutting_words
+  bonus_skill_count: 3

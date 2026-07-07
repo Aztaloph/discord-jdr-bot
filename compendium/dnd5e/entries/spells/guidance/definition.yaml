@@ -1,0 +1,28 @@
+schema_version: "1.0"
+type: spell
+id: guidance
+name:
+  fr: Guidance
+  en: Guidance
+mechanics:
+  level: 0
+  school: divination
+  concentration: true
+  casting_time:
+    fr: "1 action"
+    en: "1 action"
+  range:
+    fr: "Contact"
+    en: "Touch"
+  components:
+    verbal: true
+    somatic: true
+    material: false
+  duration:
+    fr: "Concentration, jusqu'à 1 minute"
+    en: "Concentration, up to 1 minute"
+  effect:
+    type: buff
+  buff_effect:
+    fr: "+1d4 à un jet de caractéristique (SRD 2014)."
+    en: "+1d4 to one ability check (SRD 2014)."

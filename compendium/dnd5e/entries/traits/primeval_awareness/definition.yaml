@@ -1,0 +1,8 @@
+schema_version: "1.0"
+type: trait
+id: primeval_awareness
+name:
+  fr: Conscience primitive
+  en: Primeval Awareness
+mechanics:
+  description_fr: "Dépensez un emplacement : détectez aberrations, célestes, dragons, élémentaires, fées, fiélons ou morts-vivants dans 1,6 km (SRD 2014)."

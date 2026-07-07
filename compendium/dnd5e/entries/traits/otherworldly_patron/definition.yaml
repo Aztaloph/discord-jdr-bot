@@ -1,0 +1,14 @@
+schema_version: "1.0"
+type: trait
+id: otherworldly_patron
+name:
+  fr: Protecteur occulte
+  en: Otherworldly Patron
+mechanics:
+  choice:
+    level: 1
+    storage_key: specialization
+    options:
+      - id: fiend
+        label_fr: Le Fiélon
+    srd_note: "SRD 2014 — Le Fiélon uniquement"

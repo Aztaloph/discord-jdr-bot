@@ -1,0 +1,8 @@
+schema_version: "1.0"
+type: trait
+id: dark_ones_blessing
+name:
+  fr: Bénédiction du Ténébreux
+  en: Dark One's Blessing
+mechanics:
+  description_fr: "PV temporaires = mod CHA + niveau d'occultiste quand un ennemi tombe à 0 PV (affichage)."

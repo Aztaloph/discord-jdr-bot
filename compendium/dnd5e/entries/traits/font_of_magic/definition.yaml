@@ -1,0 +1,9 @@
+schema_version: "1.0"
+type: trait
+id: font_of_magic
+name:
+  fr: Source de magie
+  en: Font of Magic
+mechanics:
+  description_fr: "Points de sorcellerie = niveau d'ensorceleur (niv.2+). Conversion emplacements ↔ points (SRD 2014)."
+  level: 2

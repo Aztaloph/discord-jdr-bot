@@ -1,0 +1,11 @@
+schema_version: "1.0"
+type: trait
+id: lay_on_hands
+name:
+  fr: Imposition des mains
+  en: Lay on Hands
+mechanics:
+  description_fr: "Réserve de soins : 5 × niveau PV, dépensables par tranches (SRD 2014)."
+  resource:
+    type: healing_pool
+    max_formula: "5 * level"

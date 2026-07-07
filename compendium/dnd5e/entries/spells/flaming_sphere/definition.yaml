@@ -1,0 +1,29 @@
+schema_version: "1.0"
+type: spell
+id: flaming_sphere
+name:
+  fr: Sphère enflammée
+  en: Flaming Sphere
+mechanics:
+  level: 2
+  school: conjuration
+  concentration: true
+  casting_time:
+    fr: "1 action"
+    en: "1 action"
+  range:
+    fr: "18 mètres"
+    en: "60 feet"
+  components:
+    verbal: true
+    somatic: true
+    material: false
+  duration:
+    fr: "Concentration, jusqu'à 1 minute"
+    en: "Concentration, up to 1 minute"
+  effect:
+    type: saving_throw
+    ability: dex
+    damage: 2d6
+    damage_type: fire
+    half_on_save: true

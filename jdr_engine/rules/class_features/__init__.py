@@ -20,18 +20,26 @@ from jdr_engine.rules.class_features.rogue import (
 
 from jdr_engine.rules.class_features.monk import (
     deflect_missiles_can_throw,
+    init_ki_points,
     ki_max,
     ki_options,
+    ki_points_max,
+    ki_points_remaining,
     martial_arts_die,
+    reset_ki_points,
     unarmored_movement_bonus,
 )
 
 __all__ = [
     "action_surge_available",
     "deflect_missiles_can_throw",
+    "init_ki_points",
     "ki_max",
     "ki_options",
+    "ki_points_max",
+    "ki_points_remaining",
     "martial_arts_die",
+    "reset_ki_points",
     "rage_damage_bonus",
     "rage_end_triggers",
     "rage_resistances",

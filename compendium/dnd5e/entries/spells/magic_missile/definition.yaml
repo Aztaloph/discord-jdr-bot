@@ -1,0 +1,28 @@
+schema_version: "1.0"
+type: spell
+id: magic_missile
+name:
+  fr: Projectile magique
+  en: Magic Missile
+mechanics:
+  level: 1
+  school: evocation
+  casting_time:
+    fr: "1 action"
+    en: "1 action"
+  range:
+    fr: "36 mètres"
+    en: "120 feet"
+  components:
+    verbal: true
+    somatic: true
+    material: false
+  duration:
+    fr: "Instantané"
+    en: "Instantaneous"
+  effect:
+    type: spell_attack
+    attacks: 3
+    damage: 1d4+1
+    add_ability_mod: false
+    damage_type: force

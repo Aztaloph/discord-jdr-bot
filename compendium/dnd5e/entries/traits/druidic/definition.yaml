@@ -1,0 +1,8 @@
+schema_version: "1.0"
+type: trait
+id: druidic
+name:
+  fr: Druidique
+  en: Druidic
+mechanics:
+  description_fr: "Langue secrète des druides. Armures et boucliers non métalliques uniquement (SRD 2014)."

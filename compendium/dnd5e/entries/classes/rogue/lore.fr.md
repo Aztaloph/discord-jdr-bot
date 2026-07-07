@@ -1,3 +1,3 @@
-Le rôdeur traque ses proies dans les terres sauvages, alliant discrétion, ruse et sens aigu de l'orientation.
+Le roublard vit dans l'ombre et la ruse. Expert de la discrétion, de la précision et de l'attaque sournoise, il frappe là où ça fait mal — puis disparaît avant que l'ennemi ne réagisse.
 
-Expert du terrain, il frappe vite et disparaît avant que l'ennemi ne comprenne ce qui s'est passé.
+Maître des pièges, des serrures et des filatures, il préfère la finesse à la force brute.

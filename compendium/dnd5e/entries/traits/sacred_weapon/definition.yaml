@@ -1,0 +1,9 @@
+schema_version: "1.0"
+type: trait
+id: sacred_weapon
+name:
+  fr: Arme sacrée
+  en: Sacred Weapon
+mechanics:
+  parent_subclass: devotion
+  description_fr: "Canalisation : arme +CHA attaque/dégâts, lumière 6 m, 1 min (SRD 2014)."

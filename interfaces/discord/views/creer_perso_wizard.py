@@ -14,8 +14,24 @@ from jdr_engine.application.character_service import (
 from jdr_engine.application.dto.character_commands import GetCharacterSheetQuery
 from jdr_engine.rules.character_creation.class_choices import (
     get_cleric_domain_options,
+    get_fighting_style_options,
+    get_ranger_favored_enemy_options,
+    get_ranger_favored_terrain_options,
     get_skill_choice_config,
+    get_sorcerer_dragon_type_options,
+    get_sorcerous_origin_options,
     requires_domain_at_creation,
+    requires_expertise_at_creation,
+    requires_fighting_style_at_creation,
+    requires_ranger_choices_at_creation,
+    requires_sorcerous_origin_at_creation,
+    requires_subclass_choice_step_at_creation,
+    get_creation_subclass_options,
+    get_creation_subclass_step_label,
+)
+from jdr_engine.rules.class_features.ranger import (
+    FAVORED_ENEMY_LABELS_FR,
+    FAVORED_TERRAIN_LABELS_FR,
 )
 from jdr_engine.rules.character_creation.race_choices import (
     get_dragonborn_ancestry_options,
@@ -56,7 +72,12 @@ class CreerPersoState:
     class_id: str | None = None
     point_buy: PointBuyState = field(default_factory=PointBuyState.fresh)
     selected_skills: list[str] = field(default_factory=list)
+    expertise_skills: list[str] = field(default_factory=list)
     specialization: str | None = None
+    sorcerer_dragon_type: str | None = None
+    fighting_style: str | None = None
+    favored_enemy_type: str | None = None
+    favored_terrain: str | None = None
     draconic_ancestry: str | None = None
     racial_ability_bonuses: list[str] = field(default_factory=list)
     racial_skills: list[str] = field(default_factory=list)
@@ -117,7 +138,7 @@ class PlayableClassSelect(discord.ui.Select):
     def __init__(self, wizard: CreerPersoWizard):
         self.wizard = wizard
         super().__init__(
-            placeholder="▼ Classe (Magicien ou Clerc)",
+            placeholder="▼ Classe",
             options=playable_class_select_options(wizard.engine, wizard.state.locale),
             min_values=1,
             max_values=1,
@@ -130,7 +151,12 @@ class PlayableClassSelect(discord.ui.Select):
             return
         self.wizard.state.class_id = self.values[0]
         self.wizard.state.selected_skills = []
+        self.wizard.state.expertise_skills = []
         self.wizard.state.specialization = None
+        self.wizard.state.sorcerer_dragon_type = None
+        self.wizard.state.fighting_style = None
+        self.wizard.state.favored_enemy_type = None
+        self.wizard.state.favored_terrain = None
         await interaction.response.edit_message(
             embed=self.wizard.build_identity_embed(),
             view=IdentityStepView(self.wizard),
@@ -235,7 +261,28 @@ class SkillsContinueButton(discord.ui.Button):
                 ephemeral=True,
             )
             return
-        if requires_domain_at_creation(
+        if requires_expertise_at_creation(
+            self.wizard.engine, self.wizard.state.class_id or ""
+        ):
+            await interaction.response.edit_message(
+                embed=self.wizard.build_expertise_embed(),
+                view=ExpertiseStepView(self.wizard),
+            )
+        elif requires_fighting_style_at_creation(
+            self.wizard.engine, self.wizard.state.class_id or ""
+        ):
+            await interaction.response.edit_message(
+                embed=self.wizard.build_fighting_style_embed(),
+                view=FightingStyleStepView(self.wizard),
+            )
+        elif requires_ranger_choices_at_creation(
+            self.wizard.engine, self.wizard.state.class_id or ""
+        ):
+            await interaction.response.edit_message(
+                embed=self.wizard.build_ranger_choices_embed(),
+                view=RangerChoicesStepView(self.wizard),
+            )
+        elif requires_domain_at_creation(
             self.wizard.engine, self.wizard.state.class_id or ""
         ):
             view = DomainStepView(self.wizard)
@@ -243,8 +290,291 @@ class SkillsContinueButton(discord.ui.Button):
                 embed=self.wizard.build_domain_embed(),
                 view=view,
             )
+        elif requires_sorcerous_origin_at_creation(
+            self.wizard.engine, self.wizard.state.class_id or ""
+        ):
+            await interaction.response.edit_message(
+                embed=self.wizard.build_sorcerer_origin_embed(),
+                view=SorcererOriginStepView(self.wizard),
+            )
+        elif requires_subclass_choice_step_at_creation(
+            self.wizard.engine, self.wizard.state.class_id or ""
+        ):
+            await interaction.response.edit_message(
+                embed=self.wizard.build_subclass_choice_embed(),
+                view=SubclassChoiceStepView(self.wizard),
+            )
         else:
             await self.wizard.finalize(interaction)
+
+
+class RangerEnemySelect(discord.ui.Select):
+    def __init__(self, wizard: CreerPersoWizard):
+        self.wizard = wizard
+        options = [
+            discord.SelectOption(
+                label=FAVORED_ENEMY_LABELS_FR.get(e, e)[:100],
+                value=e,
+            )
+            for e in get_ranger_favored_enemy_options()
+        ]
+        super().__init__(
+            placeholder="▼ Ennemi juré",
+            options=options,
+            min_values=1,
+            max_values=1,
+            row=0,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        if not _owner_check(interaction, self.wizard.state.owner_id):
+            await interaction.response.send_message("Action non autorisée.", ephemeral=True)
+            return
+        self.wizard.state.favored_enemy_type = self.values[0]
+        await interaction.response.edit_message(
+            embed=self.wizard.build_ranger_choices_embed(),
+            view=RangerChoicesStepView(self.wizard),
+        )
+
+
+class RangerTerrainSelect(discord.ui.Select):
+    def __init__(self, wizard: CreerPersoWizard):
+        self.wizard = wizard
+        options = [
+            discord.SelectOption(
+                label=FAVORED_TERRAIN_LABELS_FR.get(t, t)[:100],
+                value=t,
+            )
+            for t in get_ranger_favored_terrain_options()
+        ]
+        super().__init__(
+            placeholder="▼ Terrain favori",
+            options=options,
+            min_values=1,
+            max_values=1,
+            row=1,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        if not _owner_check(interaction, self.wizard.state.owner_id):
+            await interaction.response.send_message("Action non autorisée.", ephemeral=True)
+            return
+        self.wizard.state.favored_terrain = self.values[0]
+        await interaction.response.edit_message(
+            embed=self.wizard.build_ranger_choices_embed(),
+            view=RangerChoicesStepView(self.wizard),
+        )
+
+
+class RangerChoicesConfirmButton(discord.ui.Button):
+    def __init__(self, wizard: CreerPersoWizard):
+        ready = bool(wizard.state.favored_enemy_type and wizard.state.favored_terrain)
+        super().__init__(
+            label="Continuer →",
+            style=discord.ButtonStyle.success,
+            row=2,
+            disabled=not ready,
+        )
+        self.wizard = wizard
+
+    async def callback(self, interaction: discord.Interaction):
+        if not _owner_check(interaction, self.wizard.state.owner_id):
+            await interaction.response.send_message("Action non autorisée.", ephemeral=True)
+            return
+        if not self.wizard.state.favored_enemy_type or not self.wizard.state.favored_terrain:
+            await interaction.response.send_message(
+                embed=discord.Embed(
+                    title="⚠️ Choix incomplets",
+                    description="Sélectionnez un **ennemi juré** et un **terrain favori**.",
+                    color=COULEUR_ERREUR,
+                ).set_footer(text=FOOTER),
+                ephemeral=True,
+            )
+            return
+        await self.wizard.finalize(interaction)
+
+
+class RangerChoicesStepView(discord.ui.View):
+    def __init__(self, wizard: CreerPersoWizard):
+        super().__init__(timeout=600)
+        self.add_item(RangerEnemySelect(wizard))
+        self.add_item(RangerTerrainSelect(wizard))
+        self.add_item(RangerChoicesConfirmButton(wizard))
+
+
+class ExpertiseMultiSelect(discord.ui.Select):
+    def __init__(self, wizard: CreerPersoWizard):
+        self.wizard = wizard
+        options = [
+            discord.SelectOption(label=skill_label_fr(s)[:100], value=s)
+            for s in wizard.state.selected_skills
+        ]
+        super().__init__(
+            placeholder="▼ Expertise (2 compétences)",
+            options=options,
+            min_values=2,
+            max_values=2,
+            row=0,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        if not _owner_check(interaction, self.wizard.state.owner_id):
+            await interaction.response.send_message("Action non autorisée.", ephemeral=True)
+            return
+        self.wizard.state.expertise_skills = list(self.values)
+        await interaction.response.edit_message(
+            embed=self.wizard.build_expertise_embed(),
+            view=ExpertiseStepView(self.wizard),
+        )
+
+
+class ExpertiseConfirmButton(discord.ui.Button):
+    def __init__(self, wizard: CreerPersoWizard):
+        super().__init__(
+            label="Continuer →",
+            style=discord.ButtonStyle.success,
+            row=1,
+            disabled=len(wizard.state.expertise_skills) != 2,
+        )
+        self.wizard = wizard
+
+    async def callback(self, interaction: discord.Interaction):
+        if not _owner_check(interaction, self.wizard.state.owner_id):
+            await interaction.response.send_message("Action non autorisée.", ephemeral=True)
+            return
+        if len(self.wizard.state.expertise_skills) != 2:
+            await interaction.response.send_message(
+                embed=discord.Embed(
+                    title="⚠️ Expertise incomplète",
+                    description="Choisissez **2** compétences pour l'expertise.",
+                    color=COULEUR_ERREUR,
+                ).set_footer(text=FOOTER),
+                ephemeral=True,
+            )
+            return
+        if requires_fighting_style_at_creation(
+            self.wizard.engine, self.wizard.state.class_id or ""
+        ):
+            await interaction.response.edit_message(
+                embed=self.wizard.build_fighting_style_embed(),
+                view=FightingStyleStepView(self.wizard),
+            )
+        elif requires_ranger_choices_at_creation(
+            self.wizard.engine, self.wizard.state.class_id or ""
+        ):
+            await interaction.response.edit_message(
+                embed=self.wizard.build_ranger_choices_embed(),
+                view=RangerChoicesStepView(self.wizard),
+            )
+        elif requires_domain_at_creation(
+            self.wizard.engine, self.wizard.state.class_id or ""
+        ):
+            await interaction.response.edit_message(
+                embed=self.wizard.build_domain_embed(),
+                view=DomainStepView(self.wizard),
+            )
+        elif requires_sorcerous_origin_at_creation(
+            self.wizard.engine, self.wizard.state.class_id or ""
+        ):
+            await interaction.response.edit_message(
+                embed=self.wizard.build_sorcerer_origin_embed(),
+                view=SorcererOriginStepView(self.wizard),
+            )
+        elif requires_subclass_choice_step_at_creation(
+            self.wizard.engine, self.wizard.state.class_id or ""
+        ):
+            await interaction.response.edit_message(
+                embed=self.wizard.build_subclass_choice_embed(),
+                view=SubclassChoiceStepView(self.wizard),
+            )
+        else:
+            await self.wizard.finalize(interaction)
+
+
+class ExpertiseStepView(discord.ui.View):
+    def __init__(self, wizard: CreerPersoWizard):
+        super().__init__(timeout=600)
+        self.wizard = wizard
+        if wizard.state.selected_skills:
+            self.add_item(ExpertiseMultiSelect(wizard))
+        self.add_item(ExpertiseConfirmButton(wizard))
+
+
+class FightingStyleSelect(discord.ui.Select):
+    def __init__(self, wizard: CreerPersoWizard):
+        self.wizard = wizard
+        options: list[discord.SelectOption] = []
+        for style_id in get_fighting_style_options(wizard.engine):
+            trait = wizard.engine.get_entity("trait", f"fighting_style_{style_id}")
+            label = (
+                trait.get_name(wizard.state.locale, wizard.engine.registry.manifest.default_locale)
+                if trait
+                else style_id.replace("_", " ").title()
+            )
+            options.append(
+                discord.SelectOption(label=label[:100], value=style_id)
+            )
+        super().__init__(
+            placeholder="▼ Style de combat",
+            options=options,
+            min_values=1,
+            max_values=1,
+            row=0,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        if not _owner_check(interaction, self.wizard.state.owner_id):
+            await interaction.response.send_message("Action non autorisée.", ephemeral=True)
+            return
+        self.wizard.state.fighting_style = self.values[0]
+        await interaction.response.edit_message(
+            embed=self.wizard.build_fighting_style_embed(),
+            view=FightingStyleStepView(self.wizard),
+        )
+
+
+class FightingStyleConfirmButton(discord.ui.Button):
+    def __init__(self, wizard: CreerPersoWizard):
+        super().__init__(
+            label="Finaliser le personnage →",
+            style=discord.ButtonStyle.success,
+            row=1,
+            disabled=wizard.state.fighting_style is None,
+        )
+        self.wizard = wizard
+
+    async def callback(self, interaction: discord.Interaction):
+        if not _owner_check(interaction, self.wizard.state.owner_id):
+            await interaction.response.send_message("Action non autorisée.", ephemeral=True)
+            return
+        if not self.wizard.state.fighting_style:
+            await interaction.response.send_message(
+                embed=discord.Embed(
+                    title="⚠️ Style requis",
+                    description="Choisissez un **style de combat**.",
+                    color=COULEUR_ERREUR,
+                ).set_footer(text=FOOTER),
+                ephemeral=True,
+            )
+            return
+        if requires_ranger_choices_at_creation(
+            self.wizard.engine, self.wizard.state.class_id or ""
+        ):
+            await interaction.response.edit_message(
+                embed=self.wizard.build_ranger_choices_embed(),
+                view=RangerChoicesStepView(self.wizard),
+            )
+        else:
+            await self.wizard.finalize(interaction)
+
+
+class FightingStyleStepView(discord.ui.View):
+    def __init__(self, wizard: CreerPersoWizard):
+        super().__init__(timeout=600)
+        self.wizard = wizard
+        if get_fighting_style_options(wizard.engine):
+            self.add_item(FightingStyleSelect(wizard))
+        self.add_item(FightingStyleConfirmButton(wizard))
 
 
 class SkillsStepView(discord.ui.View):
@@ -474,6 +804,221 @@ class DomainStepView(discord.ui.View):
         self.add_item(DomainConfirmButton(wizard))
 
 
+class SubclassChoiceSelect(discord.ui.Select):
+    """Sous-classe niv. 1 — pattern générique (ex. Patron occultiste)."""
+
+    def __init__(self, wizard: CreerPersoWizard):
+        self.wizard = wizard
+        class_id = wizard.state.class_id or ""
+        options: list[discord.SelectOption] = []
+        for option_id, label_fr in get_creation_subclass_options(
+            wizard.engine, class_id
+        ):
+            trait = wizard.engine.get_entity("trait", option_id)
+            label = (
+                trait.get_name(
+                    wizard.state.locale, wizard.engine.registry.manifest.default_locale
+                )
+                if trait
+                else label_fr
+            )
+            options.append(
+                discord.SelectOption(label=label[:100], value=option_id)
+            )
+        step_label = get_creation_subclass_step_label(
+            wizard.engine, class_id, locale=wizard.state.locale
+        )
+        super().__init__(
+            placeholder=f"▼ {step_label[:90]}",
+            options=options,
+            min_values=1,
+            max_values=1,
+            row=0,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        if not _owner_check(interaction, self.wizard.state.owner_id):
+            await interaction.response.send_message("Action non autorisée.", ephemeral=True)
+            return
+        self.wizard.state.specialization = self.values[0]
+        await interaction.response.edit_message(
+            embed=self.wizard.build_subclass_choice_embed(),
+            view=SubclassChoiceStepView(self.wizard),
+        )
+
+
+class SubclassChoiceConfirmButton(discord.ui.Button):
+    def __init__(self, wizard: CreerPersoWizard):
+        super().__init__(
+            label="Finaliser le personnage →",
+            style=discord.ButtonStyle.success,
+            row=1,
+            disabled=wizard.state.specialization is None,
+        )
+        self.wizard = wizard
+
+    async def callback(self, interaction: discord.Interaction):
+        if not _owner_check(interaction, self.wizard.state.owner_id):
+            await interaction.response.send_message("Action non autorisée.", ephemeral=True)
+            return
+        if not self.wizard.state.specialization:
+            step_label = get_creation_subclass_step_label(
+                self.wizard.engine,
+                self.wizard.state.class_id or "",
+                locale=self.wizard.state.locale,
+            )
+            await interaction.response.send_message(
+                embed=discord.Embed(
+                    title="⚠️ Choix requis",
+                    description=f"Choisissez votre **{step_label}**.",
+                    color=COULEUR_ERREUR,
+                ).set_footer(text=FOOTER),
+                ephemeral=True,
+            )
+            return
+        await self.wizard.finalize(interaction)
+
+
+class SubclassChoiceStepView(discord.ui.View):
+    def __init__(self, wizard: CreerPersoWizard):
+        super().__init__(timeout=600)
+        self.wizard = wizard
+        if get_creation_subclass_options(wizard.engine, wizard.state.class_id or ""):
+            self.add_item(SubclassChoiceSelect(wizard))
+        self.add_item(SubclassChoiceConfirmButton(wizard))
+
+
+class SorcererOriginSelect(discord.ui.Select):
+    def __init__(self, wizard: CreerPersoWizard):
+        self.wizard = wizard
+        options: list[discord.SelectOption] = []
+        for origin_id in get_sorcerous_origin_options(wizard.engine):
+            trait = wizard.engine.get_entity("trait", origin_id)
+            label = (
+                trait.get_name(
+                    wizard.state.locale, wizard.engine.registry.manifest.default_locale
+                )
+                if trait
+                else origin_id.replace("_", " ").title()
+            )
+            options.append(
+                discord.SelectOption(label=label[:100], value=origin_id)
+            )
+        super().__init__(
+            placeholder="▼ Origine magique",
+            options=options,
+            min_values=1,
+            max_values=1,
+            row=0,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        if not _owner_check(interaction, self.wizard.state.owner_id):
+            await interaction.response.send_message("Action non autorisée.", ephemeral=True)
+            return
+        self.wizard.state.specialization = self.values[0]
+        self.wizard.state.sorcerer_dragon_type = None
+        await interaction.response.edit_message(
+            embed=self.wizard.build_sorcerer_origin_embed(),
+            view=SorcererOriginStepView(self.wizard),
+        )
+
+
+class SorcererDragonSelect(discord.ui.Select):
+    def __init__(self, wizard: CreerPersoWizard):
+        self.wizard = wizard
+        origin = wizard.state.specialization or ""
+        options = [
+            discord.SelectOption(
+                label=(
+                    get_draconic_ancestry(d).label_fr
+                    if get_draconic_ancestry(d)
+                    else d.replace("_", " ").title()
+                )[:100],
+                value=d,
+            )
+            for d in get_sorcerer_dragon_type_options(wizard.engine, origin)
+        ]
+        super().__init__(
+            placeholder="▼ Type de dragon (Lignée draconique)",
+            options=options or [discord.SelectOption(label="—", value="_none")],
+            min_values=1,
+            max_values=1,
+            row=1,
+            disabled=not options,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        if not _owner_check(interaction, self.wizard.state.owner_id):
+            await interaction.response.send_message("Action non autorisée.", ephemeral=True)
+            return
+        self.wizard.state.sorcerer_dragon_type = self.values[0]
+        await interaction.response.edit_message(
+            embed=self.wizard.build_sorcerer_origin_embed(),
+            view=SorcererOriginStepView(self.wizard),
+        )
+
+
+class SorcererOriginConfirmButton(discord.ui.Button):
+    def __init__(self, wizard: CreerPersoWizard):
+        ready = bool(
+            wizard.state.specialization
+            and (
+                not get_sorcerer_dragon_type_options(
+                    wizard.engine, wizard.state.specialization
+                )
+                or wizard.state.sorcerer_dragon_type
+            )
+        )
+        super().__init__(
+            label="Finaliser le personnage →",
+            style=discord.ButtonStyle.success,
+            row=2,
+            disabled=not ready,
+        )
+        self.wizard = wizard
+
+    async def callback(self, interaction: discord.Interaction):
+        if not _owner_check(interaction, self.wizard.state.owner_id):
+            await interaction.response.send_message("Action non autorisée.", ephemeral=True)
+            return
+        if not self.wizard.state.specialization:
+            await interaction.response.send_message(
+                embed=discord.Embed(
+                    title="⚠️ Origine requise",
+                    description="Choisissez une **origine magique**.",
+                    color=COULEUR_ERREUR,
+                ).set_footer(text=FOOTER),
+                ephemeral=True,
+            )
+            return
+        dragon_options = get_sorcerer_dragon_type_options(
+            self.wizard.engine, self.wizard.state.specialization
+        )
+        if dragon_options and not self.wizard.state.sorcerer_dragon_type:
+            await interaction.response.send_message(
+                embed=discord.Embed(
+                    title="⚠️ Lignée draconique",
+                    description="Choisissez un **type de dragon**.",
+                    color=COULEUR_ERREUR,
+                ).set_footer(text=FOOTER),
+                ephemeral=True,
+            )
+            return
+        await self.wizard.finalize(interaction)
+
+
+class SorcererOriginStepView(discord.ui.View):
+    def __init__(self, wizard: CreerPersoWizard):
+        super().__init__(timeout=600)
+        self.wizard = wizard
+        if get_sorcerous_origin_options(wizard.engine):
+            self.add_item(SorcererOriginSelect(wizard))
+        if wizard.state.specialization:
+            self.add_item(SorcererDragonSelect(wizard))
+        self.add_item(SorcererOriginConfirmButton(wizard))
+
+
 class CreerPersoWizard:
     def __init__(
         self,
@@ -503,7 +1048,8 @@ class CreerPersoWizard:
                 "**Étape 1 — Identité**\n"
                 f"Race : **{race}**\n"
                 f"Classe : **{classe}**\n\n"
-                "Seuls le **Magicien** et le **Clerc** sont jouables (niv. 1)."
+                "Les **12 classes SRD** sont disponibles. "
+                "Sorts actifs via `/sort` : Magicien et Clerc (autres lanceurs : lots ultérieurs)."
             ),
             color=COULEUR_PRINCIPALE,
         ).set_footer(text=FOOTER)
@@ -586,6 +1132,66 @@ class CreerPersoWizard:
             color=COULEUR_PRINCIPALE,
         ).set_footer(text=FOOTER)
 
+    def build_expertise_embed(self) -> discord.Embed:
+        if self.state.expertise_skills:
+            labels = ", ".join(skill_label_fr(s) for s in self.state.expertise_skills)
+        else:
+            labels = "—"
+        return discord.Embed(
+            title=f"🎭 Création — {self.state.name}",
+            description=(
+                "**Étape 4 — 🎯 Expertise (Roublard)**\n"
+                "Double le bonus de maîtrise sur **2** compétences déjà choisies.\n\n"
+                f"Expertise : **{labels}**"
+            ),
+            color=COULEUR_PRINCIPALE,
+        ).set_footer(text=FOOTER)
+
+    def build_fighting_style_embed(self) -> discord.Embed:
+        style_label = "—"
+        if self.state.fighting_style:
+            trait = self.engine.get_entity(
+                "trait", f"fighting_style_{self.state.fighting_style}"
+            )
+            if trait:
+                style_label = trait.get_name(
+                    self.state.locale,
+                    self.engine.registry.manifest.default_locale,
+                )
+            else:
+                style_label = self.state.fighting_style
+        return discord.Embed(
+            title=f"🎭 Création — {self.state.name}",
+            description=(
+                "**Étape 4 — ⚔️ Style de combat (Guerrier)**\n"
+                "SRD 2014 : choisissez un style (effet mécanique actif).\n\n"
+                f"Style : **{style_label}**"
+            ),
+            color=COULEUR_PRINCIPALE,
+        ).set_footer(text=FOOTER)
+
+    def build_ranger_choices_embed(self) -> discord.Embed:
+        enemy = (
+            FAVORED_ENEMY_LABELS_FR.get(self.state.favored_enemy_type or "", "—")
+            if self.state.favored_enemy_type
+            else "—"
+        )
+        terrain = (
+            FAVORED_TERRAIN_LABELS_FR.get(self.state.favored_terrain or "", "—")
+            if self.state.favored_terrain
+            else "—"
+        )
+        return discord.Embed(
+            title=f"🎭 Création — {self.state.name}",
+            description=(
+                "**Étape 4 — 🏹 Ennemi juré & terrain (Rôdeur)**\n"
+                "SRD 2014 : type de créature et terrain de prédilection.\n\n"
+                f"Ennemi juré : **{enemy}**\n"
+                f"Terrain favori : **{terrain}**"
+            ),
+            color=COULEUR_PRINCIPALE,
+        ).set_footer(text=FOOTER)
+
     def build_domain_embed(self) -> discord.Embed:
         domain_label = "—"
         if self.state.specialization:
@@ -609,6 +1215,90 @@ class CreerPersoWizard:
             color=COULEUR_PRINCIPALE,
         ).set_footer(text=FOOTER)
 
+    def build_sorcerer_origin_embed(self) -> discord.Embed:
+        origin_label = "—"
+        if self.state.specialization:
+            trait = self.engine.get_entity("trait", self.state.specialization)
+            if trait:
+                origin_label = trait.get_name(
+                    self.state.locale,
+                    self.engine.registry.manifest.default_locale,
+                )
+            else:
+                origin_label = self.state.specialization.replace("_", " ").title()
+        dragon_label = "—"
+        if self.state.sorcerer_dragon_type:
+            ancestry = get_draconic_ancestry(self.state.sorcerer_dragon_type)
+            dragon_label = ancestry.label_fr if ancestry else self.state.sorcerer_dragon_type
+        return discord.Embed(
+            title=f"🎭 Création — {self.state.name}",
+            description=(
+                "**Étape 4 — 🔥 Origine magique (Ensorceleur)**\n"
+                "SRD 2014 : choisissez votre origine et le type de dragon "
+                "(Lignée draconique).\n\n"
+                f"Origine : **{origin_label}**\n"
+                f"Dragon : **{dragon_label}**"
+            ),
+            color=COULEUR_PRINCIPALE,
+        ).set_footer(text=FOOTER)
+
+    def build_subclass_choice_embed(self) -> discord.Embed:
+        class_id = self.state.class_id or ""
+        step_label = get_creation_subclass_step_label(
+            self.engine, class_id, locale=self.state.locale
+        )
+        choice_label = "—"
+        if self.state.specialization:
+            for option_id, label_fr in get_creation_subclass_options(
+                self.engine, class_id
+            ):
+                if option_id == self.state.specialization:
+                    trait = self.engine.get_entity("trait", option_id)
+                    if trait:
+                        choice_label = trait.get_name(
+                            self.state.locale,
+                            self.engine.registry.manifest.default_locale,
+                        )
+                    else:
+                        choice_label = label_fr
+                    break
+            else:
+                choice_label = self.state.specialization.replace("_", " ").title()
+        class_entry = self.engine.get_entity("class", class_id)
+        class_name = (
+            class_entry.get_name(
+                self.state.locale, self.engine.registry.manifest.default_locale
+            )
+            if class_entry
+            else class_id
+        )
+        return discord.Embed(
+            title=f"🎭 Création — {self.state.name}",
+            description=(
+                f"**Étape 4 — {step_label} ({class_name})**\n"
+                "SRD 2014 : confirmez votre choix de sous-classe.\n\n"
+                f"{step_label} : **{choice_label}**"
+            ),
+            color=COULEUR_PRINCIPALE,
+        ).set_footer(text=FOOTER)
+
+    def next_step_after_skills(self) -> str:
+        """Identifiant de l'étape suivante après compétences (tests / routage)."""
+        class_id = self.state.class_id or ""
+        if requires_expertise_at_creation(self.engine, class_id):
+            return "expertise"
+        if requires_fighting_style_at_creation(self.engine, class_id):
+            return "fighting_style"
+        if requires_ranger_choices_at_creation(self.engine, class_id):
+            return "ranger_choices"
+        if requires_domain_at_creation(self.engine, class_id):
+            return "domain"
+        if requires_sorcerous_origin_at_creation(self.engine, class_id):
+            return "sorcerer_origin"
+        if requires_subclass_choice_step_at_creation(self.engine, class_id):
+            return "subclass_choice"
+        return "finalize"
+
     async def finalize(self, interaction: discord.Interaction) -> None:
         if self.state.done:
             await interaction.response.send_message(
@@ -627,7 +1317,12 @@ class CreerPersoWizard:
                 class_id=self.state.class_id or "wizard",
                 base_scores=dict(self.state.point_buy.base_scores),
                 skills=self.state.selected_skills,
+                expertise_skills=self.state.expertise_skills,
                 specialization=self.state.specialization,
+                sorcerer_dragon_type=self.state.sorcerer_dragon_type,
+                fighting_style=self.state.fighting_style,
+                favored_enemy_type=self.state.favored_enemy_type,
+                favored_terrain=self.state.favored_terrain,
                 draconic_ancestry=self.state.draconic_ancestry,
                 racial_ability_bonuses=self.state.racial_ability_bonuses,
                 racial_skills=self.state.racial_skills,

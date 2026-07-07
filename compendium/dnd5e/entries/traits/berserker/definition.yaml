@@ -1,0 +1,10 @@
+schema_version: "1.0"
+type: trait
+id: berserker
+name:
+  fr: Berserker
+  en: Berserker
+mechanics:
+  parent_subclass: primal_path
+  grants_features:
+    - frenzy

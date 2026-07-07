@@ -13,7 +13,10 @@ mechanics:
   - str
   - con
   armor_proficiencies:
-  - shields
+    - light
+    - medium
+    - heavy
+    - shields
   weapon_proficiencies:
   - simple
   - martial

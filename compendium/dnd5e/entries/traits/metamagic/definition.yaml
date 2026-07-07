@@ -1,0 +1,24 @@
+schema_version: "1.0"
+type: trait
+id: metamagic
+name:
+  fr: Métamagie
+  en: Metamagic
+mechanics:
+  choice:
+    level: 3
+    storage_key: metamagic_options
+    pick_count: 2
+    options:
+      - id: quickened
+        label_fr: Sort accéléré
+        cost: 2
+      - id: subtle
+        label_fr: Sort subtil
+        cost: 1
+      - id: twinned
+        label_fr: Sort jumelé
+        cost: 1
+      - id: extended
+        label_fr: Sort prolongé
+        cost: 1

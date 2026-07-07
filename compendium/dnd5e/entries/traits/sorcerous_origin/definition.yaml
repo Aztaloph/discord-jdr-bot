@@ -1,0 +1,26 @@
+schema_version: "1.0"
+type: trait
+id: sorcerous_origin
+name:
+  fr: Origine magique
+  en: Sorcerous Origin
+mechanics:
+  choice:
+    level: 1
+    storage_key: specialization
+    options:
+      - id: draconic
+        label_fr: Lignée draconique
+        subchoice:
+          storage_key: sorcerer_dragon_type
+          options:
+            - black
+            - blue
+            - brass
+            - bronze
+            - copper
+            - gold
+            - green
+            - red
+            - silver
+            - white

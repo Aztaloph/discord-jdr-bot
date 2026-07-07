@@ -127,10 +127,13 @@ class TestFighterClassFeatures(unittest.TestCase):
         self.assertEqual({t.entry_id for t in f1}, {"fighting_style", "second_wind"})
         self.assertIn("action_surge", {t.entry_id for t in f2})
 
-    def test_level_3_martial_archetype_choice_only(self):
+    def test_level_3_martial_archetype_has_champion_option(self):
         features = self.engine.get_class_features("fighter", 3)
         archetype = next(t for t in features if t.entry_id == "martial_archetype")
-        self.assertEqual(archetype.definition.mechanics.get("effects"), None)
+        choice = archetype.definition.mechanics.get("choice") or {}
+        options = choice.get("options") or []
+        ids = {o["id"] if isinstance(o, dict) else o for o in options}
+        self.assertEqual(ids, {"champion"})
 
 
 if __name__ == "__main__":

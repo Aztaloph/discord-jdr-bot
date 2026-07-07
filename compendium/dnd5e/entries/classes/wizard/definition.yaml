@@ -24,7 +24,12 @@ mechanics:
   spellcasting:
     level: 1
     ability: int
+    preparation: true
   features_by_level:
     '1':
     - arcane_recovery
+    - spellcasting
+    '2':
+    - arcane_tradition
+    '3':
     - spellcasting

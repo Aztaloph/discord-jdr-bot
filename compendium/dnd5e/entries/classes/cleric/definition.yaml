@@ -29,7 +29,12 @@ mechanics:
   spellcasting:
     level: 1
     ability: wis
+    preparation: true
   features_by_level:
     '1':
     - spellcasting
     - divine_domain
+    '2':
+    - channel_divinity
+    '3':
+    - spellcasting

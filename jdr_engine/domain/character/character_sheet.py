@@ -38,10 +38,14 @@ class CharacterSheet:
     specialization_label: str | None = None
     fighting_style_id: str | None = None
     fighting_style_label: str | None = None
+    armor_proficiencies_text: str = ""
+    weapon_proficiencies_text: str = ""
+    spellcasting_summary: str | None = None
     trait_ids: list[str] = field(default_factory=list)
     trait_names: list[str] = field(default_factory=list)
     damage_resistances: str = ""
     innate_spells_text: str = ""
+    class_features_lines: tuple[str, ...] = ()
     xp: int = 0
     image_url: str | None = None
 

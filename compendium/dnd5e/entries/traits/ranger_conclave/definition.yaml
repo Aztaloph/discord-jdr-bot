@@ -1,0 +1,19 @@
+schema_version: "1.0"
+type: trait
+id: ranger_conclave
+name:
+  fr: Conclave de rôdeur
+  en: Ranger Conclave
+mechanics:
+  choice:
+    level: 3
+    storage_key: specialization
+    options:
+      - id: hunter
+        label_fr: Chasseur
+        subchoice:
+          storage_key: hunter_prey
+          options:
+            - colossus_slayer
+            - giant_killer
+            - horde_breaker

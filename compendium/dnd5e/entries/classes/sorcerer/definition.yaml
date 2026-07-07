@@ -1,0 +1,41 @@
+schema_version: "1.0"
+type: class
+id: sorcerer
+name:
+  fr: Ensorceleur
+  en: Sorcerer
+mechanics:
+  hit_die: d6
+  primary_abilities:
+    - cha
+    - con
+  saving_throw_proficiencies:
+    - con
+    - cha
+  weapon_proficiencies:
+    - simple
+    - crossbow
+    - dagger
+    - dart
+    - quarterstaff
+    - sling
+  skill_choices:
+    count: 2
+    from:
+      - arcana
+      - deception
+      - insight
+      - intimidation
+      - persuasion
+      - religion
+  spellcasting:
+    level: 1
+    ability: cha
+  features_by_level:
+    "1":
+      - spellcasting
+      - sorcerous_origin
+    "2":
+      - font_of_magic
+    "3":
+      - metamagic

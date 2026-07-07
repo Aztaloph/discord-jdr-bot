@@ -1,0 +1,8 @@
+schema_version: "1.0"
+type: trait
+id: divine_health
+name:
+  fr: Santé divine
+  en: Divine Health
+mechanics:
+  description_fr: "Immunité aux maladies (SRD 2014)."

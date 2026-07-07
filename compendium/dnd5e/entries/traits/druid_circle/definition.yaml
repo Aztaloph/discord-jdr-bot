@@ -1,0 +1,25 @@
+schema_version: "1.0"
+type: trait
+id: druid_circle
+name:
+  fr: Cercle druidique
+  en: Druid Circle
+mechanics:
+  choice:
+    level: 2
+    storage_key: specialization
+    options:
+      - id: land
+        label_fr: Cercle de la Terre
+        subchoice:
+          storage_key: druid_land_terrain
+          options:
+            - arctic
+            - coast
+            - desert
+            - forest
+            - grassland
+            - mountain
+            - swamp
+            - underdark
+    srd_note: "SRD 2014 — Cercle de la Terre uniquement"

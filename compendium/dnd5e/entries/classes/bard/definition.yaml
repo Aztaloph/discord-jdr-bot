@@ -1,0 +1,56 @@
+schema_version: "1.0"
+type: class
+id: bard
+name:
+  fr: Barde
+  en: Bard
+mechanics:
+  hit_die: d8
+  primary_abilities:
+    - cha
+    - dex
+  saving_throw_proficiencies:
+    - dex
+    - cha
+  armor_proficiencies:
+    - light
+  weapon_proficiencies:
+    - simple
+    - hand_crossbow
+    - longsword
+    - rapier
+    - shortsword
+  skill_choices:
+    count: 3
+    from:
+      - acrobatics
+      - animal_handling
+      - arcana
+      - athletics
+      - deception
+      - history
+      - insight
+      - intimidation
+      - investigation
+      - medicine
+      - nature
+      - perception
+      - performance
+      - persuasion
+      - religion
+      - sleight_of_hand
+      - stealth
+      - survival
+  spellcasting:
+    level: 1
+    ability: cha
+  features_by_level:
+    "1":
+      - spellcasting
+      - bardic_inspiration
+    "2":
+      - jack_of_all_trades
+      - song_of_rest
+    "3":
+      - expertise
+      - bard_college

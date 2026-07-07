@@ -8,4 +8,15 @@ mechanics:
   choice:
     level: 1
     parent: divine_domain
-    srd_note: "Capacités de domaine — implémentation future"
+  description_fr: "Armures lourdes, sorts de domaine toujours préparés, soins majorés."
+  grants_armor_proficiencies:
+    - heavy
+  grants_features:
+    - disciple_of_life
+    - preserve_life
+  domain_spells:
+    "1":
+      - bless
+      - cure_wounds
+    "3":
+      - spiritual_weapon

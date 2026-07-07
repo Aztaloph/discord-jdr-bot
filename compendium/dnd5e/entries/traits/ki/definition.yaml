@@ -6,10 +6,8 @@ name:
   en: Ki
 mechanics:
   pool:
-    ability: wis
-    minimum: 1
-    recharge_long_rest: all
-    recharge_short_rest: 1
+    source: monk_level
+    recharge: short_or_long_rest
   options:
     flurry_of_blows:
       cost: 1

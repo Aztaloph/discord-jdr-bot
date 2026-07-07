@@ -1,0 +1,9 @@
+schema_version: "1.0"
+type: trait
+id: hunter
+name:
+  fr: Chasseur
+  en: Hunter
+mechanics:
+  parent_subclass: ranger_conclave
+  description_fr: "Conclave Chasseur — options de proie au niveau 3 (SRD 2014)."

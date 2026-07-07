@@ -60,7 +60,7 @@ class TestLevelUpEngine(unittest.TestCase):
         self.assertEqual(sheet1.hp_max, 8)  # d6 + CON 14 (+2)
         self.assertEqual(get_max_spell_slots("wizard", 1), {1: 2})
 
-        updated, result = apply_level_up(char, self.engine)
+        updated, result = apply_level_up(char, self.engine, subclass="evocation")
         self.assertEqual(result.old_level, 1)
         self.assertEqual(result.new_level, 2)
         self.assertEqual(result.hp_gain, 6)  # 3+1+2
@@ -72,7 +72,7 @@ class TestLevelUpEngine(unittest.TestCase):
 
     def test_wizard_level_2_to_3_hp_and_slots(self):
         char = self._wizard()
-        char, _ = apply_level_up(char, self.engine)
+        char, _ = apply_level_up(char, self.engine, subclass="evocation")
         char, result = apply_level_up(char, self.engine)
         self.assertEqual(result.new_level, 3)
         self.assertEqual(result.hp_max_after, 20)
@@ -96,14 +96,14 @@ class TestLevelUpEngine(unittest.TestCase):
 
     def test_hit_dice_increment(self):
         char = self._wizard()
-        char, r1 = apply_level_up(char, self.engine)
+        char, r1 = apply_level_up(char, self.engine, subclass="evocation")
         self.assertEqual(r1.hit_dice_after, 2)
         char, r2 = apply_level_up(char, self.engine)
         self.assertEqual(r2.hit_dice_after, 3)
 
     def test_level_3_cannot_level_up_again(self):
         char = self._wizard()
-        char, _ = apply_level_up(char, self.engine)
+        char, _ = apply_level_up(char, self.engine, subclass="evocation")
         char, _ = apply_level_up(char, self.engine)
         with self.assertRaises(LevelUpError):
             apply_level_up(char, self.engine)
@@ -111,7 +111,9 @@ class TestLevelUpEngine(unittest.TestCase):
     def test_persisted_and_sheet_reflect_level_up(self):
         char = self._wizard()
         self.service.save(char)
-        result = self.service.level_up_on_guild(char.id, self.guild_id)
+        result = self.service.level_up_on_guild(
+            char.id, self.guild_id, subclass="evocation"
+        )
         self.assertEqual(result.new_level, 2)
 
         reloaded = self.service.get_on_guild(char.id, self.guild_id)
@@ -124,7 +126,7 @@ class TestLevelUpEngine(unittest.TestCase):
     def test_proficiency_unchanged_at_level_2(self):
         char = self._wizard()
         sheet1 = build_character_sheet(char, self.engine)
-        char, _ = apply_level_up(char, self.engine)
+        char, _ = apply_level_up(char, self.engine, subclass="evocation")
         sheet2 = build_character_sheet(char, self.engine)
         self.assertEqual(sheet1.proficiency_bonus, 2)
         self.assertEqual(sheet2.proficiency_bonus, 2)

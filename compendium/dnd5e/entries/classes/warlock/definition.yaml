@@ -1,0 +1,40 @@
+schema_version: "1.0"
+type: class
+id: warlock
+name:
+  fr: Occultiste
+  en: Warlock
+mechanics:
+  hit_die: d8
+  primary_abilities:
+    - cha
+    - con
+  saving_throw_proficiencies:
+    - wis
+    - cha
+  armor_proficiencies:
+    - light
+  weapon_proficiencies:
+    - simple
+  skill_choices:
+    count: 2
+    from:
+      - arcana
+      - deception
+      - history
+      - intimidation
+      - investigation
+      - nature
+      - religion
+  pact_magic:
+    ability: cha
+    level: 1
+    recovery: short_rest
+  features_by_level:
+    "1":
+      - otherworldly_patron
+      - pact_magic
+    "2":
+      - eldritch_invocations
+    "3":
+      - pact_boon

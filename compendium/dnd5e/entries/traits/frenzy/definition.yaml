@@ -1,0 +1,12 @@
+schema_version: "1.0"
+type: trait
+id: frenzy
+name:
+  fr: Frénésie
+  en: Frenzy
+mechanics:
+  description_fr: >-
+    Action bonus pendant la Rage : une attaque d'arme de mêlée. À la fin de la
+    Rage, un niveau d'épuisement (SRD 2014).
+  requires:
+    rage_active: true

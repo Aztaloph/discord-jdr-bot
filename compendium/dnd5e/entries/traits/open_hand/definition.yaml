@@ -1,0 +1,10 @@
+schema_version: "1.0"
+type: trait
+id: open_hand
+name:
+  fr: Voie de la Main ouverte
+  en: Way of the Open Hand
+mechanics:
+  parent_subclass: monastic_tradition
+  grants_features:
+    - open_hand_technique

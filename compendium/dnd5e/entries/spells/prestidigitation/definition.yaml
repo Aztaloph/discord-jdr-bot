@@ -1,0 +1,27 @@
+schema_version: "1.0"
+type: spell
+id: prestidigitation
+name:
+  fr: Prestidigitation
+  en: Prestidigitation
+mechanics:
+  level: 0
+  school: transmutation
+  casting_time:
+    fr: "1 action"
+    en: "1 action"
+  range:
+    fr: "3 mètres"
+    en: "10 feet"
+  components:
+    verbal: true
+    somatic: true
+    material: false
+  duration:
+    fr: "Jusqu'à 1 heure"
+    en: "Up to 1 hour"
+  utility_effect:
+    fr: "Effet mineur magique (SRD 2014)."
+    en: "Minor magical effect (SRD 2014)."
+  effect:
+    type: utility

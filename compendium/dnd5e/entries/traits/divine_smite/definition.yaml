@@ -1,0 +1,9 @@
+schema_version: "1.0"
+type: trait
+id: divine_smite
+name:
+  fr: Châtiment divin
+  en: Divine Smite
+mechanics:
+  description_fr: "Dépensez un emplacement : +2d8 radiants (niv.1), +1d8 par niveau d'emplacement supérieur, max +5d8 (SRD 2014)."
+  consumes: spell_slot

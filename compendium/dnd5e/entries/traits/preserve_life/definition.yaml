@@ -1,0 +1,12 @@
+schema_version: "1.0"
+type: trait
+id: preserve_life
+name:
+  fr: Préservation de la vie
+  en: Preserve Life
+mechanics:
+  parent_subclass: life_domain
+  description_fr: "Canalisation (Vie) : répartir 5 × niveau PV de soin (SRD 2014)."
+  resource:
+    type: healing_pool
+    max_formula: "5 * level"

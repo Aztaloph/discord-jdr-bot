@@ -1,0 +1,8 @@
+schema_version: "1.0"
+type: trait
+id: fighting_style_great_weapon_fighting
+name:
+  fr: Style de combat — Armes lourdes
+  en: Great Weapon Fighting
+mechanics:
+  description_fr: "Relancez les 1-2 sur les dégâts d'armes à deux mains (SRD 2014)."

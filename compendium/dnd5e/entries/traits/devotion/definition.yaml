@@ -1,0 +1,12 @@
+schema_version: "1.0"
+type: trait
+id: devotion
+name:
+  fr: Serment de Dévotion
+  en: Oath of Devotion
+mechanics:
+  parent_subclass: sacred_oath
+  description_fr: "Canalisation d'énergie divine : Arme sacrée ou Bannissement de l'impie (SRD 2014)."
+  grants_features:
+    - sacred_weapon
+    - turn_the_unholy

@@ -1,0 +1,28 @@
+schema_version: "1.0"
+type: spell
+id: produce_flame
+name:
+  fr: Flamme vivante
+  en: Produce Flame
+mechanics:
+  level: 0
+  school: conjuration
+  casting_time:
+    fr: "1 action"
+    en: "1 action"
+  range:
+    fr: Personnel
+    en: Self
+  components:
+    verbal: true
+    somatic: true
+    material: false
+  duration:
+    fr: "10 minutes"
+    en: "10 minutes"
+  effect:
+    type: spell_attack
+    attack_type: ranged
+    attacks: 1
+    damage: 1d8
+    damage_type: fire

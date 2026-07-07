@@ -1,0 +1,28 @@
+schema_version: "1.0"
+type: spell
+id: hunters_mark
+name:
+  fr: Marque du chasseur
+  en: Hunter's Mark
+mechanics:
+  level: 1
+  school: divination
+  concentration: true
+  casting_time:
+    fr: "1 action bonus"
+    en: "1 bonus action"
+  range:
+    fr: "27 mètres"
+    en: "90 feet"
+  components:
+    verbal: true
+    somatic: false
+    material: false
+  duration:
+    fr: "Concentration, jusqu'à 1 heure"
+    en: "Concentration, up to 1 hour"
+  effect:
+    type: buff
+  buff_effect:
+    fr: "Cible marquée : +1d6 dégâts à vos attaques contre elle ; avantage sur Survie pour la pister (SRD 2014)."
+    en: "Marked target: +1d6 damage on attacks against it; advantage on Survival to track (SRD 2014)."

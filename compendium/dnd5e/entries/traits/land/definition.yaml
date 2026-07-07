@@ -1,0 +1,11 @@
+schema_version: "1.0"
+type: trait
+id: land
+name:
+  fr: Cercle de la Terre
+  en: Circle of the Land
+mechanics:
+  parent_subclass: druid_circle
+  description_fr: "Sorts de cercle liés au terrain choisi (affichage ; bonus auto reporté)."
+  grants_features:
+    - natural_recovery

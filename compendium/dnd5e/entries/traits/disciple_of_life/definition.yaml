@@ -1,0 +1,9 @@
+schema_version: "1.0"
+type: trait
+id: disciple_of_life
+name:
+  fr: Disciple de la vie
+  en: Disciple of Life
+mechanics:
+  parent_subclass: life_domain
+  description_fr: "Sorts de soin : +2 + niveau du sort PV supplémentaires (SRD 2014)."

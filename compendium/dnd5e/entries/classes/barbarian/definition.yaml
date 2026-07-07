@@ -15,10 +15,20 @@ mechanics:
   armor_proficiencies:
     - light
     - medium
+    - heavy
     - shields
   weapon_proficiencies:
     - simple
     - martial
+  skill_choices:
+    count: 2
+    from:
+      - animal_handling
+      - athletics
+      - intimidation
+      - nature
+      - perception
+      - survival
   features_by_level:
     "1":
       - rage

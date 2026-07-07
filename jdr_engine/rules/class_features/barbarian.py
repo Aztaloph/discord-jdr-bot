@@ -37,12 +37,45 @@ def rage_end_triggers() -> tuple[str, ...]:
     return RAGE_END_TRIGGERS
 
 
+def rage_uses_max(level: int) -> int:
+    """Utilisations de Rage par repos long (SRD 2014)."""
+    return 3 if level >= 3 else 2
+
+
+def rage_uses_remaining(choices: dict[str, Any], *, level: int) -> int:
+    state = feature_state(choices)
+    if "rage_uses_remaining" not in state:
+        return rage_uses_max(level)
+    return max(0, int(state["rage_uses_remaining"]))
+
+
+def init_rage_uses(choices: dict[str, Any], *, level: int) -> dict[str, Any]:
+    """Initialise le compteur de Rage (création / montée de niveau)."""
+    state = feature_state(choices)
+    state.setdefault("rage_uses_remaining", rage_uses_max(level))
+    return {**choices, "feature_state": state}
+
+
+def reset_rage_uses_on_long_rest(choices: dict[str, Any], *, level: int) -> dict[str, Any]:
+    state = feature_state(choices)
+    state["rage_uses_remaining"] = rage_uses_max(level)
+    return {**choices, "feature_state": state}
+
+
+def can_start_rage(choices: dict[str, Any], *, level: int) -> bool:
+    return rage_uses_remaining(choices, level=level) > 0 and not rage_active(choices)
+
+
 def rage_active(choices: dict[str, Any]) -> bool:
     return bool(feature_state(choices).get("rage_active"))
 
 
-def start_rage(choices: dict[str, Any]) -> dict[str, Any]:
+def start_rage(choices: dict[str, Any], *, level: int) -> dict[str, Any]:
+    remaining = rage_uses_remaining(choices, level=level)
+    if remaining <= 0:
+        raise ValueError("Aucune utilisation de Rage restante.")
     state = feature_state(choices)
+    state["rage_uses_remaining"] = remaining - 1
     state["rage_active"] = True
     state["reckless_active"] = False
     return {**choices, "feature_state": state}
@@ -69,3 +102,31 @@ def deactivate_reckless_attack(choices: dict[str, Any]) -> dict[str, Any]:
     state = feature_state(choices)
     state["reckless_active"] = False
     return {**choices, "feature_state": state}
+
+
+def totem_bear_resistances_active(
+    character_choices: dict[str, Any],
+    *,
+    rage_is_active: bool,
+) -> bool:
+    """Esprit de l'ours : résistance (sauf psychique) pendant la Rage."""
+    if not rage_is_active:
+        return False
+    return (
+        character_choices.get("specialization") == "totem_warrior"
+        and character_choices.get("totem_spirit") == "bear"
+    )
+
+
+def effective_rage_resistances(
+    character_choices: dict[str, Any],
+    *,
+    level: int,
+    rage_is_active: bool,
+) -> frozenset[str]:
+    """Résistances en Rage — base barbare + ours totémique si applicable."""
+    if not rage_is_active:
+        return frozenset()
+    if totem_bear_resistances_active(character_choices, rage_is_active=True):
+        return frozenset({"all_except_psychic"})
+    return rage_resistances()

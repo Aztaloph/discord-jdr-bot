@@ -1,0 +1,12 @@
+schema_version: "1.0"
+type: trait
+id: evocation
+name:
+  fr: École d'Évocation
+  en: School of Evocation
+mechanics:
+  parent_subclass: arcane_tradition
+  description_fr: "Érudit en évocation (copie à demi-prix/temps) + Façonnage de sorts (protège 1 + mod INT créatures, sorts d'évocation de zone)."
+  grants_features:
+    - evocation_savant
+    - sculpt_spells

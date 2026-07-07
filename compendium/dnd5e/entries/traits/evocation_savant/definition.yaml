@@ -1,0 +1,8 @@
+schema_version: "1.0"
+type: trait
+id: evocation_savant
+name:
+  fr: Érudit en évocation
+  en: Evocation Savant
+mechanics:
+  description_fr: "Copier un sort d'évocation dans le grimoire coûte la moitié du temps et de l'or (SRD 2014)."

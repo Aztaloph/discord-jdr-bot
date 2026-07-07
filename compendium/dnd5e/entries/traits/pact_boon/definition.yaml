@@ -1,0 +1,18 @@
+schema_version: "1.0"
+type: trait
+id: pact_boon
+name:
+  fr: Faveur du pacte
+  en: Pact Boon
+mechanics:
+  choice:
+    level: 3
+    storage_key: pact_boon
+    pick_count: 1
+    options:
+      - id: pact_of_the_chain
+        label_fr: Pacte de la Chaîne
+      - id: pact_of_the_blade
+        label_fr: Pacte de la Lame
+      - id: pact_of_the_tome
+        label_fr: Pacte du Grimoire

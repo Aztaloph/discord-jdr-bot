@@ -1,0 +1,15 @@
+schema_version: "1.0"
+type: trait
+id: draconic
+name:
+  fr: Lignée draconique
+  en: Draconic Bloodline
+mechanics:
+  parent_subclass: sorcerous_origin
+  description_fr: "PV max +1/niveau, CA 13 + mod DEX sans armure, +mod CHA aux dégâts d'un sort du type de lignée."
+  hp_bonus_per_level: 1
+  ac_formula:
+    base: 13
+    ability: dex
+  grants_features:
+    - elemental_affinity

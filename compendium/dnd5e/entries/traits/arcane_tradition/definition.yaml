@@ -1,0 +1,13 @@
+schema_version: "1.0"
+type: trait
+id: arcane_tradition
+name:
+  fr: École d'Arcanes
+  en: Arcane Tradition
+mechanics:
+  choice:
+    level: 2
+    storage_key: specialization
+    options:
+      - id: evocation
+        label_fr: École d'Évocation

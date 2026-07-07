@@ -1,0 +1,10 @@
+schema_version: "1.0"
+type: trait
+id: totem_spirit_eagle
+name:
+  fr: Esprit de l'aigle
+  en: Eagle
+mechanics:
+  parent_totem: eagle
+  description_fr: >-
+    Pendant la Rage : action bonus pour Foncer ou Se désengager (SRD 2014).

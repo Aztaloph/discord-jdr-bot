@@ -40,7 +40,7 @@ class TestBarbarianResources(unittest.TestCase):
         )
 
     def test_rage_state_toggle(self):
-        choices = start_rage({})
+        choices = start_rage({}, level=1)
         self.assertTrue(choices["feature_state"]["rage_active"])
         choices = end_rage(choices)
         self.assertFalse(choices["feature_state"]["rage_active"])

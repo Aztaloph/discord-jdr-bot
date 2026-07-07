@@ -1,0 +1,8 @@
+schema_version: "1.0"
+type: trait
+id: fighting_style_two_weapon_fighting
+name:
+  fr: Style de combat — Deux armes
+  en: Two-Weapon Fighting
+mechanics:
+  description_fr: "Ajoutez le mod FOR/DEX aux dégâts de l'attaque secondaire (SRD 2014)."

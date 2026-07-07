@@ -1,0 +1,8 @@
+schema_version: "1.0"
+type: trait
+id: sculpt_spells
+name:
+  fr: Façonnage de sorts
+  en: Sculpt Spells
+mechanics:
+  description_fr: "Lors d'un sort d'évocation de zone : 1 + mod INT créatures réussissent automatiquement leur jet et ne prennent aucun dégât (SRD 2014)."

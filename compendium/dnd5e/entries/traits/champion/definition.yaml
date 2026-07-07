@@ -1,0 +1,12 @@
+schema_version: "1.0"
+type: trait
+id: champion
+name:
+  fr: Champion
+  en: Champion
+mechanics:
+  parent_subclass: martial_archetype
+  effects:
+    - type: critical_range
+      min: 19
+      max: 20

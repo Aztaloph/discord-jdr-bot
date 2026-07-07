@@ -64,3 +64,28 @@ def use_action_surge(choices: dict[str, Any]) -> dict[str, Any]:
     state = feature_state(choices)
     state["action_surge_used"] = True
     return {**choices, "feature_state": state}
+
+
+def improved_critical_range(
+    choices: dict[str, Any],
+    *,
+    level: int,
+) -> tuple[int, int]:
+    """Champion niv.3+ : critique sur 19-20 (SRD 2014)."""
+    if level >= 3 and choices.get("specialization") == "champion":
+        return (19, 20)
+    return (20, 20)
+
+
+def defense_ac_bonus(choices: dict[str, Any], *, wearing_armor: bool = True) -> int:
+    """Style Défense : +1 CA en armure."""
+    if choices.get("fighting_style") == "defense" and wearing_armor:
+        return 1
+    return 0
+
+
+def dueling_damage_bonus(choices: dict[str, Any], *, one_handed_melee: bool) -> int:
+    """Style Duelliste : +2 dégâts arme de mêlée à une main."""
+    if choices.get("fighting_style") == "dueling" and one_handed_melee:
+        return 2
+    return 0

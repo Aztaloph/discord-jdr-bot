@@ -11,12 +11,16 @@ from jdr_engine.domain.character.ability_scores import ability_modifier
 from jdr_engine.domain.character.character import Character
 from jdr_engine.rules.calculator import build_character_sheet
 from jdr_engine.rules.engine import RuleEngine
+from jdr_engine.rules.spellcasting.access import has_spellcasting_access
 from jdr_engine.rules.spellcasting.slots import get_max_spell_slots, get_remaining_slots
 from jdr_engine.rules.spellcasting.spells_catalog import SUPPORTED_SPELLCASTING_CLASSES
 from jdr_engine.rules.spellcasting.state import (
     consume_spell_slot,
+    get_spellbook,
     get_slots_used,
     get_spellcasting_state,
+    get_spells_prepared_list,
+    spell_in_spellbook,
     spell_is_known,
 )
 from jdr_engine.rules.spellcasting.stats import spell_attack_bonus, spell_save_dc
@@ -79,7 +83,8 @@ def _spellcasting_ability(character: Character, engine: RuleEngine) -> str:
     if class_entry is None:
         raise SpellCastError(f"Classe inconnue : {character.class_id!r}")
     spellcasting = class_entry.definition.mechanics.get("spellcasting") or {}
-    ability = spellcasting.get("ability")
+    pact = class_entry.definition.mechanics.get("pact_magic") or {}
+    ability = spellcasting.get("ability") or pact.get("ability")
     if not ability:
         raise SpellCastError("Cette classe n'est pas lanceur de sorts.")
     return str(ability)
@@ -99,6 +104,10 @@ def get_spellcasting_stats(
     if character.class_id not in SUPPORTED_SPELLCASTING_CLASSES:
         raise SpellCastError(
             f"Lanceur de sorts non pris en charge : {character.class_id!r}."
+        )
+    if not has_spellcasting_access(character, engine):
+        raise SpellCastError(
+            "Cette classe n'a pas encore accès à la magie (niveau requis)."
         )
     if character.level < 1 or character.level > 3:
         raise SpellCastError("Niveaux 1 à 3 uniquement pour cette phase.")
@@ -208,6 +217,10 @@ def cast_spell(
         raise SpellCastError(
             f"Lanceur de sorts non pris en charge : {character.class_id!r}."
         )
+    if not has_spellcasting_access(character, engine):
+        raise SpellCastError(
+            "Cette classe n'a pas encore accès à la magie (niveau requis)."
+        )
     if character.level < 1 or character.level > 3:
         raise SpellCastError("Niveaux 1 à 3 uniquement pour cette phase.")
 
@@ -219,7 +232,17 @@ def cast_spell(
     spell_level = _get_spell_level(spell_def)
     spell_name = entry.get_name(locale, engine.registry.manifest.default_locale)
 
-    # TODO (lot préparation) : vérifier spell_id in get_spells_prepared() en plus de known.
+    # Magicien : sort au grimoire mais non préparé.
+    if (
+        character.class_id == "wizard"
+        and spell_level > 0
+        and spell_in_spellbook(character, spell_id)
+        and spell_id not in get_spells_prepared_list(character)
+    ):
+        raise SpellCastError(
+            f"**{spell_name}** est dans votre grimoire mais n'est pas préparé aujourd'hui."
+        )
+
     if not spell_is_known(character, spell_id):
         if spell_level == 0:
             raise SpellCastError(
@@ -307,6 +330,36 @@ def cast_spell(
         result.damage_total = total_damage
         result.damage_notation = damage_notation + (f"+mod {ability_id}" if add_mod else "")
         result.damage_rolls = all_damage_rolls
+        if updated.class_id == "sorcerer" and total_damage > 0 and damage_type:
+            from jdr_engine.rules.class_features.sorcerer import elemental_affinity_bonus
+
+            cha_score = updated.ability_scores.with_defaults(
+                ["str", "dex", "con", "int", "wis", "cha"]
+            ).scores.get("cha", 10)
+            bonus = elemental_affinity_bonus(
+                updated.choices or {},
+                cha_score=cha_score,
+                spell_damage_type=damage_type,
+            )
+            if bonus:
+                result.damage_total = total_damage + bonus
+        if (
+            spell_id == "eldritch_blast"
+            and updated.class_id == "warlock"
+            and total_damage > 0
+        ):
+            from jdr_engine.rules.class_features.warlock import (
+                agonizing_blast_bonus,
+                has_agonizing_blast,
+            )
+
+            if has_agonizing_blast(updated.choices or {}):
+                cha_score = updated.ability_scores.with_defaults(
+                    ["str", "dex", "con", "int", "wis", "cha"]
+                ).scores.get("cha", 10)
+                ab_bonus = agonizing_blast_bonus(cha_score)
+                if ab_bonus:
+                    result.damage_total = (result.damage_total or 0) + ab_bonus
         if effect.get("invocation"):
             result.utility_text = _localized(spell_def, "invocation_effect", locale)
 
@@ -321,6 +374,21 @@ def cast_spell(
         result.damage_notation = damage_notation
         result.damage_rolls = dmg_rolls
         result.half_on_save = half_on_save
+        if effect.get("reaction"):
+            result.utility_text = "Réaction — en réponse à des dégâts reçus (SRD 2014)"
+        if updated.class_id == "sorcerer" and dmg_total > 0 and damage_type:
+            from jdr_engine.rules.class_features.sorcerer import elemental_affinity_bonus
+
+            cha_score = updated.ability_scores.with_defaults(
+                ["str", "dex", "con", "int", "wis", "cha"]
+            ).scores.get("cha", 10)
+            bonus = elemental_affinity_bonus(
+                updated.choices or {},
+                cha_score=cha_score,
+                spell_damage_type=damage_type,
+            )
+            if bonus:
+                result.damage_total = dmg_total + bonus
 
     elif effect_type == "healing":
         heal_notation = str(effect.get("healing", "1d8"))
@@ -328,6 +396,15 @@ def cast_spell(
         heal_total, heal_rolls = _roll_dice(heal_notation, rng=rng)
         if add_mod:
             heal_total += ability_mod
+        if (
+            character.class_id == "cleric"
+            and spell_level >= 1
+        ):
+            from jdr_engine.domain.character.choices_schema import get_specialization_id
+            from jdr_engine.rules.class_features.cleric import disciple_of_life_bonus
+
+            if get_specialization_id(character.choices) == "life":
+                heal_total += disciple_of_life_bonus(spell_level)
         updated, hp_before, hp_after, hp_max, healing_applied, capped = _apply_healing(
             updated, engine, heal_total
         )
@@ -361,6 +438,22 @@ def cast_spell(
                 slot_consumed = level
                 break
 
+        upcast_die = effect.get("upcast_damage")
+        if (
+            slot_consumed
+            and slot_consumed > spell_level
+            and upcast_die
+            and result.damage_total is not None
+        ):
+            extra_levels = slot_consumed - spell_level
+            for _ in range(extra_levels):
+                extra, extra_rolls = _roll_dice(str(upcast_die), rng=rng)
+                result.damage_total += extra
+                result.damage_rolls.extend(extra_rolls)
+            result.damage_notation = (
+                f"{result.damage_notation} + {extra_levels}×{upcast_die} (emplacement niv. {slot_consumed})"
+            )
+
     remaining = get_remaining_slots(
         updated.class_id, updated.level, get_slots_used(updated)
     )
@@ -368,6 +461,28 @@ def cast_spell(
     result.slots_remaining = remaining
     if persist_slots:
         result.updated_character = updated
+
+    if character.class_id == "sorcerer" and spell_level >= 0:
+        from jdr_engine.rules.class_features.sorcerer import (
+            METAMAGIC_LABELS_FR,
+            applicable_metamagic_for_spell,
+        )
+
+        meta = applicable_metamagic_for_spell(
+            character.choices or {},
+            spell_level=spell_level,
+            targets_single_creature=effect_type == "spell_attack",
+        )
+        if meta:
+            lines = [
+                f"**{METAMAGIC_LABELS_FR.get(m, m)}** ({cost} pt{'s' if cost > 1 else ''})"
+                for m, cost in meta
+            ]
+            result.display_lines = build_spell_display_lines(result, locale=locale)
+            result.display_lines.append(
+                "Métamagie disponible : " + ", ".join(lines)
+            )
+            return result
 
     result.display_lines = build_spell_display_lines(result, locale=locale)
     return result

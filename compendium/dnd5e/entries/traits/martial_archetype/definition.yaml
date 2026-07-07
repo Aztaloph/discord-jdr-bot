@@ -7,4 +7,7 @@ name:
 mechanics:
   choice:
     level: 3
-    srd_note: "Sous-classe non implémentée Phase 4.7"
+    storage_key: specialization
+    options:
+      - id: champion
+        label_fr: Champion

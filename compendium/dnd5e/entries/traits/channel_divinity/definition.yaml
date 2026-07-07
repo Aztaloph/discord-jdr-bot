@@ -1,0 +1,13 @@
+schema_version: "1.0"
+type: trait
+id: channel_divinity
+name:
+  fr: Canalisation d'énergie divine
+  en: Channel Divinity
+mechanics:
+  description_fr: "1 utilisation (recharge repos court ou long au niv. 3, SRD 2014)."
+  resource:
+    type: uses
+    max_by_level:
+      "3": 1
+    recharge: short_or_long_rest

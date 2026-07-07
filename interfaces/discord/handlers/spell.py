@@ -16,7 +16,7 @@ from jdr_engine.rules.spellcasting.spells_catalog import (
     all_spellcasting_spell_ids,
     get_spell_ids_for_class,
 )
-from jdr_engine.rules.spellcasting.state import list_castable_spell_ids
+from jdr_engine.rules.spellcasting.state import list_spell_autocomplete_ids
 
 from interfaces.discord.container import DiscordJdrContext
 
@@ -43,8 +43,8 @@ class SpellDisplay:
 
 
 def list_available_spells(character: Character) -> list[str]:
-    """Ids de sorts lançables (tours de magie + sorts connus niv. 1+)."""
-    return list_castable_spell_ids(character)
+    """Ids de sorts pour l'autocomplete /sort (grimoire inclus pour le mage)."""
+    return list_spell_autocomplete_ids(character)
 
 
 def _spell_matches_query(spell_id: str, label: str, query: str) -> bool:

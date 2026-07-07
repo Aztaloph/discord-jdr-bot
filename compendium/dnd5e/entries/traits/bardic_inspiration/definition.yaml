@@ -1,0 +1,12 @@
+schema_version: "1.0"
+type: trait
+id: bardic_inspiration
+name:
+  fr: Inspiration bardique
+  en: Bardic Inspiration
+mechanics:
+  description_fr: "Action bonus : don d1d6 à un allié (mod CHA utilisations, recharge repos long)."
+  resource:
+    type: uses
+    max_formula: "max(1, cha_mod)"
+    recharge: long_rest

@@ -1,0 +1,10 @@
+schema_version: "1.0"
+type: trait
+id: fast_hands
+name:
+  fr: Mains lestes
+  en: Fast Hands
+mechanics:
+  description_fr: >-
+    Action bonus : Utiliser un objet, ou test d'Escamotage pour crocheter /
+    dérober (SRD 2014).

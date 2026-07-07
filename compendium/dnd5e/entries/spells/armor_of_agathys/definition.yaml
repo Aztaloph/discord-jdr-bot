@@ -1,0 +1,27 @@
+schema_version: "1.0"
+type: spell
+id: armor_of_agathys
+name:
+  fr: Armure d'Agathys
+  en: Armor of Agathys
+mechanics:
+  level: 1
+  school: abjuration
+  casting_time:
+    fr: "1 action"
+    en: "1 action"
+  range:
+    fr: Personnel
+    en: Self
+  components:
+    verbal: true
+    somatic: true
+    material: false
+  duration:
+    fr: "1 heure"
+    en: "1 hour"
+  utility_effect:
+    fr: "5 PV temporaires ; 5 dégâts de froid au contact en mêlée (SRD 2014)."
+    en: "5 temp HP; 5 cold damage on melee hit (SRD 2014)."
+  effect:
+    type: utility

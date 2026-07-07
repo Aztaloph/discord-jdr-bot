@@ -1,0 +1,28 @@
+schema_version: "1.0"
+type: spell
+id: hex
+name:
+  fr: Maléfice
+  en: Hex
+mechanics:
+  level: 1
+  school: enchantment
+  concentration: true
+  casting_time:
+    fr: "1 action"
+    en: "1 action"
+  range:
+    fr: "27 mètres"
+    en: "90 feet"
+  components:
+    verbal: true
+    somatic: true
+    material: false
+  duration:
+    fr: "Concentration, jusqu'à 1 heure"
+    en: "Concentration, up to 1 hour"
+  utility_effect:
+    fr: "Malus aux tests d'une caractéristique ; +1d6 dégâts occultes sur la cible (SRD 2014)."
+    en: "Disadvantage on ability checks; +1d6 necrotic on target (SRD 2014)."
+  effect:
+    type: utility

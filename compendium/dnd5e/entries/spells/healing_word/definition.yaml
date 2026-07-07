@@ -1,0 +1,26 @@
+schema_version: "1.0"
+type: spell
+id: healing_word
+name:
+  fr: Mot de guérison
+  en: Healing Word
+mechanics:
+  level: 1
+  school: evocation
+  casting_time:
+    fr: "1 action bonus"
+    en: "1 bonus action"
+  range:
+    fr: "18 mètres"
+    en: "60 feet"
+  components:
+    verbal: true
+    somatic: false
+    material: false
+  duration:
+    fr: Instantané
+    en: Instantaneous
+  effect:
+    type: healing
+    damage: 1d4
+    add_ability_mod: true

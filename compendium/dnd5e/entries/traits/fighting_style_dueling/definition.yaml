@@ -1,0 +1,11 @@
+schema_version: "1.0"
+type: trait
+id: fighting_style_dueling
+name:
+  fr: Style de combat — Duelliste
+  en: Dueling
+mechanics:
+  effects:
+    - type: damage_bonus
+      value: 2
+      when: one_handed_melee

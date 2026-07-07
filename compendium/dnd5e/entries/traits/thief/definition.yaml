@@ -1,0 +1,11 @@
+schema_version: "1.0"
+type: trait
+id: thief
+name:
+  fr: Voleur
+  en: Thief
+mechanics:
+  parent_subclass: roguish_archetype
+  grants_features:
+    - fast_hands
+    - second_story_work

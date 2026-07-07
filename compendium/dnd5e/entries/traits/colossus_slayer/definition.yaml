@@ -1,0 +1,9 @@
+schema_version: "1.0"
+type: trait
+id: colossus_slayer
+name:
+  fr: Tueur de colosses
+  en: Colossus Slayer
+mechanics:
+  parent_subclass: hunter
+  description_fr: "1/action : +1d8 dégâts si la cible n'a pas tous ses PV (SRD 2014)."

@@ -34,7 +34,17 @@ mechanics:
   spellcasting:
     level: 2
     ability: wis
+  fighting_style_options:
+  - archery
+  - defense
+  - dueling
+  - two_weapon_fighting
   features_by_level:
     '1':
     - favored_enemy
     - natural_explorer
+    '2':
+    - fighting_style
+    '3':
+    - ranger_conclave
+    - primeval_awareness

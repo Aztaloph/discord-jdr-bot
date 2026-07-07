@@ -1,0 +1,31 @@
+schema_version: "1.0"
+type: spell
+id: vicious_mockery
+name:
+  fr: Moquerie cruelle
+  en: Vicious Mockery
+mechanics:
+  level: 0
+  school: enchantment
+  casting_time:
+    fr: "1 action"
+    en: "1 action"
+  range:
+    fr: "18 mètres"
+    en: "60 feet"
+  components:
+    verbal: true
+    somatic: false
+    material: false
+  duration:
+    fr: Instantané
+    en: Instantaneous
+  effect:
+    type: saving_throw
+    ability: wis
+    damage: 1d4
+    damage_type: psychic
+    half_on_save: false
+  utility_effect:
+    fr: "Échec : désavantage à la prochaine attaque de la cible avant la fin de son prochain tour (SRD 2014)."
+    en: "On fail: disadvantage on target's next attack before end of its next turn (SRD 2014)."

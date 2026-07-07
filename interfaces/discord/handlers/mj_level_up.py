@@ -5,7 +5,7 @@ from __future__ import annotations
 import discord
 
 from jdr_engine.application.character_service import CharacterNotFoundError
-from jdr_engine.rules.character_progression import LevelUpError
+from jdr_engine.rules.character_progression import LevelUpError, LevelUpPendingChoice
 
 from interfaces.discord.container import DiscordJdrContext
 from interfaces.discord.formatters.character_embed import (
@@ -13,6 +13,7 @@ from interfaces.discord.formatters.character_embed import (
     COULEUR_SUCCES,
 )
 from interfaces.discord.permissions.mj import require_mj_role
+from interfaces.discord.views.level_up_choice import LevelUpChoiceView, _pending_embed
 
 FOOTER = "JDR Bot — D&D 5e SRD 2014"
 
@@ -75,6 +76,18 @@ async def mj_monter_niveau(
 
     try:
         result = ctx.character_service.level_up_on_guild(character_ref, guild_id)
+    except LevelUpPendingChoice as exc:
+        await interaction.edit_original_response(
+            embed=_pending_embed(exc.pending),
+            view=LevelUpChoiceView(
+                exc.pending,
+                ctx.rule_engine,
+                ctx.character_service,
+                guild_id,
+                character_ref,
+            ),
+        )
+        return
     except LevelUpError as exc:
         await interaction.edit_original_response(
             embed=discord.Embed(

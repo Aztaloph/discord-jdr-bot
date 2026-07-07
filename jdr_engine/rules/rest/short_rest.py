@@ -103,6 +103,72 @@ def apply_short_rest(
     remaining = available - dice_spent
 
     character.choices = reset_short_rest_features(character.choices or {})
+
+    if character.class_id == "monk":
+        from jdr_engine.rules.class_features.monk import reset_ki_points
+
+        character.choices = reset_ki_points(
+            character.choices or {}, level=character.level
+        )
+
+    if character.class_id == "paladin":
+        from jdr_engine.rules.class_features.paladin import (
+            reset_channel_divinity_on_short_rest,
+        )
+
+        character.choices = reset_channel_divinity_on_short_rest(
+            character.choices or {}, level=character.level
+        )
+
+    if character.class_id == "cleric":
+        from jdr_engine.rules.class_features.cleric import (
+            reset_channel_divinity_on_short_rest,
+        )
+
+        character.choices = reset_channel_divinity_on_short_rest(
+            character.choices or {}, level=character.level
+        )
+
+    if character.class_id == "druid":
+        from jdr_engine.rules.class_features.druid import reset_wild_shape_on_short_or_long_rest
+
+        character.choices = reset_wild_shape_on_short_or_long_rest(
+            character.choices or {}, level=character.level
+        )
+
+    if character.class_id == "warlock":
+        from jdr_engine.rules.spellcasting.state import reset_spell_slots
+
+        character = reset_spell_slots(character)
+
+    if character.class_id == "wizard":
+        from jdr_engine.rules.class_features.wizard import (
+            apply_arcane_recovery,
+            arcane_recovery_available,
+        )
+        from jdr_engine.rules.spellcasting.state import get_slots_used
+
+        if arcane_recovery_available(character.choices or {}):
+            try:
+                used = get_slots_used(character)
+                if any(used.values()):
+                    choices, used_after, recovered = apply_arcane_recovery(
+                        character.choices or {},
+                        level=character.level,
+                        slots_used=used,
+                    )
+                    if recovered > 0:
+                        from jdr_engine.rules.spellcasting.state import (
+                            _update_spellcasting,
+                        )
+
+                        character.choices = choices
+                        character = _update_spellcasting(
+                            character, slots_used=used_after
+                        )
+            except ValueError:
+                pass
+
     character.hp_current = hp_current
 
     state = get_rest_state(character)

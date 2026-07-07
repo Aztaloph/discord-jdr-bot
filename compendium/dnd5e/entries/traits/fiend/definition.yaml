@@ -1,0 +1,17 @@
+schema_version: "1.0"
+type: trait
+id: fiend
+name:
+  fr: Le Fiélon
+  en: The Fiend
+mechanics:
+  parent_subclass: otherworldly_patron
+  description_fr: "Sorts étendus du patron (affichage ; ajout auto reporté)."
+  grants_features:
+    - dark_ones_blessing
+  expanded_spells:
+    "1":
+      - burning_hands
+      - hellish_rebuke
+    "3":
+      - darkness

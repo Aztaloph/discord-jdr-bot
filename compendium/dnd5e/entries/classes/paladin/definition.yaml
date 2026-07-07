@@ -1,0 +1,50 @@
+schema_version: "1.0"
+type: class
+id: paladin
+name:
+  fr: Paladin
+  en: Paladin
+mechanics:
+  hit_die: d10
+  primary_abilities:
+    - str
+    - cha
+  saving_throw_proficiencies:
+    - wis
+    - cha
+  armor_proficiencies:
+    - light
+    - medium
+    - heavy
+    - shields
+  weapon_proficiencies:
+    - simple
+    - martial
+  skill_choices:
+    count: 2
+    from:
+      - athletics
+      - insight
+      - intimidation
+      - medicine
+      - persuasion
+      - religion
+  spellcasting:
+    level: 2
+    ability: cha
+  fighting_style_options:
+    - defense
+    - dueling
+    - great_weapon_fighting
+    - protection
+  features_by_level:
+    "1":
+      - divine_sense
+      - lay_on_hands
+    "2":
+      - fighting_style
+      - divine_smite
+    "3":
+      - divine_health
+      - sacred_oath
+      - channel_divinity

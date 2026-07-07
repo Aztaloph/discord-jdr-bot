@@ -1,0 +1,10 @@
+schema_version: "1.0"
+type: trait
+id: second_story_work
+name:
+  fr: Travail en hauteur
+  en: Second-Story Work
+mechanics:
+  description_fr: >-
+    Escalade sans coût supplémentaire ; saut en course + mod DEX en distance
+    (SRD 2014).

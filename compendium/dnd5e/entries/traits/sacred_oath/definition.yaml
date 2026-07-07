@@ -1,0 +1,13 @@
+schema_version: "1.0"
+type: trait
+id: sacred_oath
+name:
+  fr: Serment sacré
+  en: Sacred Oath
+mechanics:
+  choice:
+    level: 3
+    storage_key: specialization
+    options:
+      - id: devotion
+        label_fr: Serment de Dévotion

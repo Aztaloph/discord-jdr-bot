@@ -1,0 +1,8 @@
+schema_version: "1.0"
+type: trait
+id: song_of_rest
+name:
+  fr: Chant de repos
+  en: Song of Rest
+mechanics:
+  description_fr: "Repos court : +1d6 PV supplémentaires par dé de vie dépensé (SRD 2014)."

@@ -1,0 +1,13 @@
+schema_version: "1.0"
+type: trait
+id: bard_college
+name:
+  fr: Collège bardique
+  en: Bard College
+mechanics:
+  choice:
+    level: 3
+    storage_key: specialization
+    options:
+      - id: lore
+        label_fr: Collège du Savoir

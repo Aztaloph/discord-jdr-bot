@@ -10,7 +10,7 @@ from jdr_engine.application.character_service import CharacterService
 from jdr_engine.persistence.database import init_database
 from jdr_engine.persistence.sqlite_character_repository import SqliteCharacterRepository
 from jdr_engine.rules import RuleEngine
-from jdr_engine.rules.spellcasting.state import list_castable_spell_ids
+from jdr_engine.rules.spellcasting.state import list_castable_spell_ids, list_spell_autocomplete_ids
 
 from interfaces.discord.container import DiscordJdrContext
 from interfaces.discord.handlers.spell import (
@@ -32,11 +32,11 @@ class TestSpellAutocomplete(unittest.TestCase):
 
     def test_all_ten_spells_when_empty_query(self):
         choices = build_lot_b_spell_autocomplete_choices(self.engine, "")
-        self.assertEqual(len(choices), 10)
+        self.assertEqual(len(choices), 25)
 
     def test_all_five_wizard_spells_when_empty_query(self):
         choices = build_spell_autocomplete_choices(self.engine, "", class_id="wizard")
-        self.assertEqual(len(choices), 5)
+        self.assertEqual(len(choices), 14)
 
     def test_partial_fire_matches_fire_bolt(self):
         choices = build_lot_b_spell_autocomplete_choices(self.engine, "fire")
@@ -101,10 +101,20 @@ class TestSortAutocompleteIntegration(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_wizard_lot1_shows_only_owned_spells(self):
-        expected = list_castable_spell_ids(self.wizard)
+        expected = list_spell_autocomplete_ids(self.wizard)
         self.assertEqual(
             expected,
-            ["fire_bolt", "chromatic_orb", "burning_hands", "detect_magic"],
+            [
+                "fire_bolt",
+                "thaumaturgy",
+                "guidance",
+                "chromatic_orb",
+                "burning_hands",
+                "detect_magic",
+                "magic_missile",
+                "shield",
+                "hellish_rebuke",
+            ],
         )
         choices = build_sort_autocomplete_choices(
             self.ctx,

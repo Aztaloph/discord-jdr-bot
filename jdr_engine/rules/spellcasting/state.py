@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from jdr_engine.domain.character.character import Character
+from jdr_engine.domain.character.choices_schema import get_specialization_id
 from jdr_engine.rules.spellcasting.slots import get_max_spell_slots, get_remaining_slots
 
 
@@ -32,52 +33,97 @@ def get_cantrips_known(character: Character) -> list[str]:
     return [str(s) for s in raw] if isinstance(raw, list) else []
 
 
+def get_domain_spells(character: Character) -> list[str]:
+    state = get_spellcasting_state(character)
+    raw = state.get("domain_spells") or []
+    return [str(s) for s in raw] if isinstance(raw, list) else []
+
+
+def get_spellbook(character: Character) -> list[str]:
+    """Grimoire du magicien — sorts appris (niv. 1+)."""
+    state = get_spellcasting_state(character)
+    raw = state.get("spellbook") or state.get("spells_known") or []
+    return [str(s) for s in raw] if isinstance(raw, list) else []
+
+
+def get_spells_prepared_list(character: Character) -> list[str]:
+    """Sorts préparés explicites (clerc) — hors domaine et cantrips."""
+    state = get_spellcasting_state(character)
+    raw = state.get("spells_prepared") or []
+    return [str(s) for s in raw] if isinstance(raw, list) else []
+
+
 def get_spells_known(character: Character) -> list[str]:
     """
-    Sorts niv. 1+ **connus** par le personnage (lançables si emplacement dispo).
+    Sorts niv. 1+ connus ou préparés (lançables si emplacement dispo).
 
-    TODO (lot préparation) : distinguer ``spells_known`` (grimoire) et
-    ``spells_prepared`` (sous-ensemble préparé). Pour l'instant, tout sort
-    connu est lançable ; on lit ``spells_known`` ou, à défaut, ``spells_prepared``.
+    Clerc : préparés + domaine. Ensorceleur/Barde : spells_known.
+    Magicien : sorts préparés uniquement (grimoire séparé).
     """
     state = get_spellcasting_state(character)
+    if character.class_id == "cleric":
+        prepared = get_spells_prepared_list(character)
+        domain = get_domain_spells(character)
+        return list(dict.fromkeys(prepared + domain))
+    if character.class_id == "wizard":
+        return get_spells_prepared_list(character)
     raw = state.get("spells_known") or state.get("spells_prepared") or []
     return [str(s) for s in raw] if isinstance(raw, list) else []
 
 
 def get_spells_prepared(character: Character) -> list[str]:
-    """
-    Rétrocompat — voir ``get_spells_known``.
-
-    TODO (lot préparation) : ne retourner que le sous-ensemble préparé.
-    """
-    # TODO (lot préparation) : séparer spells_known / spells_prepared en persistance.
+    """Alias — voir ``get_spells_known``."""
     return get_spells_known(character)
 
 
 def spell_is_known(character: Character, spell_id: str) -> bool:
-    """True si le personnage connaît ce sort (tour de magie ou sort niv. 1+)."""
+    """True si le personnage peut lancer ce sort (tour de magie ou préparé/connu)."""
     if spell_id in get_cantrips_known(character):
+        return True
+    if character.class_id == "cleric":
+        if spell_id in get_domain_spells(character):
+            return True
+        return spell_id in get_spells_prepared_list(character)
+    if character.class_id == "wizard":
+        return spell_id in get_spells_prepared_list(character)
+    if spell_id in get_domain_spells(character):
         return True
     return spell_id in get_spells_known(character)
 
 
+def spell_in_spellbook(character: Character, spell_id: str) -> bool:
+    if character.class_id != "wizard":
+        return spell_is_known(character, spell_id)
+    return spell_id in get_spellbook(character)
+
+
 def spell_is_available(character: Character, spell_id: str) -> bool:
-    """Alias de ``spell_is_known`` — préparation non implémentée."""
     return spell_is_known(character, spell_id)
 
 
 def list_castable_spell_ids(character: Character) -> list[str]:
-    """Tours de magie + sorts connus (liste pour /sort et autocomplete)."""
-    return get_cantrips_known(character) + get_spells_known(character)
+    """Tours de magie + sorts lançables (liste pour /sort et autocomplete)."""
+    return list(
+        dict.fromkeys(
+            get_cantrips_known(character) + get_spells_known(character)
+        )
+    )
 
 
-def _spell_level_from_lists(character: Character, spell_id: str) -> int | None:
-    if spell_id in get_cantrips_known(character):
-        return 0
-    if spell_id in get_spells_known(character):
-        return None  # resolved from compendium at cast time
-    return None
+def list_spell_autocomplete_ids(character: Character) -> list[str]:
+    """
+    Sorts proposables dans l'autocomplete /sort.
+
+    Magicien : grimoire + cantrips (visibilité complète ; le lancement exige
+    la préparation via ``cast_spell``).
+    """
+    if character.class_id == "wizard":
+        return list(
+            dict.fromkeys(
+                get_cantrips_known(character) + get_spellbook(character)
+            )
+        )
+    return list_castable_spell_ids(character)
 
 
 def consume_spell_slot(character: Character, spell_level: int) -> Character:
@@ -145,4 +191,56 @@ def format_slots_display(character: Character) -> str:
     parts = []
     for level in sorted(max_slots.keys()):
         parts.append(f"niv.{level}: {remaining[level]}/{max_slots[level]}")
-    return ", ".join(parts)
+    slots_text = ", ".join(parts)
+    if character.class_id == "warlock":
+        return f"{slots_text} (recharge repos court)"
+    return slots_text
+
+
+def format_spellcasting_detail(character: Character) -> str:
+    """Résumé cantrips + sorts pour fiche personnage."""
+    from jdr_engine.domain.character.ability_scores import ability_modifier
+    from jdr_engine.rules.spellcasting.preparation import (
+        cleric_prepared_capacity,
+        druid_prepared_capacity,
+    )
+
+    cantrips = get_cantrips_known(character)
+    known = get_spells_known(character)
+    slots = format_slots_display(character)
+    lines: list[str] = []
+    if character.class_id == "warlock":
+        lines.append(f"Magie de pacte — Emplacements : {slots}")
+    else:
+        lines.append(f"Emplacements : {slots}")
+    if cantrips:
+        lines.append(f"Tours de magie : {', '.join(cantrips)}")
+    if character.class_id == "cleric":
+        domain = get_domain_spells(character)
+        prepared = get_spells_prepared_list(character)
+        if prepared:
+            lines.append(f"Préparés : {', '.join(prepared)}")
+        if domain:
+            lines.append(f"Domaine (gratuits) : {', '.join(domain)}")
+    elif character.class_id == "wizard":
+        spellbook = get_spellbook(character)
+        prepared = get_spells_prepared_list(character)
+        if spellbook:
+            lines.append(f"Grimoire : {', '.join(spellbook)}")
+        if prepared:
+            lines.append(f"Préparés : {', '.join(prepared)}")
+    elif character.class_id == "druid":
+        wis_score = character.ability_scores.with_defaults(
+            ["str", "dex", "con", "int", "wis", "cha"]
+        ).scores.get("wis", 10)
+        capacity = druid_prepared_capacity(ability_modifier(wis_score), character.level)
+        lines.append(
+            f"Préparation (affichage) : mod SAG + niveau = {capacity} sorts"
+        )
+        if known:
+            lines.append(f"Sorts accessibles : {', '.join(known)}")
+    elif character.class_id == "warlock" and known:
+        lines.append(f"Sorts accessibles : {', '.join(known)}")
+    elif known:
+        lines.append(f"Sorts connus : {', '.join(known)}")
+    return "\n".join(lines)

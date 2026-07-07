@@ -1,0 +1,10 @@
+schema_version: "1.0"
+type: trait
+id: open_hand_technique
+name:
+  fr: Technique de la Main ouverte
+  en: Open Hand Technique
+mechanics:
+  description_fr: >-
+    Lors d'une Rafale de coups (1 ki) : renverser, repousser de 15 ft, ou priver
+    de réaction (SRD 2014).

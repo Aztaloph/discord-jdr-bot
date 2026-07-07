@@ -1,0 +1,28 @@
+schema_version: "1.0"
+type: spell
+id: faerie_fire
+name:
+  fr: Lueurs féeriques
+  en: Faerie Fire
+mechanics:
+  level: 1
+  school: evocation
+  concentration: true
+  casting_time:
+    fr: "1 action"
+    en: "1 action"
+  range:
+    fr: "18 mètres"
+    en: "60 feet"
+  components:
+    verbal: true
+    somatic: false
+    material: false
+  duration:
+    fr: "Concentration, jusqu'à 1 minute"
+    en: "Concentration, up to 1 minute"
+  utility_effect:
+    fr: "Jet de sauvegarde DEX ; échec : cible affectée par lumière faérique (SRD 2014)."
+    en: "DEX save ; fail : target outlined by faerie fire (SRD 2014)."
+  effect:
+    type: utility

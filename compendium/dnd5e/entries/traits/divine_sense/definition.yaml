@@ -1,0 +1,12 @@
+schema_version: "1.0"
+type: trait
+id: divine_sense
+name:
+  fr: Sens divin
+  en: Divine Sense
+mechanics:
+  description_fr: "Action : détectez célestes, fiélons ou morts-vivants dans 18 m (SRD 2014)."
+  resource:
+    type: uses
+    max_formula: "1 + cha_mod"
+    recharge: long_rest

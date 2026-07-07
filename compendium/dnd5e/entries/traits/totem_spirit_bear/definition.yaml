@@ -1,0 +1,13 @@
+schema_version: "1.0"
+type: trait
+id: totem_spirit_bear
+name:
+  fr: Esprit de l'ours
+  en: Bear
+mechanics:
+  parent_totem: bear
+  effects:
+    - type: damage_resistance
+      when: rage_active
+      resist_all_except:
+        - psychic

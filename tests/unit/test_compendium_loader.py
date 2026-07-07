@@ -23,8 +23,8 @@ class TestCompendiumLoader(unittest.TestCase):
         self.assertIn("fr", self.manifest.locales)
 
     def test_entry_count(self):
-        # 9 races + 7 classes + 42 traits + 13 spells = 71
-        self.assertEqual(len(self.registry), 71)
+        # 9 races + 12 classes + 103 traits + 28 spells = 152
+        self.assertEqual(len(self.registry), 152)
 
     def test_races_loaded(self):
         races = self.registry.list_entries("race")
@@ -47,11 +47,27 @@ class TestCompendiumLoader(unittest.TestCase):
     def test_classes_loaded(self):
         classes = self.registry.list_entries("class")
         ids = {c.entry_id for c in classes}
-        self.assertEqual(ids, {"fighter", "wizard", "rogue", "cleric", "ranger", "barbarian", "monk"})
+        self.assertEqual(
+            ids,
+            {
+                "barbarian",
+                "bard",
+                "cleric",
+                "druid",
+                "fighter",
+                "monk",
+                "paladin",
+                "ranger",
+                "rogue",
+                "sorcerer",
+                "warlock",
+                "wizard",
+            },
+        )
 
     def test_traits_loaded(self):
         traits = self.registry.list_entries("trait")
-        self.assertEqual(len(traits), 42)
+        self.assertEqual(len(traits), 103)
 
     def test_elf_definition_path(self):
         elf = self.registry.get("race", "elf")

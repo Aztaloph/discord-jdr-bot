@@ -56,6 +56,12 @@ def collect_roll_effects(
         effects.extend(_effects_from_entry(feature, source_id=feature.entry_id))
 
     effects.extend(_choice_trait_effects(character, engine))
+
+    from jdr_engine.rules.class_features.resolve import collect_subclass_traits
+
+    for trait in collect_subclass_traits(character, engine):
+        effects.extend(_effects_from_entry(trait, source_id=trait.entry_id))
+
     return effects
 
 

@@ -1,0 +1,28 @@
+schema_version: "1.0"
+type: spell
+id: entangle
+name:
+  fr: Enchevêtrement
+  en: Entangle
+mechanics:
+  level: 1
+  school: conjuration
+  concentration: true
+  casting_time:
+    fr: "1 action"
+    en: "1 action"
+  range:
+    fr: "27 mètres"
+    en: "90 feet"
+  components:
+    verbal: true
+    somatic: true
+    material: false
+  duration:
+    fr: "Concentration, jusqu'à 1 minute"
+    en: "Concentration, up to 1 minute"
+  utility_effect:
+    fr: "Jet de sauvegarde FOR ; échec : entravé dans une zone de végétation (SRD 2014)."
+    en: "STR save ; fail : restrained in vegetation (SRD 2014)."
+  effect:
+    type: utility

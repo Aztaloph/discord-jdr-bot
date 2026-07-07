@@ -1,0 +1,9 @@
+schema_version: "1.0"
+type: trait
+id: cutting_words
+name:
+  fr: Mots cinglants
+  en: Cutting Words
+mechanics:
+  parent_subclass: lore
+  description_fr: "Réaction : dépensez Inspiration bardique pour réduire un jet ennemi (SRD 2014)."

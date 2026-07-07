@@ -1,0 +1,8 @@
+schema_version: "1.0"
+type: trait
+id: jack_of_all_trades
+name:
+  fr: Touche-à-tout
+  en: Jack of All Trades
+mechanics:
+  description_fr: "Ajoute la moitié de la maîtrise (arrondi inf.) aux jets où vous n'êtes pas maîtrisé."

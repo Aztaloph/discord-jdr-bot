@@ -1,0 +1,27 @@
+schema_version: "1.0"
+type: spell
+id: druidcraft
+name:
+  fr: Artisanat druidique
+  en: Druidcraft
+mechanics:
+  level: 0
+  school: transmutation
+  casting_time:
+    fr: "1 action"
+    en: "1 action"
+  range:
+    fr: "9 mètres"
+    en: "30 feet"
+  components:
+    verbal: true
+    somatic: true
+    material: false
+  duration:
+    fr: Instantané
+    en: Instantaneous
+  utility_effect:
+    fr: "Effet mineur de nature ou présage (SRD 2014)."
+    en: "Minor nature effect or omen (SRD 2014)."
+  effect:
+    type: utility

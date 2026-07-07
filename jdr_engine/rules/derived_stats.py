@@ -155,13 +155,26 @@ def calculate_armor_class(
     CA de base SRD (sans armure équipée).
 
     Utilise ``ac_formula`` des aptitudes de classe (Barbare, Moine) si applicable ;
-    sinon 10 + mod DEX.
+    sinon 10 + mod DEX. Style Défense (guerrier) : +1 en armure.
     """
+    ac = 10 + ability_modifiers.get("dex", 0)
+    used_unarmored = False
     for feature in engine.get_class_features(character.class_id, character.level):
         ac_formula = feature.definition.mechanics.get("ac_formula")
         if isinstance(ac_formula, dict):
-            return _eval_ac_formula(ac_formula, ability_modifiers)
-    return 10 + ability_modifiers.get("dex", 0)
+            ac = _eval_ac_formula(ac_formula, ability_modifiers)
+            used_unarmored = True
+            break
+    if not used_unarmored and character.class_id == "fighter":
+        from jdr_engine.rules.class_features.fighter import defense_ac_bonus
+
+        ac += defense_ac_bonus(character.choices or {}, wearing_armor=True)
+    if not used_unarmored and character.class_id == "sorcerer":
+        from jdr_engine.domain.character.choices_schema import get_specialization_id
+
+        if get_specialization_id(character.choices) == "draconic":
+            ac = 13 + ability_modifiers.get("dex", 0)
+    return ac
 
 
 def calculate_hp_max(
@@ -182,6 +195,22 @@ def calculate_hp_max(
     if persisted_hp_max is not None:
         return max(1, int(persisted_hp_max))
     return hp
+
+
+def apply_class_hp_bonus(
+    character: Character,
+    hp_max: int,
+) -> int:
+    """Bonus PV permanents de classe (ex. Lignée draconique)."""
+    if character.class_id == "sorcerer":
+        from jdr_engine.domain.character.choices_schema import get_specialization_id
+        from jdr_engine.rules.class_features.sorcerer import draconic_hp_bonus
+
+        bonus = draconic_hp_bonus(
+            character.level, get_specialization_id(character.choices)
+        )
+        return hp_max + bonus
+    return hp_max
 
 
 def calculate_hp_gain_per_level(hit_die_faces: int, con_modifier: int) -> int:
@@ -225,6 +254,11 @@ def collect_proficient_skills(
     for skill_id in collect_racial_skill_proficiencies(engine, character.race_id):
         if skill_id not in chosen:
             chosen.append(skill_id)
+    lore_bonus = (character.choices or {}).get("lore_bonus_skills") or []
+    if isinstance(lore_bonus, list):
+        for skill_id in lore_bonus:
+            if skill_id and skill_id not in chosen:
+                chosen.append(str(skill_id))
     return tuple(sorted(chosen))
 
 
@@ -254,6 +288,33 @@ def resolve_specialization_label(
             trait = engine.get_entity("trait", trait_id)
             if trait is not None:
                 name = trait.get_name(locale, engine.registry.manifest.default_locale)
+                if spec_id == "totem_warrior" and choices:
+                    spirit = choices.get("totem_spirit")
+                    if spirit:
+                        spirit_trait = engine.get_entity(
+                            "trait", f"totem_spirit_{spirit}"
+                        )
+                        if spirit_trait is not None:
+                            spirit_name = spirit_trait.get_name(
+                                locale, engine.registry.manifest.default_locale
+                            )
+                            return spec_id, f"{name} ({spirit_name})"
+                if spec_id == "draconic" and choices:
+                    from jdr_engine.rules.racial.draconic_ancestry import (
+                        get_draconic_ancestry,
+                    )
+
+                    dragon = choices.get("sorcerer_dragon_type")
+                    if dragon:
+                        ancestry = get_draconic_ancestry(str(dragon))
+                        if ancestry is not None:
+                            return spec_id, f"{name} ({ancestry.label_fr})"
+                if spec_id == "land" and choices:
+                    terrain = choices.get("druid_land_terrain")
+                    if terrain:
+                        from jdr_engine.rules.class_features.druid import land_terrain_label
+
+                        return spec_id, f"{name} ({land_terrain_label(str(terrain))})"
                 return spec_id, name
     return spec_id, specialization_label_fr(spec_id)
 

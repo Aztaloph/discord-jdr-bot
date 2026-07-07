@@ -1,0 +1,9 @@
+schema_version: "1.0"
+type: trait
+id: giant_killer
+name:
+  fr: Tueur de géants
+  en: Giant Killer
+mechanics:
+  parent_subclass: hunter
+  description_fr: "Réaction : attaque contre une créature de taille L+ qui vous attaque (SRD 2014)."

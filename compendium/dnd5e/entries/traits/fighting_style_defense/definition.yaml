@@ -1,0 +1,11 @@
+schema_version: "1.0"
+type: trait
+id: fighting_style_defense
+name:
+  fr: Style de combat — Défense
+  en: Defense
+mechanics:
+  effects:
+    - type: ac_bonus
+      value: 1
+      when: wearing_armor

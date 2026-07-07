@@ -98,6 +98,7 @@ class ClassMechanics(BaseModel):
     weapon_proficiencies: list[str] = Field(default_factory=list)
     skill_choices: SkillChoice | None = None
     spellcasting: dict[str, Any] | None = None
+    pact_magic: dict[str, Any] | None = None
     features_by_level: dict[str, list[str]] = Field(default_factory=dict)
 
 
