@@ -26,6 +26,7 @@ from jdr_engine.rules.spellcasting.state import (
     spell_in_spellbook,
     spell_is_known,
 )
+from jdr_engine.rules.spellcasting.state import _find_slot_to_consume
 from jdr_engine.rules.spellcasting.stats import spell_attack_bonus, spell_save_dc
 
 RandInt = Callable[[int, int], int]
@@ -38,11 +39,12 @@ class SpellCastError(Exception):
 @dataclass
 class SpellAttackRoll:
     index: int
-    attack_bonus: int
-    d20_result: D20RollResult
     damage_total: int
     damage_notation: str
     damage_rolls: list[int]
+    attack_bonus: int | None = None
+    d20_result: D20RollResult | None = None
+    auto_hit: bool = False
 
 
 @dataclass
@@ -138,6 +140,43 @@ def _localized(spell_def: dict[str, Any], field: str, locale: str = "fr") -> str
     if isinstance(block, dict):
         return str(block.get(locale) or block.get("fr") or block.get("en") or "")
     return str(block)
+
+
+def _is_auto_hit_spell(spell_def: dict[str, Any], effect: dict[str, Any]) -> bool:
+    """True si le sort touche automatiquement (ex. projectile magique SRD 2014)."""
+    if effect.get("auto_hit"):
+        return True
+    mechanics = spell_def.get("mechanics", {})
+    return mechanics.get("attack_roll") is False and effect.get("type") == "spell_attack"
+
+
+def _resolve_damage_instance_count(
+    spell_def: dict[str, Any],
+    effect: dict[str, Any],
+    *,
+    spell_level: int,
+    character: Character,
+) -> int:
+    """Nombre d'instances de dégâts (dards, rayons…) en tenant compte de l'upcasting."""
+    base = int(effect.get("attacks", effect.get("instances", 1)))
+    if spell_level <= 0:
+        return base
+    mechanics = spell_def.get("mechanics", {})
+    scaling = mechanics.get("slot_scaling")
+    if not isinstance(scaling, dict):
+        return base
+    increment = scaling.get("per_slot_above_base")
+    if not isinstance(increment, dict):
+        return base
+    extra_missiles = increment.get("missiles")
+    if not extra_missiles:
+        return base
+    max_slots = get_max_spell_slots(character.class_id, character.level)
+    used = get_slots_used(character)
+    slot_level = _find_slot_to_consume(spell_level, max_slots, used)
+    if slot_level is None or slot_level <= spell_level:
+        return base
+    return base + int(extra_missiles) * (slot_level - spell_level)
 
 
 def _roll_spell_attack(
@@ -300,14 +339,38 @@ def cast_spell(
     updated = character
 
     if effect_type == "spell_attack":
-        attacks = int(effect.get("attacks", 1))
         damage_notation = str(effect.get("damage", ""))
         add_mod = bool(effect.get("add_ability_mod", False))
+        auto_hit = _is_auto_hit_spell(spell_def, effect)
+        instances = _resolve_damage_instance_count(
+            spell_def,
+            effect,
+            spell_level=spell_level,
+            character=updated,
+        )
         attack_rolls: list[SpellAttackRoll] = []
         total_damage = 0
         all_damage_rolls: list[int] = []
 
-        for index in range(1, attacks + 1):
+        for index in range(1, instances + 1):
+            if auto_hit:
+                dmg_total, dmg_rolls = _roll_dice(damage_notation, rng=rng)
+                if add_mod:
+                    dmg_total += ability_mod
+                total_damage += dmg_total
+                all_damage_rolls.extend(dmg_rolls)
+                attack_rolls.append(
+                    SpellAttackRoll(
+                        index=index,
+                        damage_total=dmg_total,
+                        damage_notation=damage_notation
+                        + (f"+{ability_mod}" if add_mod else ""),
+                        damage_rolls=dmg_rolls,
+                        auto_hit=True,
+                    )
+                )
+                continue
+
             d20 = _roll_spell_attack(
                 attack_bonus, ability_mod, proficiency, ability_id, rng=rng
             )
@@ -328,10 +391,18 @@ def cast_spell(
                 )
             )
 
-        result.attack_bonus = attack_bonus
+        if auto_hit:
+            result.attack_bonus = None
+        else:
+            result.attack_bonus = attack_bonus
         result.attack_rolls = attack_rolls
+        if auto_hit and instances > 1:
+            result.damage_notation = f"{instances}×({damage_notation})"
+        else:
+            result.damage_notation = damage_notation + (
+                f"+mod {ability_id}" if add_mod else ""
+            )
         result.damage_total = total_damage
-        result.damage_notation = damage_notation + (f"+mod {ability_id}" if add_mod else "")
         result.damage_rolls = all_damage_rolls
         if updated.class_id == "sorcerer" and total_damage > 0 and damage_type:
             from jdr_engine.rules.class_features.sorcerer import elemental_affinity_bonus
@@ -521,18 +592,36 @@ def build_spell_display_lines(
     level_label = "tour de magie" if result.spell_level == 0 else f"sort niv. {result.spell_level}"
     lines.append(f"{result.spell_name} ({level_label}) — {result.school}")
 
-    if result.effect_type == "spell_attack" and result.attack_bonus is not None:
-        lines.append(f"Jet d'attaque de sort : **+{result.attack_bonus}**")
-        for atk in result.attack_rolls:
-            prefix = f"Attaque {atk.index}" if len(result.attack_rolls) > 1 else "d20"
-            nat = ""
-            if atk.d20_result.natural_20:
-                nat = " — **20 naturel !**"
-            elif atk.d20_result.natural_1:
-                nat = " — **1 naturel**"
-            lines.append(
-                f"{prefix} : **{atk.d20_result.kept_value}** → total **{atk.d20_result.total}**{nat}"
-            )
+    if result.effect_type == "spell_attack" and result.attack_rolls:
+        auto_hit = result.attack_bonus is None
+        if auto_hit:
+            lines.append("Touché automatiquement (SRD 2014)")
+            label = "Dard" if result.spell_id == "magic_missile" else "Projectile"
+            for atk in result.attack_rolls:
+                prefix = (
+                    f"{label} {atk.index}"
+                    if len(result.attack_rolls) > 1
+                    else label
+                )
+                lines.append(
+                    f"{prefix} : **{atk.damage_total}** ({atk.damage_notation})"
+                )
+        elif result.attack_bonus is not None:
+            lines.append(f"Jet d'attaque de sort : **+{result.attack_bonus}**")
+            for atk in result.attack_rolls:
+                if atk.d20_result is None:
+                    continue
+                prefix = (
+                    f"Attaque {atk.index}" if len(result.attack_rolls) > 1 else "d20"
+                )
+                nat = ""
+                if atk.d20_result.natural_20:
+                    nat = " — **20 naturel !**"
+                elif atk.d20_result.natural_1:
+                    nat = " — **1 naturel**"
+                lines.append(
+                    f"{prefix} : **{atk.d20_result.kept_value}** → total **{atk.d20_result.total}**{nat}"
+                )
         dmg_label = _damage_type_label(result.damage_type)
         lines.append(
             f"Dégâts{dmg_label} : **{result.damage_total}** ({result.damage_notation})"

@@ -18,10 +18,22 @@ mechanics:
     somatic: true
     material: false
   duration:
-    fr: "Instantané"
-    en: "Instantaneous"
+    fr: Instantané
+    en: Instantaneous
+  concentration: false
+  attack_roll: false
+  damage_dice: "3×(1d4+1)"
+  damage_type: force
+  save: null
+  description:
+    fr: "Trois projectiles de force frappent automatiquement une ou plusieurs créatures à portée (1d4+1 force chacun)."
+    en: "Three darts of force automatically hit one or more creatures in range (1d4+1 force each)."
+  slot_scaling:
+    per_slot_above_base:
+      missiles: 1
   effect:
     type: spell_attack
+    auto_hit: true
     attacks: 3
     damage: 1d4+1
     add_ability_mod: false

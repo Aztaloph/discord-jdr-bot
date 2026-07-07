@@ -72,7 +72,7 @@ class TestLot5Fixes(unittest.TestCase):
             if spell_id == "scorching_ray":
                 rng = SequenceRng([12, 12, 12, 4, 4, 4, 4, 4, 4])
             elif spell_id == "magic_missile":
-                rng = SequenceRng([12, 12, 12, 3, 3, 3])
+                rng = SequenceRng([3, 4, 2])
             else:
                 rng = SequenceRng([12, 4, 4, 4])
             result = cast_spell(char, spell_id, self.engine, rng=rng, persist_slots=False)

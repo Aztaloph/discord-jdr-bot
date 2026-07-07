@@ -170,7 +170,7 @@ def _slots_remaining_text(result: SpellCastResult) -> str:
 
 def _to_display(result: SpellCastResult, character_name: str) -> SpellDisplay:
     total_attack = None
-    if result.attack_rolls:
+    if result.attack_rolls and result.attack_rolls[0].d20_result is not None:
         total_attack = result.attack_rolls[0].d20_result.total
     return SpellDisplay(
         spell_name=result.spell_name,
