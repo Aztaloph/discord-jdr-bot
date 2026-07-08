@@ -587,6 +587,7 @@ def build_spell_display_lines(
                 spell_mechanics,
                 locale=locale,
                 character_level=character_level,
+                spell_id=result.spell_id,
             )
         )
     level_label = "tour de magie" if result.spell_level == 0 else f"sort niv. {result.spell_level}"

@@ -132,15 +132,15 @@ class TestLotACantripMechanics(unittest.TestCase):
                 self.assertIn("material", components)
 
     def test_level_two_plus_spells_not_lot_a_enriched(self):
+        """Lots B/C enrichissent niv. 1–2 ; seul cantrip_scaling reste interdit hors cantrips."""
         for spell_id, mech in self.spell_entries.items():
             if int(mech.get("level", 0)) >= 2:
                 with self.subTest(spell_id=spell_id):
-                    for key in LOT_A_KEYS:
-                        self.assertNotIn(
-                            key,
-                            mech,
-                            f"{spell_id} ne doit pas avoir le champ Lot A {key!r}",
-                        )
+                    self.assertNotIn(
+                        "cantrip_scaling",
+                        mech,
+                        f"{spell_id} ne doit pas avoir cantrip_scaling",
+                    )
 
     def test_level_two_plus_yaml_no_cantrip_scaling(self):
         spells_dir = Path("compendium/dnd5e/entries/spells")

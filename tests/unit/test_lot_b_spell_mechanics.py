@@ -5,8 +5,6 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-import yaml
-
 from jdr_engine.compendium.loader import load_ruleset
 from jdr_engine.compendium.schemas.spell import SpellMechanics
 from jdr_engine.rules import RuleEngine
@@ -137,18 +135,6 @@ class TestLotBSpellMechanics(unittest.TestCase):
             with self.subTest(spell_id=spell_id):
                 self.assertIn("cantrip_scaling", mech)
                 self.assertNotIn("slot_scaling", mech)
-
-    def test_level_2_plus_unchanged(self):
-        spells_dir = Path("compendium/dnd5e/entries/spells")
-        for spell_dir in spells_dir.iterdir():
-            if not spell_dir.is_dir():
-                continue
-            raw = yaml.safe_load((spell_dir / "definition.yaml").read_text(encoding="utf-8"))
-            level = int(raw["mechanics"]["level"])
-            if level >= 2:
-                with self.subTest(spell_id=raw["id"]):
-                    self.assertNotIn("slot_scaling", raw["mechanics"])
-                    self.assertNotIn("description", raw["mechanics"])
 
     def test_slot_scaling_display_burning_hands(self):
         line = format_slot_scaling_summary(self.spell_entries["burning_hands"])

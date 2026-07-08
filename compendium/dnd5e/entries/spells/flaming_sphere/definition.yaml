@@ -21,6 +21,16 @@ mechanics:
   duration:
     fr: "Concentration, jusqu'à 1 minute"
     en: "Concentration, up to 1 minute"
+  attack_roll: false
+  damage_dice: 2d6
+  damage_type: fire
+  save: DEX
+  description:
+    fr: "Une sphère de feu de 1,5 m de diamètre apparaît. Une créature qui termine son tour à 1,5 m ou moins subit un jet de sauvegarde de Dextérité : échec = 2d6 feu, réussite = moitié. Action bonus : déplacer la sphère (SRD 2014)."
+    en: "A 5-foot-diameter sphere of fire appears. A creature that ends its turn within 5 feet makes a Dexterity save: fail = 2d6 fire, success = half. Bonus action: move the sphere (SRD 2014)."
+  slot_scaling:
+    per_slot_above_base:
+      damage_dice: 1d6
   effect:
     type: saving_throw
     ability: dex

@@ -146,6 +146,12 @@ class TestClericSpellCast(unittest.TestCase):
         result = cast_spell(char, "spiritual_weapon", self.engine, rng=rng, persist_slots=True)
         self.assertEqual(result.damage_total, 9)  # 6 + 3 mod
         self.assertEqual(result.slot_consumed_level, 2)
+        entry = self.engine.get_entity("spell", "spiritual_weapon")
+        lines = build_spell_display_lines(result, spell_mechanics=entry.definition.mechanics)
+        text = "\n".join(lines)
+        self.assertIn("1d8", text)
+        self.assertIn("Emplacement supérieur", text)
+        self.assertIn("action bonus", text.lower())
 
 
 class TestClericSpellsCompendium(unittest.TestCase):

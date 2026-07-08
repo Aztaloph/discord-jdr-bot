@@ -91,6 +91,7 @@ def format_slot_scaling_summary(
     mechanics: dict[str, Any],
     *,
     locale: str = "fr",
+    spell_id: str | None = None,
 ) -> str | None:
     scaling = mechanics.get("slot_scaling")
     if not isinstance(scaling, dict):
@@ -105,7 +106,10 @@ def format_slot_scaling_summary(
         parts.append(f"+{increment['healing_dice']} soins / niveau")
     if increment.get("missiles"):
         count = int(increment["missiles"])
-        label = "dard" if count == 1 else "dards"
+        if spell_id == "scorching_ray":
+            label = "rayon" if count == 1 else "rayons"
+        else:
+            label = "dard" if count == 1 else "dards"
         parts.append(f"+{count} {label} / niveau")
     if increment.get("temp_hp") and increment.get("cold_damage"):
         parts.append(
@@ -129,6 +133,7 @@ def build_spell_mechanics_reference_lines(
     *,
     locale: str = "fr",
     character_level: int = 1,
+    spell_id: str | None = None,
 ) -> list[str]:
     """Lignes de référence mécanique pour embed /sort (données, pas combat)."""
     lines: list[str] = []
@@ -163,7 +168,9 @@ def build_spell_mechanics_reference_lines(
     if scaling_line:
         lines.append(scaling_line)
 
-    slot_line = format_slot_scaling_summary(mechanics, locale=locale)
+    slot_line = format_slot_scaling_summary(
+        mechanics, locale=locale, spell_id=spell_id
+    )
     if slot_line:
         lines.append(slot_line)
 

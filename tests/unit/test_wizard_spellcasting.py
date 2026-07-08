@@ -146,6 +146,10 @@ class TestWizardSpellCast(unittest.TestCase):
         result = cast_spell(char, "scorching_ray", self.engine, rng=rng, persist_slots=True)
         self.assertEqual(len(result.attack_rolls), 3)
         self.assertEqual(result.slot_consumed_level, 2)
+        lines = build_spell_display_lines(result, spell_mechanics=self.engine.get_entity("spell", "scorching_ray").definition.mechanics)
+        text = "\n".join(lines)
+        self.assertIn("rayons", text.lower())
+        self.assertIn("Emplacement supérieur", text)
 
     def test_display_lines_fire_bolt(self):
         char = _wizard(1)

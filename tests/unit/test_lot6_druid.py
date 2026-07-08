@@ -15,6 +15,17 @@ from jdr_engine.rules.spellcasting.state import get_cantrips_known, get_spells_k
 from tests.helpers.creation import druid_creation_kwargs
 
 
+class SequenceRng:
+    def __init__(self, values: list[int]):
+        self._values = list(values)
+        self._index = 0
+
+    def __call__(self, low: int, high: int) -> int:
+        value = self._values[self._index]
+        self._index += 1
+        return value
+
+
 class TestLot6Druid(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -112,6 +123,26 @@ class TestLot6Druid(unittest.TestCase):
 
         sheet = build_character_sheet(char, self.engine)
         self.assertIn("Forêt", sheet.specialization_label or "")
+
+    def test_druid_cast_flaming_sphere(self):
+        char = finalize_new_character(
+            owner_id="1",
+            guild_id="1",
+            name="Rowan",
+            engine=self.engine,
+            **druid_creation_kwargs(level=3),
+        )
+        from jdr_engine.rules.spellcasting.cast import build_spell_display_lines
+
+        rng = SequenceRng([4, 5, 6])
+        result = cast_spell(char, "flaming_sphere", self.engine, rng=rng, persist_slots=True)
+        self.assertEqual(result.effect_type, "saving_throw")
+        self.assertEqual(result.slot_consumed_level, 2)
+        entry = self.engine.get_entity("spell", "flaming_sphere")
+        lines = build_spell_display_lines(result, spell_mechanics=entry.definition.mechanics)
+        text = "\n".join(lines)
+        self.assertIn("Concentration", text)
+        self.assertIn("Emplacement supérieur", text)
 
     def test_druid_cast_cure_wounds(self):
         char = finalize_new_character(

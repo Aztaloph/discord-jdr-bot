@@ -7,6 +7,7 @@ name:
 mechanics:
   level: 2
   school: evocation
+  concentration: true
   casting_time:
     fr: "1 action"
     en: "1 action"
@@ -17,9 +18,26 @@ mechanics:
     verbal: true
     somatic: false
     material: true
+    material_description:
+      fr: "Fourrure de chauve-souris et une goutte de goudron ou un morceau de charbon"
+      en: "Bat fur and a drop of pitch or piece of coal"
   duration:
-    fr: "Concentration, 10 minutes"
+    fr: "Concentration, jusqu'à 10 minutes"
     en: "Concentration, up to 10 minutes"
+  attack_roll: false
+  damage_dice: null
+  damage_type: null
+  save: null
+  description:
+    fr: "Magie noire remplit une sphère de 4,5 mètres de rayon : obscurité profonde. La vision dans le noir ne perce pas cette obscurité (SRD 2014)."
+    en: "Magical darkness fills a 15-foot-radius sphere: heavily obscured. Darkvision cannot see through this darkness (SRD 2014)."
+  slot_scaling: null
+  utility_effect:
+    fr: "Obscurité magique (rayon 4,5 m) — vision dans le noir inefficace (SRD 2014)."
+    en: "Magical darkness (15-foot radius) — darkvision cannot penetrate (SRD 2014)."
+  racial_reference:
+    tiefling:
+      fr: "Sort inné Tieffelin à partir du niveau 5 — 1 utilisation par repos long (SRD 2014)."
+      en: "Tiefling innate spell from level 5 — once per long rest (SRD 2014)."
   effect:
     type: utility
-    srd_note: "Sort inné Tieffelin niv. 5+ — 1/repos long"

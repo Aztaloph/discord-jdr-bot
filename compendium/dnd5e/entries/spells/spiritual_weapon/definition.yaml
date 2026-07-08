@@ -20,6 +20,17 @@ mechanics:
   duration:
     fr: "1 minute"
     en: "1 minute"
+  concentration: false
+  attack_roll: true
+  damage_dice: 1d8
+  damage_type: force
+  save: null
+  description:
+    fr: "Vous créez une arme spectrale qui effectue une attaque de sort au corps à corps (1d8 force + modificateur de caractéristique d'incantation). Action bonus ultérieure : déplacer et réattaquer (SRD 2014)."
+    en: "You create a spectral weapon that makes a melee spell attack (1d8 force + spellcasting ability modifier). Later bonus action: move and reattack (SRD 2014)."
+  slot_scaling:
+    per_slot_above_base:
+      damage_dice: 1d8
   effect:
     type: spell_attack
     attack_type: melee

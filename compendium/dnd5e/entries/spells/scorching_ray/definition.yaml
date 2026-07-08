@@ -20,6 +20,17 @@ mechanics:
   duration:
     fr: Instantané
     en: Instantaneous
+  concentration: false
+  attack_roll: true
+  damage_dice: 2d6
+  damage_type: fire
+  save: null
+  description:
+    fr: "Vous lancez trois rayons ardents. Chaque rayon exige un jet d'attaque à distance distinct ; à impact, 2d6 dégâts de feu (même cible ou cibles différentes, SRD 2014)."
+    en: "You hurl three scorching rays. Each ray requires a separate ranged spell attack; on a hit, 2d6 fire damage (same or different targets, SRD 2014)."
+  slot_scaling:
+    per_slot_above_base:
+      missiles: 1
   effect:
     type: spell_attack
     attack_type: ranged
