@@ -285,7 +285,7 @@ class LevelUpMultiSelect(discord.ui.Select):
         super().__init__(
             placeholder=placeholder,
             options=options,
-            min_values=1,
+            min_values=count,
             max_values=count,
             row=0,
         )
