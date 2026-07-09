@@ -84,6 +84,26 @@ def fiend_expanded_spells_display(level: int) -> str:
     return ", ".join(spells)
 
 
+def get_fiend_expanded_spell_ids(level: int) -> tuple[str, ...]:
+    """Sorts élargis du patron Fiélon — toujours préparés (SRD 2014)."""
+    spells: list[str] = []
+    for req_level, ids in sorted(FIEND_EXPANDED_SPELLS.items()):
+        if level >= req_level:
+            for spell_id in ids:
+                if spell_id not in spells:
+                    spells.append(spell_id)
+    return tuple(spells)
+
+
+def get_warlock_expanded_spell_ids(choices: dict, *, level: int) -> tuple[str, ...]:
+    """Sorts de liste élargie selon le patron (occultiste niv. 1–3)."""
+    from jdr_engine.domain.character.choices_schema import get_specialization_id
+
+    if get_specialization_id(choices) == "fiend":
+        return get_fiend_expanded_spell_ids(level)
+    return ()
+
+
 def has_agonizing_blast(choices: dict) -> bool:
     return "agonizing_blast" in get_eldritch_invocations(choices)
 
