@@ -5,7 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from jdr_engine.domain.character.character import Character
-from jdr_engine.domain.character.choices_schema import get_specialization_id
+from jdr_engine.rules.spellcasting.model import (
+    SpellcastingFamily,
+    get_spellcasting_family,
+)
 from jdr_engine.rules.spellcasting.slots import get_max_spell_slots, get_remaining_slots
 
 
@@ -19,6 +22,46 @@ def get_spellcasting_state(character: Character) -> dict[str, Any]:
     return dict(raw) if isinstance(raw, dict) else {}
 
 
+def _normalize_spell_id_list(raw: object) -> list[str]:
+    if not isinstance(raw, list):
+        return []
+    return [str(spell_id) for spell_id in raw]
+
+
+def _raw_spells_known_from_state(state: dict[str, Any]) -> list[str]:
+    return _normalize_spell_id_list(state.get("spells_known"))
+
+
+def _raw_spells_prepared_from_state(state: dict[str, Any]) -> list[str]:
+    return _normalize_spell_id_list(state.get("spells_prepared"))
+
+
+def _effective_prepared_leveled_spells(state: dict[str, Any]) -> list[str]:
+    """
+    Famille PREPARED — sorts niv. 1+ effectivement préparés.
+
+    Priorité : ``spells_prepared``. Si vide, repli legacy ``spells_known``
+    (persos druide/paladin créés avant P1b).
+    """
+    prepared = _raw_spells_prepared_from_state(state)
+    if prepared:
+        return prepared
+    return _raw_spells_known_from_state(state)
+
+
+def _effective_known_leveled_spells(state: dict[str, Any]) -> list[str]:
+    """
+    Famille KNOWN_FIXED — sorts niv. 1+ connus.
+
+    Priorité : ``spells_known``. Si vide, repli legacy ``spells_prepared``
+    (barde / rôdeur / paladin avec clés dupliquées).
+    """
+    known = _raw_spells_known_from_state(state)
+    if known:
+        return known
+    return _raw_spells_prepared_from_state(state)
+
+
 def get_slots_used(character: Character) -> dict[int, int]:
     state = get_spellcasting_state(character)
     used = state.get("slots_used") or {}
@@ -29,46 +72,80 @@ def get_slots_used(character: Character) -> dict[int, int]:
 
 def get_cantrips_known(character: Character) -> list[str]:
     state = get_spellcasting_state(character)
-    raw = state.get("cantrips_known") or []
-    return [str(s) for s in raw] if isinstance(raw, list) else []
+    return _normalize_spell_id_list(state.get("cantrips_known"))
 
 
 def get_domain_spells(character: Character) -> list[str]:
     state = get_spellcasting_state(character)
-    raw = state.get("domain_spells") or []
-    return [str(s) for s in raw] if isinstance(raw, list) else []
+    return _normalize_spell_id_list(state.get("domain_spells"))
+
+
+def get_bonus_spell_ids(character: Character) -> list[str]:
+    """
+    Sorts lançables hors emplacements de classe — liste élargie occultiste,
+    sorts innés tieffelin (niv. 3+), etc.
+    """
+    bonus: list[str] = []
+    if character.class_id == "warlock":
+        from jdr_engine.rules.class_features.warlock import get_warlock_expanded_spell_ids
+
+        bonus.extend(
+            get_warlock_expanded_spell_ids(
+                character.choices or {}, level=character.level
+            )
+        )
+    if character.race_id == "tiefling" and character.level >= 3:
+        from jdr_engine.rules.racial.resolve import get_innate_spells_state
+
+        innate = get_innate_spells_state(character)
+        for spell_id in innate.get("spells_level_3") or ["hellish_rebuke"]:
+            if spell_id not in bonus:
+                bonus.append(str(spell_id))
+    return bonus
 
 
 def get_spellbook(character: Character) -> list[str]:
     """Grimoire du magicien — sorts appris (niv. 1+)."""
     state = get_spellcasting_state(character)
     raw = state.get("spellbook") or state.get("spells_known") or []
-    return [str(s) for s in raw] if isinstance(raw, list) else []
+    book = _normalize_spell_id_list(raw)
+    if not book and character.class_id == "wizard":
+        # Legacy v1/v2 : ``spells_prepared`` seul, sans clé ``spellbook``.
+        book = _raw_spells_prepared_from_state(state)
+    return book
 
 
 def get_spells_prepared_list(character: Character) -> list[str]:
-    """Sorts préparés explicites (clerc) — hors domaine et cantrips."""
-    state = get_spellcasting_state(character)
-    raw = state.get("spells_prepared") or []
-    return [str(s) for s in raw] if isinstance(raw, list) else []
+    """Sorts préparés explicites (clerc, magicien…) — hors domaine et cantrips."""
+    return _raw_spells_prepared_from_state(get_spellcasting_state(character))
 
 
 def get_spells_known(character: Character) -> list[str]:
     """
     Sorts niv. 1+ connus ou préparés (lançables si emplacement dispo).
 
-    Clerc : préparés + domaine. Ensorceleur/Barde : spells_known.
-    Magicien : sorts préparés uniquement (grimoire séparé).
+    Clerc : préparés + domaine. Magicien : sorts préparés uniquement.
+    Druide / paladin : préparés (+ repli legacy ``spells_known``).
+    Barde / ensorceleur / occultiste / rôdeur : sorts connus (+ repli legacy).
     """
     state = get_spellcasting_state(character)
-    if character.class_id == "cleric":
-        prepared = get_spells_prepared_list(character)
-        domain = get_domain_spells(character)
-        return list(dict.fromkeys(prepared + domain))
-    if character.class_id == "wizard":
+    family = get_spellcasting_family(character.class_id)
+
+    if family == SpellcastingFamily.WIZARD_HYBRID:
         return get_spells_prepared_list(character)
+
+    if family == SpellcastingFamily.PREPARED:
+        prepared = _effective_prepared_leveled_spells(state)
+        if character.class_id == "cleric":
+            domain = get_domain_spells(character)
+            return list(dict.fromkeys(prepared + domain))
+        return prepared
+
+    if family == SpellcastingFamily.KNOWN_FIXED:
+        return _effective_known_leveled_spells(state)
+
     raw = state.get("spells_known") or state.get("spells_prepared") or []
-    return [str(s) for s in raw] if isinstance(raw, list) else []
+    return _normalize_spell_id_list(raw)
 
 
 def get_spells_prepared(character: Character) -> list[str]:
@@ -80,12 +157,25 @@ def spell_is_known(character: Character, spell_id: str) -> bool:
     """True si le personnage peut lancer ce sort (tour de magie ou préparé/connu)."""
     if spell_id in get_cantrips_known(character):
         return True
-    if character.class_id == "cleric":
+
+    state = get_spellcasting_state(character)
+    family = get_spellcasting_family(character.class_id)
+
+    if family == SpellcastingFamily.PREPARED:
         if spell_id in get_domain_spells(character):
             return True
+        return spell_id in _effective_prepared_leveled_spells(state)
+
+    if family == SpellcastingFamily.WIZARD_HYBRID:
         return spell_id in get_spells_prepared_list(character)
-    if character.class_id == "wizard":
-        return spell_id in get_spells_prepared_list(character)
+
+    if family == SpellcastingFamily.KNOWN_FIXED:
+        if spell_id in get_bonus_spell_ids(character):
+            return True
+        return spell_id in _effective_known_leveled_spells(state)
+
+    if spell_id in get_bonus_spell_ids(character):
+        return True
     if spell_id in get_domain_spells(character):
         return True
     return spell_id in get_spells_known(character)
@@ -105,7 +195,9 @@ def list_castable_spell_ids(character: Character) -> list[str]:
     """Tours de magie + sorts lançables (liste pour /sort et autocomplete)."""
     return list(
         dict.fromkeys(
-            get_cantrips_known(character) + get_spells_known(character)
+            get_cantrips_known(character)
+            + get_spells_known(character)
+            + get_bonus_spell_ids(character)
         )
     )
 
@@ -200,10 +292,7 @@ def format_slots_display(character: Character) -> str:
 def format_spellcasting_detail(character: Character) -> str:
     """Résumé cantrips + sorts pour fiche personnage."""
     from jdr_engine.domain.character.ability_scores import ability_modifier
-    from jdr_engine.rules.spellcasting.preparation import (
-        cleric_prepared_capacity,
-        druid_prepared_capacity,
-    )
+    from jdr_engine.rules.spellcasting.preparation import druid_prepared_capacity
 
     cantrips = get_cantrips_known(character)
     known = get_spells_known(character)

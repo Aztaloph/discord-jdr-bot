@@ -2,26 +2,41 @@
 """Préparation / sorts connus — Barde, Clerc, Magicien & Ensorceleur SRD 2014."""
 from __future__ import annotations
 
+from jdr_engine.rules.spellcasting.model import (
+    BARD_CANTRIPS_BY_LEVEL,
+    BARD_SPELLS_KNOWN_BY_LEVEL,
+    CLERIC_CANTRIPS_BY_LEVEL,
+    DRUID_CANTRIPS_BY_LEVEL,
+    SORCERER_CANTRIPS_BY_LEVEL,
+    SORCERER_SPELLS_KNOWN_BY_LEVEL,
+    WARLOCK_CANTRIPS_BY_LEVEL,
+    WIZARD_CANTRIPS_BY_LEVEL,
+    WIZARD_SPELLBOOK_BY_LEVEL,
+    cleric_prepared_capacity,
+    druid_prepared_capacity,
+    paladin_prepared_capacity,
+    ranger_prepared_capacity,
+    spells_known_capacity,
+    wizard_prepared_capacity,
+)
+from jdr_engine.rules.spellcasting.pools import (
+    get_filtered_leveled_pool,
+    get_leveled_spell_pool,
+)
 from jdr_engine.rules.spellcasting.slots import get_max_spell_slots
+from jdr_engine.rules.spellcasting.spell_levels import get_spell_level
 from jdr_engine.rules.spellcasting.spells_catalog import (
     BARD_CANTRIP_IDS,
     BARD_SPELL_IDS,
     CLERIC_CANTRIP_IDS,
     CLERIC_SPELL_IDS,
     DRUID_CANTRIP_IDS,
-    DRUID_SPELL_IDS,
     SORCERER_CANTRIP_IDS,
     SORCERER_SPELL_IDS,
     WARLOCK_CANTRIP_IDS,
-    WARLOCK_SPELL_IDS,
     WIZARD_CANTRIP_IDS,
     WIZARD_SPELLBOOK_POOL,
 )
-
-BARD_CANTRIPS_BY_LEVEL: dict[int, int] = {1: 2, 2: 2, 3: 2}
-BARD_SPELLS_KNOWN_BY_LEVEL: dict[int, int] = {1: 4, 2: 5, 3: 6}
-
-CLERIC_CANTRIPS_BY_LEVEL: dict[int, int] = {1: 3, 2: 3, 3: 3}
 
 LIFE_DOMAIN_SPELLS_BY_LEVEL: dict[int, tuple[str, ...]] = {
     1: ("bless", "cure_wounds"),
@@ -31,10 +46,6 @@ LIFE_DOMAIN_SPELLS_BY_LEVEL: dict[int, tuple[str, ...]] = {
 DOMAIN_SPELLS_BY_DOMAIN: dict[str, dict[int, tuple[str, ...]]] = {
     "life": LIFE_DOMAIN_SPELLS_BY_LEVEL,
 }
-
-
-def cleric_prepared_capacity(wis_mod: int, level: int) -> int:
-    return max(1, wis_mod + level)
 
 
 def get_domain_spells(domain_id: str | None, level: int) -> tuple[str, ...]:
@@ -139,41 +150,28 @@ def upgrade_cleric_spellcasting(
     return {**choices, "spellcasting": state}
 
 
-WIZARD_CANTRIPS_BY_LEVEL: dict[int, int] = {1: 3, 2: 3, 3: 4}
-WIZARD_SPELLBOOK_BY_LEVEL: dict[int, int] = {1: 6, 2: 8, 3: 10}
-
-# Niveau d'emplacement SRD (niv. 1–3) pour la préparation du magicien / druide.
-_SPELL_LEVEL_BY_ID: dict[str, int] = {
-    "scorching_ray": 2,
-    "darkness": 2,
-    "spiritual_weapon": 2,
-    "flaming_sphere": 2,
-    "hex": 1,
-    "armor_of_agathys": 1,
-}
-
-
 def _spell_level(spell_id: str) -> int:
-    return _SPELL_LEVEL_BY_ID.get(spell_id, 1)
+    return get_spell_level(spell_id)
 
 
-def _rebalance_wizard_prepared(
+def _rebalance_leveled_spells_for_slots(
     existing: list[str],
-    spellbook: list[str],
+    pool: list[str],
     capacity: int,
-    wizard_level: int,
+    character_level: int,
+    class_id: str,
 ) -> list[str]:
-    """Préparés ≤ capacité ; inclut un sort de niveau max si emplacements disponibles."""
-    from jdr_engine.rules.spellcasting.slots import get_max_spell_slots
-
-    max_slot = max(get_max_spell_slots("wizard", wizard_level).keys(), default=1)
-    result = [s for s in existing if s in spellbook]
+    """Sorts niv. 1+ ≤ capacité ; inclut un sort de niveau max si emplacements disponibles."""
+    max_slot = max(
+        get_max_spell_slots(class_id, character_level).keys(), default=1
+    )
+    result = [s for s in existing if s in pool]
 
     leveled = [
-        s for s in spellbook if _spell_level(s) <= max_slot and _spell_level(s) > 1
+        s for s in pool if _spell_level(s) <= max_slot and _spell_level(s) > 1
     ]
     if leveled:
-        best = max(leveled, key=lambda s: (_spell_level(s), -spellbook.index(s)))
+        best = max(leveled, key=lambda s: (_spell_level(s), -pool.index(s)))
         if best not in result:
             if len(result) >= capacity:
                 droppable = [
@@ -184,19 +182,24 @@ def _rebalance_wizard_prepared(
             if len(result) < capacity:
                 result.append(best)
 
-    for sid in spellbook:
+    for sid in pool:
         if len(result) >= capacity:
             break
         if sid not in result:
             result.append(sid)
     return result[:capacity]
 
-SORCERER_CANTRIPS_BY_LEVEL: dict[int, int] = {1: 4, 2: 4, 3: 5}
-SORCERER_SPELLS_KNOWN_BY_LEVEL: dict[int, int] = {1: 2, 2: 3, 3: 4}
 
-
-def wizard_prepared_capacity(int_mod: int, level: int) -> int:
-    return max(1, int_mod + level)
+def _rebalance_wizard_prepared(
+    existing: list[str],
+    spellbook: list[str],
+    capacity: int,
+    wizard_level: int,
+) -> list[str]:
+    """Préparés ≤ capacité ; inclut un sort de niveau max si emplacements disponibles."""
+    return _rebalance_leveled_spells_for_slots(
+        existing, spellbook, capacity, wizard_level, "wizard"
+    )
 
 
 def _wizard_cantrips(level: int) -> list[str]:
@@ -262,11 +265,15 @@ def _sorcerer_cantrips(level: int) -> list[str]:
     return list(SORCERER_CANTRIP_IDS[:count])
 
 
+def _sorcerer_spell_pool(level: int) -> list[str]:
+    cantrips = set(_sorcerer_cantrips(level))
+    return [s for s in SORCERER_SPELL_IDS if s not in cantrips]
+
+
 def _sorcerer_spells_known(level: int) -> list[str]:
     count = SORCERER_SPELLS_KNOWN_BY_LEVEL.get(level, 2)
-    cantrips = set(_sorcerer_cantrips(level))
-    leveled = [s for s in SORCERER_SPELL_IDS if s not in cantrips]
-    return leveled[:count]
+    pool = _sorcerer_spell_pool(level)
+    return _rebalance_leveled_spells_for_slots([], pool, count, level, "sorcerer")
 
 
 def build_sorcerer_spellcasting(level: int) -> dict:
@@ -282,17 +289,19 @@ def build_sorcerer_spellcasting(level: int) -> dict:
 def upgrade_sorcerer_spellcasting(choices: dict, *, new_level: int) -> dict:
     state = dict(choices.get("spellcasting") or {})
     state["cantrips_known"] = _sorcerer_cantrips(new_level)
-    state["spells_known"] = _sorcerer_spells_known(new_level)
+    count = SORCERER_SPELLS_KNOWN_BY_LEVEL.get(new_level, 2)
+    pool = _sorcerer_spell_pool(new_level)
+    existing_raw = state.get("spells_known") or state.get("spells_prepared") or []
+    existing = (
+        [str(spell_id) for spell_id in existing_raw]
+        if isinstance(existing_raw, list)
+        else []
+    )
+    state["spells_known"] = _rebalance_leveled_spells_for_slots(
+        existing, pool, count, new_level, "sorcerer"
+    )
     state.setdefault("slots_used", {})
     return {**choices, "spellcasting": state}
-
-
-DRUID_CANTRIPS_BY_LEVEL: dict[int, int] = {1: 2, 2: 2, 3: 2}
-
-
-def druid_prepared_capacity(wis_mod: int, level: int) -> int:
-    """Capacité affichée — mod SAG + niveau (SRD 2014)."""
-    return max(1, wis_mod + level)
 
 
 def _druid_cantrips(level: int) -> list[str]:
@@ -300,39 +309,58 @@ def _druid_cantrips(level: int) -> list[str]:
     return list(DRUID_CANTRIP_IDS[:count])
 
 
-def _druid_spells_accessible(level: int) -> list[str]:
-    """Tous les sorts druide accessibles par niveau d'emplacement (pas de préparation interactive)."""
-    max_slots = get_max_spell_slots("druid", level)
-    max_spell_level = max(max_slots.keys(), default=1)
-    cantrips = set(_druid_cantrips(level))
-    accessible: list[str] = []
-    for spell_id in DRUID_SPELL_IDS:
-        if spell_id in cantrips:
-            continue
-        if _spell_level(spell_id) <= max_spell_level:
-            accessible.append(spell_id)
-    return accessible
+def _default_druid_prepared(capacity: int, *, druid_level: int) -> list[str]:
+    pool = get_filtered_leveled_pool("druid", druid_level)
+    return list(pool[:capacity])
 
 
-def build_druid_spellcasting(level: int) -> dict:
+def _merge_druid_prepared(
+    existing: list[str],
+    *,
+    capacity: int,
+    druid_level: int,
+) -> list[str]:
+    pool = get_filtered_leveled_pool("druid", druid_level)
+    valid_existing = [spell_id for spell_id in existing if spell_id in pool]
+    if len(valid_existing) >= capacity:
+        return valid_existing[:capacity]
+    default = list(pool[:capacity])
+    return list(dict.fromkeys(valid_existing + default))[:capacity]
+
+
+def build_druid_spellcasting(level: int, *, wis_mod: int) -> dict:
     cantrips = _druid_cantrips(level)
-    known = _druid_spells_accessible(level)
+    capacity = druid_prepared_capacity(wis_mod, level)
+    prepared = _default_druid_prepared(capacity, druid_level=level)
     return {
         "cantrips_known": cantrips,
-        "spells_known": known,
+        "spells_prepared": prepared,
         "slots_used": {},
     }
 
 
-def upgrade_druid_spellcasting(choices: dict, *, new_level: int) -> dict:
+def upgrade_druid_spellcasting(
+    choices: dict,
+    *,
+    new_level: int,
+    wis_mod: int,
+) -> dict:
     state = dict(choices.get("spellcasting") or {})
     state["cantrips_known"] = _druid_cantrips(new_level)
-    state["spells_known"] = _druid_spells_accessible(new_level)
+    capacity = druid_prepared_capacity(wis_mod, new_level)
+    existing_raw = state.get("spells_prepared") or state.get("spells_known") or []
+    existing = (
+        [str(spell_id) for spell_id in existing_raw]
+        if isinstance(existing_raw, list)
+        else []
+    )
+    state["spells_prepared"] = _merge_druid_prepared(
+        existing,
+        capacity=capacity,
+        druid_level=new_level,
+    )
     state.setdefault("slots_used", {})
     return {**choices, "spellcasting": state}
-
-
-WARLOCK_CANTRIPS_BY_LEVEL: dict[int, int] = {1: 2, 2: 2, 3: 2}
 
 
 def _warlock_cantrips(level: int) -> list[str]:
@@ -340,19 +368,23 @@ def _warlock_cantrips(level: int) -> list[str]:
     return list(WARLOCK_CANTRIP_IDS[:count])
 
 
-def _warlock_spells_accessible(level: int) -> list[str]:
-    max_slots = get_max_spell_slots("warlock", level)
-    if not max_slots:
+def _warlock_spells_known(level: int) -> list[str]:
+    """Sorts niv. 1+ connus — quota fixe, sans filtre emplacement (connu ≠ lançable)."""
+    count = spells_known_capacity("warlock", level)
+    if count <= 0:
         return []
-    max_spell_level = max(max_slots.keys())
-    cantrips = set(_warlock_cantrips(level))
-    accessible: list[str] = []
-    for spell_id in WARLOCK_SPELL_IDS:
-        if spell_id in cantrips:
-            continue
-        if _spell_level(spell_id) <= max_spell_level:
-            accessible.append(spell_id)
-    return accessible
+    pool = list(get_leveled_spell_pool("warlock"))
+    return pool[:count]
+
+
+def _merge_warlock_known(existing: list[str], *, warlock_level: int) -> list[str]:
+    count = spells_known_capacity("warlock", warlock_level)
+    pool = list(get_leveled_spell_pool("warlock"))
+    valid_existing = [spell_id for spell_id in existing if spell_id in pool]
+    if len(valid_existing) >= count:
+        return valid_existing[:count]
+    default = pool[:count]
+    return list(dict.fromkeys(valid_existing + default))[:count]
 
 
 def _pact_slot_level(warlock_level: int) -> int:
@@ -362,7 +394,7 @@ def _pact_slot_level(warlock_level: int) -> int:
 
 def build_warlock_spellcasting(level: int) -> dict:
     cantrips = _warlock_cantrips(level)
-    known = _warlock_spells_accessible(level)
+    known = _warlock_spells_known(level)
     return {
         "cantrips_known": cantrips,
         "spells_known": known,
@@ -379,10 +411,124 @@ def upgrade_warlock_spellcasting(
 ) -> dict:
     state = dict(choices.get("spellcasting") or {})
     state["cantrips_known"] = _warlock_cantrips(new_level)
-    state["spells_known"] = _warlock_spells_accessible(new_level)
+    existing_raw = state.get("spells_known") or state.get("spells_prepared") or []
+    existing = (
+        [str(spell_id) for spell_id in existing_raw]
+        if isinstance(existing_raw, list)
+        else []
+    )
+    state["spells_known"] = _merge_warlock_known(existing, warlock_level=new_level)
     state["pact_magic"] = True
     if _pact_slot_level(new_level) != _pact_slot_level(old_level):
         state["slots_used"] = {}
     else:
         state.setdefault("slots_used", {})
+    return {**choices, "spellcasting": state}
+
+
+def _half_caster_level1_prepared_pool(class_id: str) -> list[str]:
+    """Niv. 1 : catalogue visible dans /sort, sans emplacements."""
+    return list(get_leveled_spell_pool(class_id))
+
+
+def _default_half_caster_prepared(
+    class_id: str,
+    level: int,
+    *,
+    ability_mod: int,
+) -> list[str]:
+    if level < 2:
+        return _half_caster_level1_prepared_pool(class_id)
+    pool = get_filtered_leveled_pool(class_id, level)
+    if class_id == "ranger":
+        capacity = ranger_prepared_capacity(level)
+    else:
+        capacity = paladin_prepared_capacity(ability_mod, level)
+    return list(pool[:capacity])
+
+
+def _merge_half_caster_prepared(
+    existing: list[str],
+    class_id: str,
+    level: int,
+    *,
+    ability_mod: int,
+) -> list[str]:
+    if level < 2:
+        return _half_caster_level1_prepared_pool(class_id)
+    pool = get_filtered_leveled_pool(class_id, level)
+    if class_id == "ranger":
+        capacity = ranger_prepared_capacity(level)
+    else:
+        capacity = paladin_prepared_capacity(ability_mod, level)
+    valid_existing = [spell_id for spell_id in existing if spell_id in pool]
+    if len(valid_existing) >= capacity:
+        return valid_existing[:capacity]
+    default = list(pool[:capacity])
+    return list(dict.fromkeys(valid_existing + default))[:capacity]
+
+
+def build_ranger_spellcasting(level: int, *, wis_mod: int = 0) -> dict:
+    prepared = _default_half_caster_prepared("ranger", level, ability_mod=wis_mod)
+    return {
+        "cantrips_known": [],
+        "spells_prepared": prepared,
+        "slots_used": {},
+    }
+
+
+def build_paladin_spellcasting(level: int, *, cha_mod: int) -> dict:
+    prepared = _default_half_caster_prepared("paladin", level, ability_mod=cha_mod)
+    return {
+        "cantrips_known": [],
+        "spells_prepared": prepared,
+        "slots_used": {},
+    }
+
+
+def upgrade_ranger_spellcasting(
+    choices: dict,
+    *,
+    new_level: int,
+    wis_mod: int = 0,
+) -> dict:
+    state = dict(choices.get("spellcasting") or {})
+    state["cantrips_known"] = []
+    existing_raw = state.get("spells_prepared") or state.get("spells_known") or []
+    existing = (
+        [str(spell_id) for spell_id in existing_raw]
+        if isinstance(existing_raw, list)
+        else []
+    )
+    state["spells_prepared"] = _merge_half_caster_prepared(
+        existing,
+        "ranger",
+        new_level,
+        ability_mod=wis_mod,
+    )
+    state.setdefault("slots_used", {})
+    return {**choices, "spellcasting": state}
+
+
+def upgrade_paladin_spellcasting(
+    choices: dict,
+    *,
+    new_level: int,
+    cha_mod: int,
+) -> dict:
+    state = dict(choices.get("spellcasting") or {})
+    state["cantrips_known"] = []
+    existing_raw = state.get("spells_prepared") or state.get("spells_known") or []
+    existing = (
+        [str(spell_id) for spell_id in existing_raw]
+        if isinstance(existing_raw, list)
+        else []
+    )
+    state["spells_prepared"] = _merge_half_caster_prepared(
+        existing,
+        "paladin",
+        new_level,
+        ability_mod=cha_mod,
+    )
+    state.setdefault("slots_used", {})
     return {**choices, "spellcasting": state}
