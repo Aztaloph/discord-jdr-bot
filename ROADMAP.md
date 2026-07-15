@@ -10,10 +10,31 @@
 
 ---
 
+## État du projet (juillet 2026)
+
+| Indicateur | Valeur |
+|---|---|
+| Tests unitaires | **519** verts (`python -m unittest discover -s tests/unit -p "test_*.py" -q`) |
+| Classes SRD 2014 | 12/12 jouables (création + montée de niveau 1–3) |
+| Catalogue sorts curated | 28 sorts (9 cantrips + 15 niv. 1 + 4 niv. 2) |
+| Derniers commits | P1-fixes-sorts (scorching_ray, hellish_rebuke, métamagie) |
+
+### Travail local non commité (à valider / committer)
+
+Plusieurs lots **P0 → P1c** + correctif libellé autocomplete sont implémentés et testés localement, mais **pas encore poussés sur `main`** :
+
+- Taxonomie lanceurs (`model.py`, `pools.py`, `spell_levels.py`)
+- Druide / occultiste / demi-lanceurs (rôdeur, paladin)
+- Autocomplete `/sort` enrichi (✨ castable · 🔒 niveau/emplacements · 📘 non préparé)
+- Libellé 🔒 « emplacements niv. X épuisés » (vs « niv. X requis »)
+- Texte création perso périmé (hint 12 classes SRD)
+
+---
+
 ## Feuille de route
 
 - [x] Compendium SRD 2014
-- [x] Moteur de sorts (Magicien INT, Clerc SAG)
+- [x] Moteur de sorts (Magicien INT, Clerc SAG → étendu à toutes les classes lanceuses)
 - [x] **ÉTAPE 1a : Fondation stockage (SQLite) + rôle MJ**
 - [x] **ÉTAPE 1b : Commande de création de personnage**
 - [x] **ÉTAPE 2 : Repos long / court** (commandes réservées au MJ)
@@ -21,16 +42,34 @@
   - [x] **Lot 0 — Fondations transverses** : schéma `choices`, calculs dérivés, fiche `/perso-afficher`
   - [x] **Lot 1 — Choix à la création** (`/creer-perso` : point buy, compétences, domaine clerc)
   - [x] **Lot 2 — Montée de niveau 2-3** (`/monter-niveau` MJ, PV / emplacements / dés de vie)
-  - [x] Lots 3+ — Classes une par une (martiales, rôdeur, lanceurs complets, classes SRD absentes) — TOUTES LES CLASSES SRD 2014 TERMINÉES
+  - [x] **Lots 3+ — Classes une par une** — **12 classes SRD 2014 terminées**
   - [x] **Passe 1 — Enrichissement des sorts** (catalogue SRD curated : 28 sorts — métadonnées mécaniques + cast instantané)
     - [x] **Lot A — Tours de magie** (9 cantrips)
     - [x] **Lot B — Sorts niv. 1** (15 sorts)
     - [x] **Lot C — Sorts niv. 2** (`scorching_ray`, `darkness`, `spiritual_weapon`, `flaming_sphere`)
-  - [ ] **Passe 2 — Sorts préparés / connus dynamiques** (quotas SRD, filtrage auto par classe, choix joueur au level-up ; recopie grimoire mage = option MJ)
-  - [ ] **Passe 3 — Automatisation des aptitudes** (forme sauvage, métamagie, canalisation d'énergie, arme/familier de pacte…)
+  - [ ] **Passe 2 — Sorts préparés / connus dynamiques**
+    - [x] **P2a — Moteur & taxonomie** : 3 familles (`KNOWN_FIXED` / `PREPARED` / `WIZARD_HYBRID`), quotas SRD, pools par classe, builds auto à la création / level-up
+    - [x] **P2b — Règles par classe** : magicien (grimoire + préparés), clerc/druide (préparés + domaine), barde/ensorceleur/occultiste (connus), rôdeur/paladin (demi-lanceurs préparés, emplacements ⌈niv/2⌉), sorts élargis occultiste Fiélon
+    - [x] **P2c — Lancement & affichage** : `/sort` respecte préparé vs grimoire (mage), connu vs lançable (occultiste), autocomplete enrichi, legacy `spells_prepared` sans `spellbook`
+    - [x] **P2d — Correctifs lanceurs** (P1-fixes-sorts) : `scorching_ray`, `hellish_rebuke`, confirmation métamagie ensorceleur
+    - [ ] **P2e — Choix joueur au level-up** : UI Discord pour sélectionner sorts connus / préparés (aujourd'hui : attribution automatique depuis le pool curated)
+    - [ ] **P2f — Magicien** : autocomplete `/sort` strict (cantrips + **préparés** uniquement ; grimoire non préparé = 📘)
+    - [ ] **P2g — Outil MJ** : recopie / réinitialisation grimoire mage (persos legacy)
+    - [ ] **P2h — Migration MJ** : normaliser les ~12 persos existants vers le schéma `spellcasting` v2 (non automatique au démarrage)
+  - [ ] **Passe 3 — Automatisation des aptitudes** (forme sauvage, métamagie à l'incantation, canalisation d'énergie, arme/familier de pacte…)
   - [ ] **Passe 4 — Passe UI / affichage** (libellés, fix limite de caractères des embeds, libellé « Sous-classe (niv. 3) »)
 - [ ] **ÉTAPE 4 : Système de combat complet** (initiative, tour par tour, PV ennemis, level-up par XP) — GROS CHANTIER
 - [ ] **ÉTAPE 5 : Portage / fix version 2024** (armes, dégâts, actions bonus, sous-classes niv.3…) — TOUT À LA FIN, après le combat
+
+---
+
+## Clarification : pourquoi la Passe 2 n'était pas cochée ?
+
+Les mécaniques **connus / préparés / grimoire** sont bien en place côté **moteur** (familles, quotas, `cast_spell`, fiche perso, autocomplete). Ce qui manque pour cocher la Passe 2 **entièrement** :
+
+1. **Choix joueur** — pas encore d'écran Discord « choisissez X sorts » à la montée de niveau (contrairement à métamagie / sous-classe).
+2. **Magicien strict** — le grimoire complet reste visible dans l'autocomplete (marqué 📘) ; le filtrage « préparés seulement » est optionnel (P2f).
+3. **Migration & outils MJ** — persos créés avant P2a (ex. Joe le mage sans clé `spellbook`) : repli legacy OK, migration outillée non faite.
 
 ---
 

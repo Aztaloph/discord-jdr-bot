@@ -706,16 +706,22 @@ def apply_level_up(
         choices = init_ki_points(choices, level=new_level)
 
     if character.class_id in ("ranger", "paladin"):
+        from jdr_engine.rules.spellcasting.model import casting_ability_for_class
+
+        ability_id = casting_ability_for_class(character.class_id)
+        half_casting_mod = ability_modifier(sheet.ability_scores.get(ability_id, 10))
         choices = init_half_caster_spellcasting_if_needed(
             choices,
             character.class_id,
             level=new_level,
+            casting_ability_mod=half_casting_mod,
         )
         if old_level >= 2 and new_level > old_level:
             choices = upgrade_half_caster_spellcasting(
                 choices,
                 character.class_id,
                 new_level=new_level,
+                casting_ability_mod=half_casting_mod,
             )
 
     if character.class_id in ("bard", "cleric", "wizard", "sorcerer", "druid"):

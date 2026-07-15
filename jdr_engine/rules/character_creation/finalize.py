@@ -35,6 +35,7 @@ from jdr_engine.rules.character_creation.subclass_choices import (
 from jdr_engine.rules.derived_stats import collect_proficient_skills
 from jdr_engine.rules.engine import RuleEngine
 from jdr_engine.rules.racial.resolve import build_tiefling_innate_spells
+from jdr_engine.rules.spellcasting.model import casting_ability_for_class
 from jdr_engine.rules.spellcasting.spells_catalog import SUPPORTED_SPELLCASTING_CLASSES
 
 
@@ -151,9 +152,8 @@ def finalize_new_character(
         choices["skills"] = list(validated_skills)
 
     if class_id in SUPPORTED_SPELLCASTING_CLASSES:
-        wis_mod = ability_modifier(scores.get("wis", 10))
-        int_mod = ability_modifier(scores.get("int", 10))
-        casting_mod = int_mod if class_id == "wizard" else wis_mod
+        ability_id = casting_ability_for_class(class_id)
+        casting_mod = ability_modifier(scores.get(ability_id, 10))
         sc = build_starting_spellcasting(
             class_id,
             level=level,
@@ -235,7 +235,16 @@ def finalize_new_character(
     if validated_pact_boon:
         choices["pact_boon"] = validated_pact_boon
 
-    choices = init_half_caster_spellcasting_if_needed(choices, class_id, level=level)
+    choices = init_half_caster_spellcasting_if_needed(
+        choices,
+        class_id,
+        level=level,
+        casting_ability_mod=ability_modifier(
+            scores.get(casting_ability_for_class(class_id), 10)
+        )
+        if class_id in ("ranger", "paladin")
+        else 0,
+    )
 
     character = Character(
         owner_id=str(owner_id),

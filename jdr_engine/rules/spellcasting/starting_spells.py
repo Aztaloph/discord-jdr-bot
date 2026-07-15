@@ -1,5 +1,5 @@
 # jdr_engine/rules/spellcasting/starting_spells.py
-"""Sorts de départ — lanceurs complets (niv. 1) & demi-lanceurs (niv. 2+)."""
+"""Sorts de départ — lanceurs complets (niv. 1) & demi-lanceurs (rôdeur / paladin)."""
 
 from __future__ import annotations
 
@@ -7,12 +7,16 @@ from jdr_engine.rules.spellcasting.preparation import (
     build_bard_spellcasting,
     build_cleric_spellcasting,
     build_druid_spellcasting,
+    build_paladin_spellcasting,
+    build_ranger_spellcasting,
     build_sorcerer_spellcasting,
     build_warlock_spellcasting,
     build_wizard_spellcasting,
     upgrade_bard_spellcasting,
     upgrade_cleric_spellcasting,
     upgrade_druid_spellcasting,
+    upgrade_paladin_spellcasting,
+    upgrade_ranger_spellcasting,
     upgrade_sorcerer_spellcasting,
     upgrade_warlock_spellcasting,
     upgrade_wizard_spellcasting,
@@ -22,20 +26,7 @@ from jdr_engine.rules.spellcasting.spells_catalog import (
     HALF_CASTER_CLASSES,
     PACT_CASTER_CLASSES,
     SUPPORTED_SPELLCASTING_CLASSES,
-    get_spell_ids_for_class,
 )
-
-HALF_CASTER_SPELLS_KNOWN_BY_LEVEL: dict[int, int] = {
-    2: 2,
-    3: 3,
-}
-
-
-def _half_caster_spells_known(class_id: str, level: int) -> list[str]:
-    count = HALF_CASTER_SPELLS_KNOWN_BY_LEVEL.get(level, 0)
-    if count <= 0:
-        return []
-    return list(get_spell_ids_for_class(class_id)[:count])
 
 
 def build_starting_spellcasting(
@@ -48,7 +39,7 @@ def build_starting_spellcasting(
     """
     État spellcasting initial.
 
-    Lanceurs complets : niv. 1. Demi-lanceurs : vide au niv. 1, sorts au niv. 2+.
+    Lanceurs complets : niv. 1. Demi-lanceurs : sorts visibles dès niv. 1 (sans emplacements).
     """
     if class_id not in SUPPORTED_SPELLCASTING_CLASSES:
         return {}
@@ -70,24 +61,19 @@ def build_starting_spellcasting(
         return build_sorcerer_spellcasting(level)
 
     if class_id == "druid":
-        return build_druid_spellcasting(level)
+        return build_druid_spellcasting(level, wis_mod=casting_ability_mod)
 
     if class_id == "warlock":
         return build_warlock_spellcasting(level)
 
+    if class_id == "ranger":
+        return build_ranger_spellcasting(level, wis_mod=casting_ability_mod)
+
+    if class_id == "paladin":
+        return build_paladin_spellcasting(level, cha_mod=casting_ability_mod)
+
     if class_id in FULL_CASTER_CLASSES:
         return {}
-
-    if class_id in HALF_CASTER_CLASSES:
-        if level < 2:
-            return {}
-        spells = _half_caster_spells_known(class_id, level)
-        return {
-            "cantrips_known": [],
-            "spells_known": spells,
-            "spells_prepared": spells,
-            "slots_used": {},
-        }
 
     return {}
 
@@ -97,18 +83,25 @@ def upgrade_half_caster_spellcasting(
     class_id: str,
     *,
     new_level: int,
+    casting_ability_mod: int = 0,
 ) -> dict:
-    """Met à jour les sorts connus d'un demi-lanceur après montée de niveau."""
-    if class_id not in HALF_CASTER_CLASSES or new_level < 2:
+    """Met à jour les sorts préparés d'un demi-lanceur après montée de niveau."""
+    if class_id not in HALF_CASTER_CLASSES or new_level < 1:
         return choices
 
-    spells = _half_caster_spells_known(class_id, new_level)
-    state = dict(choices.get("spellcasting") or {})
-    state["cantrips_known"] = []
-    state["spells_known"] = spells
-    state["spells_prepared"] = spells
-    state.setdefault("slots_used", {})
-    return {**choices, "spellcasting": state}
+    if class_id == "ranger":
+        return upgrade_ranger_spellcasting(
+            choices,
+            new_level=new_level,
+            wis_mod=casting_ability_mod,
+        )
+    if class_id == "paladin":
+        return upgrade_paladin_spellcasting(
+            choices,
+            new_level=new_level,
+            cha_mod=casting_ability_mod,
+        )
+    return choices
 
 
 def upgrade_full_caster_spellcasting(
@@ -137,7 +130,11 @@ def upgrade_full_caster_spellcasting(
     if class_id == "sorcerer":
         return upgrade_sorcerer_spellcasting(choices, new_level=new_level)
     if class_id == "druid":
-        return upgrade_druid_spellcasting(choices, new_level=new_level)
+        return upgrade_druid_spellcasting(
+            choices,
+            new_level=new_level,
+            wis_mod=casting_ability_mod,
+        )
     return choices
 
 
@@ -160,13 +157,23 @@ def init_half_caster_spellcasting_if_needed(
     class_id: str,
     *,
     level: int,
+    casting_ability_mod: int = 0,
 ) -> dict:
-    """Initialise spellcasting au passage niv. 2 si absent."""
-    if class_id not in HALF_CASTER_CLASSES or level < 2:
+    """Initialise ou met à jour spellcasting demi-lanceur."""
+    if class_id not in HALF_CASTER_CLASSES or level < 1:
         return choices
     if choices.get("spellcasting"):
-        return upgrade_half_caster_spellcasting(choices, class_id, new_level=level)
-    sc = build_starting_spellcasting(class_id, level=level)
+        return upgrade_half_caster_spellcasting(
+            choices,
+            class_id,
+            new_level=level,
+            casting_ability_mod=casting_ability_mod,
+        )
+    sc = build_starting_spellcasting(
+        class_id,
+        level=level,
+        casting_ability_mod=casting_ability_mod,
+    )
     if sc:
         return {**choices, "spellcasting": sc}
     return choices

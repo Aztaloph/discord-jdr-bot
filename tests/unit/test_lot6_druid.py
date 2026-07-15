@@ -10,8 +10,13 @@ from jdr_engine.rules.calculator import build_character_sheet
 from jdr_engine.rules.character_creation.finalize import finalize_new_character
 from jdr_engine.rules.character_progression import LevelUpPendingChoice, apply_level_up
 from jdr_engine.rules.spellcasting.cast import cast_spell, get_spellcasting_stats
+from jdr_engine.rules.spellcasting.preparation import druid_prepared_capacity
 from jdr_engine.rules.spellcasting.slots import get_max_spell_slots
-from jdr_engine.rules.spellcasting.state import get_cantrips_known, get_spells_known
+from jdr_engine.rules.spellcasting.state import (
+    get_cantrips_known,
+    get_spells_known,
+    get_spells_prepared_list,
+)
 from tests.helpers.creation import druid_creation_kwargs
 
 
@@ -45,11 +50,17 @@ class TestLot6Druid(unittest.TestCase):
         self.assertEqual(len(get_cantrips_known(char)), 2)
         self.assertIn("druidcraft", get_cantrips_known(char))
         self.assertIn("produce_flame", get_cantrips_known(char))
-        known = get_spells_known(char)
-        self.assertIn("entangle", known)
-        self.assertIn("cure_wounds", known)
-        self.assertIn("faerie_fire", known)
-        self.assertNotIn("flaming_sphere", known)
+        sc = char.choices["spellcasting"]
+        self.assertIn("spells_prepared", sc)
+        self.assertNotIn("spells_known", sc)
+        capacity = druid_prepared_capacity(2, 1)  # SAG 15 → mod +2
+        prepared = get_spells_prepared_list(char)
+        self.assertEqual(len(prepared), capacity)
+        self.assertIn("entangle", prepared)
+        self.assertIn("cure_wounds", prepared)
+        self.assertIn("faerie_fire", prepared)
+        self.assertNotIn("flaming_sphere", prepared)
+        self.assertEqual(get_spells_known(char), prepared)
 
         mod, attack, save_dc = get_spellcasting_stats(char, self.engine)
         self.assertEqual(mod, 2)

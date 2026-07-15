@@ -97,6 +97,23 @@ def _is_spell_prepared_for_cast(character: Character, spell_id: str) -> bool:
     return False
 
 
+def _has_spell_slot_level_access(
+    character: Character,
+    spell_level: int,
+    *,
+    engine: RuleEngine,
+) -> bool:
+    """True si le niveau de personnage accorde des emplacements pour ce sort."""
+    if character.class_id in HALF_CASTER_CLASSES:
+        if character.level < spellcasting_start_level(engine, character.class_id):
+            return False
+
+    max_slots = get_max_spell_slots(character.class_id, character.level)
+    return bool(
+        max_slots and any(slot_lvl >= spell_level for slot_lvl in max_slots)
+    )
+
+
 def _level_insufficient_reason(
     character: Character,
     spell_level: int,
@@ -111,10 +128,10 @@ def _level_insufficient_reason(
         if character.level < start_level:
             return f"niv. {start_level} requis"
 
-    max_slots = get_max_spell_slots(character.class_id, character.level)
-    if not max_slots or not any(slot_lvl >= spell_level for slot_lvl in max_slots):
+    if not _has_spell_slot_level_access(character, spell_level, engine=engine):
         return f"niv. {spell_level} requis"
 
+    max_slots = get_max_spell_slots(character.class_id, character.level)
     remaining = get_remaining_slots(
         character.class_id, character.level, get_slots_used(character)
     )
@@ -126,7 +143,7 @@ def _level_insufficient_reason(
             (slot_lvl for slot_lvl in max_slots if slot_lvl >= spell_level),
             default=spell_level,
         )
-        return f"niv. {min_slot} requis"
+        return f"emplacements niv. {min_slot} épuisés"
 
     return f"niv. {spell_level} requis"
 

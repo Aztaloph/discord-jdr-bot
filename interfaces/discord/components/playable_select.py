@@ -10,7 +10,7 @@ from jdr_engine.rules.engine import RuleEngine
 _CLASS_DESCRIPTIONS_FR: dict[str, str] = {
     "barbarian": "d12 · FOR/CON · martiale",
     "bard": "d8 · CHA · lanceur complet",
-    "cleric": "d8 · SAG · lanceur (/sort actif)",
+    "cleric": "d8 · SAG · lanceur complet",
     "druid": "d8 · SAG · lanceur complet",
     "fighter": "d10 · FOR/CON · martiale",
     "monk": "d8 · DEX/SAG · martiale",
@@ -19,7 +19,7 @@ _CLASS_DESCRIPTIONS_FR: dict[str, str] = {
     "rogue": "d8 · DEX · martiale",
     "sorcerer": "d6 · CHA · lanceur complet",
     "warlock": "d8 · CHA · pactisant (Pact Magic)",
-    "wizard": "d6 · INT · lanceur (/sort actif)",
+    "wizard": "d6 · INT · lanceur complet",
 }
 
 

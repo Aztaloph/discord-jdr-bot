@@ -76,7 +76,7 @@ class RestCog(commands.Cog):
 
     @app_commands.command(
         name="monter-niveau",
-        description="[MJ] Monte un personnage d'un niveau (Magicien & Clerc, niv. 2–3)",
+        description="[MJ] Monte un personnage d'un niveau (toutes classes, niv. 2–3)",
     )
     @app_commands.describe(
         personnage="Personnage ciblé (nom ou id court, ex. marie001)",

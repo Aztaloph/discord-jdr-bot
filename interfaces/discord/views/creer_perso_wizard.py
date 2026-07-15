@@ -60,6 +60,10 @@ from interfaces.discord.formatters.character_embed import (
 logger = logging.getLogger(__name__)
 
 FOOTER = "JDR Bot — D&D 5e SRD 2014"
+CREATION_SRD_CLASSES_HINT = (
+    "Les **12 classes SRD** sont disponibles. "
+    "Les sorts se lancent via `/sort`."
+)
 
 
 @dataclass
@@ -1048,8 +1052,7 @@ class CreerPersoWizard:
                 "**Étape 1 — Identité**\n"
                 f"Race : **{race}**\n"
                 f"Classe : **{classe}**\n\n"
-                "Les **12 classes SRD** sont disponibles. "
-                "Sorts actifs via `/sort` : Magicien et Clerc (autres lanceurs : lots ultérieurs)."
+                f"{CREATION_SRD_CLASSES_HINT}"
             ),
             color=COULEUR_PRINCIPALE,
         ).set_footer(text=FOOTER)

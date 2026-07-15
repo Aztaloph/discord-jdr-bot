@@ -125,6 +125,22 @@ class TestSortAutocompleteIntegration(unittest.TestCase):
         )
         values = [c.value for c in choices]
         self.assertEqual(values, expected)
+        prepared = set(self.wizard.choices["spellcasting"]["spells_prepared"])
+        for choice in choices:
+            if choice.value in prepared or choice.value in (
+                self.wizard.choices["spellcasting"]["cantrips_known"]
+            ):
+                if choice.value in prepared and choice.value not in (
+                    self.wizard.choices["spellcasting"]["cantrips_known"]
+                ):
+                    self.assertTrue(
+                        choice.name.startswith("✨ ") or choice.name.startswith("📘 "),
+                        choice.name,
+                    )
+                elif choice.value in self.wizard.choices["spellcasting"]["cantrips_known"]:
+                    self.assertTrue(choice.name.startswith("✨ "), choice.name)
+            else:
+                self.assertTrue(choice.name.startswith("📘 "), choice.name)
 
     def test_autocomplete_matches_list_available_spells(self):
         character = self.service.resolve_for_game(

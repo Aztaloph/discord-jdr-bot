@@ -10,7 +10,8 @@ from jdr_engine.rules.calculator import build_character_sheet
 from jdr_engine.rules.character_creation.finalize import finalize_new_character
 from jdr_engine.rules.character_progression import LevelUpPendingChoice, apply_level_up
 from jdr_engine.rules.rest import apply_short_rest
-from jdr_engine.rules.spellcasting.cast import cast_spell, get_spellcasting_stats
+from jdr_engine.rules.spellcasting.cast import SpellCastError, cast_spell, get_spellcasting_stats
+from jdr_engine.rules.spellcasting.model import spells_known_capacity
 from jdr_engine.rules.spellcasting.slots import get_max_spell_slots, get_remaining_slots
 from jdr_engine.rules.spellcasting.spells_catalog import FULL_CASTER_CLASSES
 from jdr_engine.rules.spellcasting.state import (
@@ -85,6 +86,9 @@ class TestLot7Warlock(unittest.TestCase):
             ["agonizing_blast", "devils_sight"],
         )
         self.assertEqual(get_max_spell_slots("warlock", 2), {1: 2})
+        known = get_spells_known(char)
+        self.assertEqual(len(known), spells_known_capacity("warlock", 2))
+        self.assertIn("darkness", known)
 
         sheet = build_character_sheet(char, self.engine)
         self.assertTrue(
@@ -161,6 +165,18 @@ class TestLot7Warlock(unittest.TestCase):
         )
         result = cast_spell(char, "eldritch_blast", self.engine, rng=lambda a, b: b)
         self.assertEqual(result.damage_total, 10)
+
+    def test_warlock_level_2_knows_darkness_but_cannot_cast(self):
+        char = finalize_new_character(
+            owner_id="1",
+            guild_id="1",
+            name="Morrigan",
+            engine=self.engine,
+            **warlock_creation_kwargs(level=2),
+        )
+        self.assertIn("darkness", get_spells_known(char))
+        with self.assertRaises(SpellCastError):
+            cast_spell(char, "darkness", self.engine, persist_slots=False)
 
 
 if __name__ == "__main__":

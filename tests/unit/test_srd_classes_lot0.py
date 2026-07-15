@@ -115,7 +115,10 @@ class TestSrdClassesLot0(unittest.TestCase):
                 elif class_id in PACT_CASTER_CLASSES:
                     self.assertIn("spellcasting", char.choices)
                 elif class_id in HALF_CASTER_CLASSES:
-                    self.assertNotIn("spellcasting", char.choices or {})
+                    self.assertIn("spellcasting", char.choices)
+                    sc = char.choices["spellcasting"]
+                    self.assertIn("spells_prepared", sc)
+                    self.assertNotIn("spells_known", sc)
                 else:
                     self.assertNotIn("spellcasting", char.choices or {})
 
@@ -184,7 +187,8 @@ class TestSrdClassesLot0(unittest.TestCase):
         sheet = build_character_sheet(char, self.engine)
         self.assertIsNotNone(sheet.spellcasting_summary)
         assert sheet.spellcasting_summary is not None
-        self.assertIn("niv. 2", sheet.spellcasting_summary)
+        self.assertIn("Sorts connus", sheet.spellcasting_summary)
+        self.assertIn("Aucun emplacement", sheet.spellcasting_summary)
 
     def test_warlock_pact_magic_not_full_caster(self):
         char = finalize_new_character(

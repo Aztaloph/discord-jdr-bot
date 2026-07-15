@@ -12,11 +12,15 @@ from discord import app_commands
 
 from jdr_engine.rules.engine import RuleEngine
 from jdr_engine.rules.spellcasting.cast import SpellCastError, SpellCastResult, cast_spell
+from jdr_engine.rules.spellcasting.autocomplete_availability import (
+    compute_spell_autocomplete_availability,
+    format_autocomplete_choice_name,
+    list_autocomplete_spell_ids,
+)
 from jdr_engine.rules.spellcasting.spells_catalog import (
     all_spellcasting_spell_ids,
     get_spell_ids_for_class,
 )
-from jdr_engine.rules.spellcasting.state import list_spell_autocomplete_ids
 
 from interfaces.discord.container import DiscordJdrContext
 
@@ -43,8 +47,8 @@ class SpellDisplay:
 
 
 def list_available_spells(character: Character) -> list[str]:
-    """Ids de sorts pour l'autocomplete /sort (grimoire inclus pour le mage)."""
-    return list_spell_autocomplete_ids(character)
+    """Ids de sorts pour l'autocomplete /sort."""
+    return list_autocomplete_spell_ids(character)
 
 
 def _spell_matches_query(spell_id: str, label: str, query: str) -> bool:
@@ -68,31 +72,44 @@ def build_spell_autocomplete_choices(
     locale: str = "fr",
     class_id: str | None = None,
     known_spell_ids: list[str] | None = None,
+    character: Character | None = None,
 ) -> list[app_commands.Choice[str]]:
     """
     Propose les sorts filtrés pour l'autocomplete /sort.
 
-    Si ``known_spell_ids`` est fourni (y compris liste vide), seuls ces sorts
-    apparaissent — même source de vérité que ``cast_spell`` / ``spell_is_known``.
-    Sinon repli catalogue classe ou global (tests / rétrocompat).
+    Si ``character`` est fourni, libellés enrichis (✨ / 🔒 / 📘) et liste élargie
+    demi-lanceurs. Sinon repli catalogue / ``known_spell_ids`` (tests rétrocompat).
     """
     query = (current or "").strip().lower()
-    if known_spell_ids is not None:
+    if character is not None:
+        spell_ids = list_autocomplete_spell_ids(character, engine=engine)
+    elif known_spell_ids is not None:
         spell_ids = tuple(known_spell_ids)
     elif class_id:
         spell_ids = get_spell_ids_for_class(class_id)
     else:
         spell_ids = all_spellcasting_spell_ids()
+
     choices: list[app_commands.Choice[str]] = []
     for spell_id in spell_ids:
         if engine.get_entity("spell", spell_id) is None:
             continue
         label = engine.get_display_name("spell", spell_id, locale=locale) or spell_id
+        if character is not None:
+            availability, level_reason = compute_spell_autocomplete_availability(
+                character, spell_id, engine=engine
+            )
+            choice_name = format_autocomplete_choice_name(
+                label,
+                spell_id,
+                availability,
+                level_reason=level_reason,
+            )
+        else:
+            choice_name = f"{label} ({spell_id})"
         if not _spell_matches_query(spell_id, label, query):
             continue
-        choices.append(
-            app_commands.Choice(name=f"{label} ({spell_id})", value=spell_id)
-        )
+        choices.append(app_commands.Choice(name=choice_name, value=spell_id))
     return choices[:25]
 
 
@@ -111,14 +128,12 @@ def build_sort_autocomplete_choices(
     """
     if ctx.rule_engine is None:
         return []
-    known_spell_ids: list[str] = []
     try:
         character = resolve_character_for_spell(
             ctx, owner_id, perso, guild_id=guild_id
         )
-        known_spell_ids = list_available_spells(character)
     except DiceError:
-        pass
+        return []
     except Exception:
         log.exception("Autocomplete /sort — échec inattendu")
         return []
@@ -126,7 +141,7 @@ def build_sort_autocomplete_choices(
         ctx.rule_engine,
         current,
         locale=ctx.locale,
-        known_spell_ids=known_spell_ids,
+        character=character,
     )
 
 

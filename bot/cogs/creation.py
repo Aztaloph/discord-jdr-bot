@@ -20,7 +20,7 @@ class CreationCog(commands.Cog):
 
     @app_commands.command(
         name="creer-perso",
-        description="Créer votre personnage (Magicien ou Clerc, SRD 2014)",
+        description="Créer votre personnage (12 classes SRD, sorts via /sort)",
     )
     async def creer_perso(self, interaction: discord.Interaction):
         ctx = getattr(self.bot, "jdr", None)
