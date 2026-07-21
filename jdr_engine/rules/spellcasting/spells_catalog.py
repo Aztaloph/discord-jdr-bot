@@ -14,11 +14,9 @@ WIZARD_SPELLBOOK_POOL: tuple[str, ...] = (
     "detect_magic",
     "magic_missile",
     "shield",
-    "hellish_rebuke",
     "scorching_ray",
     "darkness",
-    "inflict_wounds",
-    "bless",
+    "flaming_sphere",
 )
 
 WIZARD_SPELL_IDS: tuple[str, ...] = WIZARD_CANTRIP_IDS + WIZARD_SPELLBOOK_POOL

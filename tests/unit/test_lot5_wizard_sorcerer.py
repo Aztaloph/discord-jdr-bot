@@ -80,7 +80,7 @@ class TestLot5Wizard(unittest.TestCase):
         char, r3 = apply_level_up(char, self.engine)
         self.assertEqual(r3.new_level, 3)
         self.assertEqual(len(get_cantrips_known(char)), 4)
-        self.assertEqual(len(get_spellbook(char)), 10)
+        self.assertEqual(len(get_spellbook(char)), 8)
         self.assertEqual(arcane_recovery_pool(3), 2)
 
     def test_wizard_rejects_unprepared_spell(self):

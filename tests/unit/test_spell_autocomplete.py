@@ -36,7 +36,7 @@ class TestSpellAutocomplete(unittest.TestCase):
 
     def test_all_five_wizard_spells_when_empty_query(self):
         choices = build_spell_autocomplete_choices(self.engine, "", class_id="wizard")
-        self.assertEqual(len(choices), 14)
+        self.assertEqual(len(choices), 12)
 
     def test_partial_fire_matches_fire_bolt(self):
         choices = build_lot_b_spell_autocomplete_choices(self.engine, "fire")
@@ -113,7 +113,7 @@ class TestSortAutocompleteIntegration(unittest.TestCase):
                 "detect_magic",
                 "magic_missile",
                 "shield",
-                "hellish_rebuke",
+                "scorching_ray",
             ],
         )
         choices = build_sort_autocomplete_choices(
@@ -140,7 +140,10 @@ class TestSortAutocompleteIntegration(unittest.TestCase):
                 elif choice.value in self.wizard.choices["spellcasting"]["cantrips_known"]:
                     self.assertTrue(choice.name.startswith("✨ "), choice.name)
             else:
-                self.assertTrue(choice.name.startswith("📘 "), choice.name)
+                self.assertTrue(
+                    choice.name.startswith("📘 ") or choice.name.startswith("🔒 "),
+                    choice.name,
+                )
 
     def test_autocomplete_matches_list_available_spells(self):
         character = self.service.resolve_for_game(
