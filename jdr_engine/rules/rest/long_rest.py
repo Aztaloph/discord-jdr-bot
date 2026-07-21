@@ -28,6 +28,7 @@ class LongRestResult:
     hit_dice_after: int
     hit_dice_regained: int
     slots_text: str
+    prepared_rechoice_pending: bool = False
 
 
 def apply_long_rest(
@@ -133,6 +134,17 @@ def apply_long_rest(
 
     character = reset_racial_features_on_long_rest(character)
     character = reset_spell_slots(character)
+
+    from jdr_engine.rules.spellcasting.prepared_choice import (
+        mark_prepared_rechoice_pending,
+        requires_prepared_rechoice_class,
+    )
+
+    rechoice_pending = False
+    if requires_prepared_rechoice_class(character.class_id):
+        character = mark_prepared_rechoice_pending(character, pending=True)
+        rechoice_pending = True
+
     character.hp_max = hp_max
     character.hp_current = hp_max
 
@@ -151,5 +163,6 @@ def apply_long_rest(
         hit_dice_after=dice_after,
         hit_dice_regained=dice_after - dice_before,
         slots_text=slots_text,
+        prepared_rechoice_pending=rechoice_pending,
     )
     return character, result

@@ -10,6 +10,7 @@ from discord.ext import commands
 
 from jdr_engine.dice import DiceError
 from interfaces.discord.handlers.character import character_name_autocomplete
+from interfaces.discord.handlers.prepare_spells import player_preparer_sorts
 from interfaces.discord.handlers.spell import (
     SpellDisplay,
     build_sort_autocomplete_choices,
@@ -115,6 +116,20 @@ class SpellCog(commands.Cog):
             await interaction.followup.send(embed=_build_error_embed(str(exc)), ephemeral=True)
             return
         await interaction.followup.send(embed=_build_spell_embed(display))
+
+
+    @app_commands.command(
+        name="preparer-sorts",
+        description="Re-choisir vos sorts préparés (après repos long — clerc, druide, paladin)",
+    )
+    async def preparer_sorts_cmd(self, interaction: discord.Interaction):
+        ctx = getattr(self.bot, "jdr", None)
+        if ctx is None or not ctx.use_engine_v2:
+            await interaction.response.send_message(
+                "Moteur v2 requis.", ephemeral=True
+            )
+            return
+        await player_preparer_sorts(interaction, ctx)
 
 
 async def setup(bot: commands.Bot):

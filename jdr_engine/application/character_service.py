@@ -321,6 +321,52 @@ class CharacterService:
         self._repo.save(updated)
         return result
 
+    def prepare_spells_for_active_character(
+        self,
+        owner_id: str,
+        guild_id: str,
+        prepared_spells: list[str] | tuple[str, ...],
+    ):
+        """Re-préparation sorts — perso actif, propriétaire, après repos long."""
+        from jdr_engine.rules.spellcasting.prepared_choice import (
+            PreparedChoiceError,
+            apply_prepared_selection,
+            build_prepared_choice_context,
+            is_prepared_rechoice_pending,
+            requires_prepared_rechoice_class,
+        )
+
+        character = self.get_active_character(str(owner_id), str(guild_id))
+        if character is None:
+            raise CharacterNotFoundError(
+                "Aucun personnage actif. Utilisez `/perso-choisir`."
+            )
+        if str(character.owner_id) != str(owner_id):
+            raise CharacterValidationError("Ce personnage ne vous appartient pas.")
+
+        if not requires_prepared_rechoice_class(character.class_id):
+            raise CharacterValidationError(
+                "Cette classe ne prépare pas ses sorts de cette manière."
+            )
+        if not is_prepared_rechoice_pending(character):
+            raise CharacterValidationError(
+                "Re-préparation disponible uniquement après un **repos long**."
+            )
+
+        try:
+            updated = apply_prepared_selection(
+                character,
+                self._engine,
+                prepared_spells,
+                require_pending=True,
+            )
+        except PreparedChoiceError as exc:
+            raise CharacterValidationError(str(exc)) from exc
+
+        self._repo.save(updated)
+        ctx = build_prepared_choice_context(updated, engine=self._engine)
+        return updated, ctx
+
     def short_rest_on_guild(
         self,
         character_id: str,

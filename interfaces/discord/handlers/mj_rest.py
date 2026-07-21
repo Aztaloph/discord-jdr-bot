@@ -21,14 +21,20 @@ FOOTER = "JDR Bot — D&D 5e SRD 2014"
 
 
 def build_long_rest_embed(result) -> discord.Embed:
+    description = (
+        f"**PV** : {result.hp_before} → **{result.hp_after}** / {result.hp_after}\n"
+        f"**Dés de vie** : {result.hit_dice_before} → **{result.hit_dice_after}** "
+        f"(+{result.hit_dice_regained})\n"
+        f"**Emplacements de sorts** : {result.slots_text}"
+    )
+    if getattr(result, "prepared_rechoice_pending", False):
+        description += (
+            f"\n\n📘 **{result.character_name}** peut re-préparer ses sorts "
+            f"via `/preparer-sorts`."
+        )
     embed = discord.Embed(
         title=f"🌙 Repos long — {result.character_name}",
-        description=(
-            f"**PV** : {result.hp_before} → **{result.hp_after}** / {result.hp_after}\n"
-            f"**Dés de vie** : {result.hit_dice_before} → **{result.hit_dice_after}** "
-            f"(+{result.hit_dice_regained})\n"
-            f"**Emplacements de sorts** : {result.slots_text}"
-        ),
+        description=description,
         color=COULEUR_SUCCES,
     )
     embed.set_footer(text=FOOTER)

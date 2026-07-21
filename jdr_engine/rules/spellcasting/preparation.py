@@ -113,6 +113,7 @@ def build_cleric_spellcasting(
         "spells_prepared": prepared,
         "domain_spells": domain,
         "slots_used": {},
+        "prepared_rechoice_pending": False,
     }
 
 
@@ -336,6 +337,7 @@ def build_druid_spellcasting(level: int, *, wis_mod: int) -> dict:
         "cantrips_known": cantrips,
         "spells_prepared": prepared,
         "slots_used": {},
+        "prepared_rechoice_pending": False,
     }
 
 
@@ -483,6 +485,7 @@ def build_paladin_spellcasting(level: int, *, cha_mod: int) -> dict:
         "cantrips_known": [],
         "spells_prepared": prepared,
         "slots_used": {},
+        "prepared_rechoice_pending": False,
     }
 
 
