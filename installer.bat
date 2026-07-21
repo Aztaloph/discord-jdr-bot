@@ -8,22 +8,37 @@ echo       INSTALLATION DU BOT JDR
 echo ========================================
 echo.
 
-:: Vérifie si l'environnement virtuel existe déjà
-if exist "venv\Scripts\activate.bat" (
-    echo [OK] Environnement virtuel deja present.
-) else (
-    echo [INFO] Creation de l'environnement virtuel...
-    python -m venv venv
-    if errorlevel 1 (
-        echo.
-        echo [ERREUR] Echec de la creation du venv. Verifiez Python.
-        echo Assurez-vous que Python est installe et accessible.
-        echo.
-        pause
-        exit /b 1
-    )
-    echo [OK] Environnement virtuel cree.
+REM Verifie que Python est accessible
+python --version >nul 2>&1
+if errorlevel 1 (
+    echo [ERREUR] Python introuvable dans le PATH.
+    echo Reinstallez Python en cochant "Add to PATH".
+    echo.
+    pause
+    exit /b 1
 )
+
+REM Recree le venv si absent ou casse (ex: apres reinstallation de Python)
+if not exist "venv\Scripts\python.exe" goto create_venv
+venv\Scripts\python.exe -V >nul 2>&1
+if not errorlevel 1 goto venv_ok
+echo [INFO] Ancien venv invalide - recreation...
+rmdir /s /q venv
+
+:create_venv
+echo [INFO] Creation de l'environnement virtuel...
+python -m venv venv
+if errorlevel 1 (
+    echo.
+    echo [ERREUR] Echec de la creation du venv. Verifiez Python.
+    echo.
+    pause
+    exit /b 1
+)
+echo [OK] Environnement virtuel cree.
+
+:venv_ok
+echo [OK] Environnement virtuel pret.
 
 echo.
 echo Activation de l'environnement virtuel...
@@ -49,7 +64,7 @@ echo.
 pip install -r requirements.txt
 if errorlevel 1 (
     echo.
-    echo [ERREUR] Echec de l'installation des依赖. Verifiez requirements.txt.
+    echo [ERREUR] Echec de l'installation des dependances. Verifiez requirements.txt.
     pause
     exit /b 1
 )
