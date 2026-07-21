@@ -1,5 +1,5 @@
 # interfaces/discord/views/prepared_spells_choice.py
-"""Re-préparation des sorts — clerc, druide, paladin (après repos long)."""
+"""Re-préparation des sorts — clerc, druide, paladin, magicien (après repos long)."""
 from __future__ import annotations
 
 import logging
@@ -37,11 +37,17 @@ def build_prepared_spells_embed(
         "cleric": "Clerc",
         "druid": "Druide",
         "paladin": "Paladin",
+        "wizard": "Magicien",
     }
     title = f"📘 Préparation — {ctx.character_name}"
+    pool_label = (
+        "votre **grimoire**"
+        if ctx.class_id == "wizard"
+        else "la liste SRD"
+    )
     description = (
         f"**{class_labels.get(ctx.class_id, ctx.class_id.title())}** niv. {ctx.level}\n\n"
-        f"Choisissez **{ctx.quota}** sort(s) préparé(s) parmi la liste SRD, "
+        f"Choisissez **{ctx.quota}** sort(s) préparé(s) parmi {pool_label}, "
         f"puis appuyez sur **Confirmer**."
     )
     if ctx.domain_spells:

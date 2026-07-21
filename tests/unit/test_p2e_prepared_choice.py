@@ -1,5 +1,5 @@
 # tests/unit/test_p2e_prepared_choice.py
-"""P2e — re-préparation sorts clerc / druide / paladin (repos long)."""
+"""P2e — re-préparation sorts clerc / druide / paladin / magicien (repos long)."""
 from __future__ import annotations
 
 import unittest

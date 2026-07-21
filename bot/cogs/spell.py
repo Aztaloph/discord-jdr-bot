@@ -120,7 +120,7 @@ class SpellCog(commands.Cog):
 
     @app_commands.command(
         name="preparer-sorts",
-        description="Re-choisir vos sorts préparés (après repos long — clerc, druide, paladin)",
+        description="Re-choisir vos sorts préparés (après repos long — clerc, druide, paladin, magicien)",
     )
     async def preparer_sorts_cmd(self, interaction: discord.Interaction):
         ctx = getattr(self.bot, "jdr", None)

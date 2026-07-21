@@ -1,5 +1,5 @@
 # jdr_engine/rules/spellcasting/prepared_choice.py
-"""Re-préparation des sorts — clerc, druide, paladin (SRD 2014, repos long)."""
+"""Re-préparation des sorts — clerc, druide, paladin, magicien (SRD 2014, repos long)."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -9,17 +9,25 @@ from jdr_engine.domain.character.character import Character
 from jdr_engine.domain.character.choices_schema import get_specialization_id
 from jdr_engine.rules.engine import RuleEngine
 from jdr_engine.rules.spellcasting.model import (
+    SpellcastingFamily,
     casting_ability_for_class,
+    get_spellcasting_family,
     prepared_capacity_for_class,
 )
-from jdr_engine.rules.spellcasting.pools import get_filtered_leveled_pool
+from jdr_engine.rules.spellcasting.pools import (
+    filter_spells_by_max_level,
+    get_filtered_leveled_pool,
+    max_castable_spell_level,
+)
 from jdr_engine.rules.spellcasting.slots import get_max_spell_slots
 from jdr_engine.rules.spellcasting.state import (
+    get_cantrips_known,
     get_domain_spells,
+    get_spellbook,
     get_spellcasting_state,
 )
 
-PREPARED_RECHOICE_CLASSES: tuple[str, ...] = ("cleric", "druid", "paladin")
+PREPARED_RECHOICE_CLASSES: tuple[str, ...] = ("cleric", "druid", "paladin", "wizard")
 
 
 class PreparedChoiceError(Exception):
@@ -77,7 +85,19 @@ def get_prepared_spell_pool(
     *,
     engine: RuleEngine,
 ) -> tuple[str, ...]:
-    """Pool fermé — sorts niv. 1+ filtrés par emplacements accessibles."""
+    """
+    Pool fermé pour /preparer-sorts.
+
+    PREPARED (clerc, druide, paladin) : liste de classe filtrée par niveau.
+    WIZARD_HYBRID : grimoire personnel filtré par niveau (jamais la liste SRD).
+    """
+    family = get_spellcasting_family(character.class_id)
+    if family == SpellcastingFamily.WIZARD_HYBRID:
+        book = get_spellbook(character)
+        max_level = max_castable_spell_level(character.class_id, character.level)
+        return tuple(
+            filter_spells_by_max_level(book, max_level, engine=engine)
+        )
     return tuple(
         get_filtered_leveled_pool(
             character.class_id,
@@ -149,6 +169,10 @@ def validate_prepared_selection(
 
     pool = set(get_prepared_spell_pool(character, engine=engine))
     if not pool:
+        if character.class_id == "wizard":
+            raise PreparedChoiceError(
+                "Aucun sort disponible dans votre grimoire à ce niveau."
+            )
         raise PreparedChoiceError(
             "Aucun sort disponible dans le pool de votre classe à ce niveau."
         )
@@ -156,6 +180,7 @@ def validate_prepared_selection(
     domain = set(get_domain_spells(character))
     chosen = list(dict.fromkeys(str(spell_id).strip() for spell_id in selected if spell_id))
     quota = get_player_prepared_quota(character)
+    cantrips = set(get_cantrips_known(character))
 
     if len(chosen) != quota:
         raise PreparedChoiceError(
@@ -163,8 +188,18 @@ def validate_prepared_selection(
             f"{len(chosen)} sélectionné(s)."
         )
 
+    invalid_cantrips = [spell_id for spell_id in chosen if spell_id in cantrips]
+    if invalid_cantrips:
+        raise PreparedChoiceError(
+            "Les tours de magie ne font pas partie de la préparation."
+        )
+
     invalid_pool = [spell_id for spell_id in chosen if spell_id not in pool]
     if invalid_pool:
+        if character.class_id == "wizard":
+            raise PreparedChoiceError(
+                f"Sort(s) hors grimoire : {', '.join(invalid_pool)}."
+            )
         raise PreparedChoiceError(
             f"Sort(s) hors liste de classe : {', '.join(invalid_pool)}."
         )

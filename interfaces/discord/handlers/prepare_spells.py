@@ -68,7 +68,7 @@ async def player_preparer_sorts(
             embed=discord.Embed(
                 title="ℹ️ Classe non concernée",
                 description=(
-                    "Seuls le **clerc**, le **druide** et le **paladin** "
+                    "Seuls le **clerc**, le **druide**, le **paladin** et le **magicien** "
                     "re-préparent leurs sorts après un repos long."
                 ),
                 color=COULEUR_ERREUR,
@@ -93,10 +93,18 @@ async def player_preparer_sorts(
 
     choice_ctx = build_prepared_choice_context(character, engine=ctx.rule_engine)
     if not choice_ctx.pool:
+        if character.class_id == "wizard":
+            empty_desc = (
+                "Aucun sort de votre **grimoire** n'est accessible à ce niveau."
+            )
+        else:
+            empty_desc = (
+                "Aucun sort de votre liste de classe n'est accessible à ce niveau."
+            )
         await interaction.response.send_message(
             embed=discord.Embed(
                 title="⚠️ Aucun sort disponible",
-                description="Aucun sort de votre liste de classe n'est accessible à ce niveau.",
+                description=empty_desc,
                 color=COULEUR_ERREUR,
             ).set_footer(text=FOOTER),
             ephemeral=True,
