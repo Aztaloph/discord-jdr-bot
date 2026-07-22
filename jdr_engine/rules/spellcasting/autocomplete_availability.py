@@ -22,7 +22,6 @@ from jdr_engine.rules.spellcasting.state import (
     get_bonus_spell_ids,
     get_cantrips_known,
     get_domain_spells,
-    get_spellbook,
     get_spellcasting_state,
     get_spells_prepared_list,
     get_slots_used,
@@ -48,12 +47,17 @@ def list_autocomplete_spell_ids(
 
     Demi-lanceurs : catalogue de classe filtré par niveau d'emplacement (niv. 1 :
     catalogue complet visible, marqué 🔒).
-    Magicien : grimoire + cantrips (inchangé).
+    Magicien (P2f) : cantrips + sorts **préparés** uniquement (pas tout le grimoire).
     Autres : ``list_spell_autocomplete_ids`` existant.
     """
     cantrips = get_cantrips_known(character)
     if character.class_id == "wizard":
-        return list(dict.fromkeys(cantrips + get_spellbook(character)))
+        prepared = [
+            spell_id
+            for spell_id in get_spells_prepared_list(character)
+            if spell_id not in cantrips
+        ]
+        return list(dict.fromkeys(cantrips + prepared))
 
     if character.class_id in HALF_CASTER_CLASSES:
         if character.level < 2 or not get_max_spell_slots(

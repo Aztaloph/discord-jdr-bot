@@ -17,6 +17,7 @@ from jdr_engine.rules.spellcasting.pools import spell_id_in_class_pool
 from jdr_engine.rules.spellcasting.state import (
     get_spellbook,
     get_spells_known,
+    get_spells_prepared_list,
     list_spell_autocomplete_ids,
 )
 from tests.helpers.creation import sorcerer_creation_kwargs
@@ -68,7 +69,12 @@ class TestScorchingRayFix(unittest.TestCase):
             choices=raw["choices"],
         )
         self.assertIn("scorching_ray", get_spellbook(char))
-        self.assertIn("scorching_ray", list_autocomplete_spell_ids(char, engine=self.engine))
+        prepared = set(get_spells_prepared_list(char))
+        autocomplete = list_autocomplete_spell_ids(char, engine=self.engine)
+        if "scorching_ray" in prepared:
+            self.assertIn("scorching_ray", autocomplete)
+        else:
+            self.assertNotIn("scorching_ray", autocomplete)
 
 
 if __name__ == "__main__":

@@ -100,22 +100,11 @@ class TestSortAutocompleteIntegration(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_wizard_lot1_shows_only_owned_spells(self):
+    def test_wizard_lot1_shows_prepared_and_cantrips_only(self):
+        cantrips = self.wizard.choices["spellcasting"]["cantrips_known"]
+        prepared = self.wizard.choices["spellcasting"]["spells_prepared"]
         expected = list_spell_autocomplete_ids(self.wizard)
-        self.assertEqual(
-            expected,
-            [
-                "fire_bolt",
-                "thaumaturgy",
-                "guidance",
-                "chromatic_orb",
-                "burning_hands",
-                "detect_magic",
-                "magic_missile",
-                "shield",
-                "scorching_ray",
-            ],
-        )
+        self.assertEqual(expected, list(dict.fromkeys(cantrips + prepared)))
         choices = build_sort_autocomplete_choices(
             self.ctx,
             owner_id=self.owner_id,
@@ -125,25 +114,12 @@ class TestSortAutocompleteIntegration(unittest.TestCase):
         )
         values = [c.value for c in choices]
         self.assertEqual(values, expected)
-        prepared = set(self.wizard.choices["spellcasting"]["spells_prepared"])
         for choice in choices:
-            if choice.value in prepared or choice.value in (
-                self.wizard.choices["spellcasting"]["cantrips_known"]
-            ):
-                if choice.value in prepared and choice.value not in (
-                    self.wizard.choices["spellcasting"]["cantrips_known"]
-                ):
-                    self.assertTrue(
-                        choice.name.startswith("✨ ") or choice.name.startswith("📘 "),
-                        choice.name,
-                    )
-                elif choice.value in self.wizard.choices["spellcasting"]["cantrips_known"]:
-                    self.assertTrue(choice.name.startswith("✨ "), choice.name)
-            else:
-                self.assertTrue(
-                    choice.name.startswith("📘 ") or choice.name.startswith("🔒 "),
-                    choice.name,
-                )
+            self.assertTrue(
+                choice.name.startswith("✨ ") or choice.name.startswith("🔒 "),
+                choice.name,
+            )
+            self.assertFalse(choice.name.startswith("📘 "), choice.name)
 
     def test_autocomplete_matches_list_available_spells(self):
         character = self.service.resolve_for_game(

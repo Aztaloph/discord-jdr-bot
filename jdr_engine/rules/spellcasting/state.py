@@ -206,15 +206,17 @@ def list_spell_autocomplete_ids(character: Character) -> list[str]:
     """
     Sorts proposables dans l'autocomplete /sort.
 
-    Magicien : grimoire + cantrips (visibilité complète ; le lancement exige
-    la préparation via ``cast_spell``).
+    Magicien (P2f) : cantrips + sorts préparés (le grimoire complet reste visible
+    sur /perso-afficher et /preparer-sorts).
     """
     if character.class_id == "wizard":
-        return list(
-            dict.fromkeys(
-                get_cantrips_known(character) + get_spellbook(character)
-            )
-        )
+        cantrips = get_cantrips_known(character)
+        prepared = [
+            spell_id
+            for spell_id in get_spells_prepared_list(character)
+            if spell_id not in cantrips
+        ]
+        return list(dict.fromkeys(cantrips + prepared))
     return list_castable_spell_ids(character)
 
 

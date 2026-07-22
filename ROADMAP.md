@@ -26,10 +26,10 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
 
 | Indicateur | Valeur |
 |---|---|
-| Tests unitaires | **566** verts (`python -m unittest discover -s tests/unit -p "test_*.py" -q`) |
+| Tests unitaires | **572** verts (`python -m unittest discover -s tests/unit -p "test_*.py" -q`) |
 | Classes SRD 2014 | 12/12 jouables (création + montée de niveau 1–3) |
 | Catalogue sorts curated | 28 sorts (9 cantrips + 15 niv. 1 + 4 niv. 2) |
-| Derniers commits | P2h migration batch grimoires mage (`/migrer-grimoires`) sur `main` |
+| Derniers commits | P2f autocomplete /sort strict mage sur `main` |
 
 ---
 
@@ -49,13 +49,13 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
     - [x] **Lot A — Tours de magie** (9 cantrips)
     - [x] **Lot B — Sorts niv. 1** (15 sorts)
     - [x] **Lot C — Sorts niv. 2** (`scorching_ray`, `darkness`, `spiritual_weapon`, `flaming_sphere`)
-  - [ ] **Passe 2 — Sorts préparés / connus dynamiques**
+  - [x] **Passe 2 — Sorts préparés / connus dynamiques**
     - [x] **P2a — Moteur & taxonomie** : 3 familles (`KNOWN_FIXED` / `PREPARED` / `WIZARD_HYBRID`), quotas SRD, pools par classe, builds auto à la création / level-up
     - [x] **P2b — Règles par classe** : magicien (grimoire + préparés), clerc/druide (préparés + domaine), barde/ensorceleur/occultiste (connus), rôdeur/paladin (demi-lanceurs préparés, emplacements ⌈niv/2⌉), sorts élargis occultiste Fiélon
     - [x] **P2c — Lancement & affichage** : `/sort` respecte préparé vs grimoire (mage), connu vs lançable (occultiste), autocomplete enrichi, legacy `spells_prepared` sans `spellbook`
     - [x] **P2d — Correctifs lanceurs** (P1-fixes-sorts) : `scorching_ray`, `hellish_rebuke`, confirmation métamagie ensorceleur
     - [x] **P2e — Re-préparation joueur (repos long)** : `/preparer-sorts` (clerc, druide, paladin), pool fermé + quota moteur, flag `prepared_rechoice_pending`
-    - [ ] **P2f — Magicien** : autocomplete `/sort` strict (cantrips + **préparés** uniquement ; grimoire non préparé = 📘)
+    - [x] **P2f — Magicien** : autocomplete `/sort` strict (cantrips + **préparés** uniquement ; grimoire visible sur `/perso-afficher` et `/preparer-sorts`)
     - [x] **P2g — Outil MJ** : `/reset-grimoire` — rebuild grimoire + cantrips + préparés (persos legacy) ; `reset_wizard_grimoire_on_guild()` réutilisable par P2h
     - [x] **P2h — Migration MJ** : `/migrer-grimoires` — batch dry-run + confirm, `migrate_wizard_grimoires_on_guild()` (best-effort par perso, re-scan au clic)
   - [ ] **Lot Level-up 4+ (ASI)** — après Passe 2, avant / en parallèle Passe 3
@@ -73,13 +73,11 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
 
 ---
 
-## Clarification : état de la Passe 2
+## Clarification : Passe 2 — terminée ✅
 
-Les mécaniques **connus / préparés / grimoire** sont en place côté **moteur** (familles, quotas, `cast_spell`, fiche perso, autocomplete). Jalons restants avant de cocher la Passe 2 **entièrement** :
+Tous les jalons P2a–P2h sont livrés. Grimoire mage : consultable via **`/perso-afficher`** / **`/perso-mp`** (`format_spellcasting_detail`) et **`/preparer-sorts`** (pool = grimoire) ; **`/sort`** autocomplete = cantrips + préparés seulement (P2f).
 
-1. ~~**Choix joueur** — re-préparation après repos long (`/preparer-sorts`)~~ ✅ P2e (+ P2f-0 magicien depuis grimoire)
-2. **Magicien strict (P2f)** — autocomplete `/sort` : cantrips + **préparés** uniquement ; grimoire non préparé masqué ou 📘 — **prochain jalon spellcasting mage**
-3. ~~**Migration & outils MJ**~~ ✅ P2g + P2h
+**Prochain jalon spellcasting / progression** : **Lot Level-up 4+ (ASI)**.
 
 ---
 

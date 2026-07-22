@@ -193,8 +193,8 @@ class TestUnchangedCasters(unittest.TestCase):
         self.assertTrue(spell_is_known(char, "bless"))
         self.assertTrue(spell_is_known(char, "inflict_wounds"))
 
-    def test_wizard_autocomplete_still_includes_spellbook(self):
-        """P1f changera l'autocomplete mage — pas P1a."""
+    def test_wizard_autocomplete_strict_prepared_and_cantrips(self):
+        """P2f — grimoire hors autocomplete /sort ; fiche perso + /preparer-sorts."""
         char = _caster(
             "wizard",
             {
@@ -206,11 +206,9 @@ class TestUnchangedCasters(unittest.TestCase):
             level=1,
         )
         autocomplete = list_spell_autocomplete_ids(char)
-        self.assertIn("fire_bolt", autocomplete)
-        self.assertIn("magic_missile", autocomplete)
-        self.assertIn("burning_hands", autocomplete)
-        self.assertIn("shield", autocomplete)
-        self.assertNotIn("burning_hands", get_spells_known(char))
+        self.assertEqual(autocomplete, ["fire_bolt", "magic_missile"])
+        self.assertNotIn("burning_hands", autocomplete)
+        self.assertNotIn("shield", autocomplete)
 
 
 class TestFinalizeParity(unittest.TestCase):
