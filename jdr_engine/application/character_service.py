@@ -538,3 +538,273 @@ class CharacterService:
             prepared_before=prepared_before,
             prepared_after=tuple(get_spells_prepared_list(projected)),
         )
+
+    def migrate_wizard_grimoires_on_guild(
+        self,
+        guild_id: str,
+        *,
+        dry_run: bool = True,
+    ):
+        """
+        Migration batch grimoires mage sur une guild (P2h).
+
+        ``dry_run=True`` : projection sans écriture.
+        ``dry_run=False`` : re-scan + ``reset_wizard_grimoire_on_guild`` par mage
+        (état frais au moment de l'appel, pas de diff figé du preview).
+        """
+        from jdr_engine.application.dto.wizard_grimoire_migration import (
+            WizardGrimoireMigrationEntry,
+            WizardGrimoireMigrationReport,
+            WizardGrimoireMigrationStatus,
+        )
+
+        guild_id = str(guild_id)
+        wizards = [
+            character
+            for character in self.list_by_guild(guild_id)
+            if character.class_id == "wizard"
+        ]
+        entries: list[WizardGrimoireMigrationEntry] = []
+
+        for character in wizards:
+            try:
+                if dry_run:
+                    entries.append(self._preview_wizard_grimoire_migration_entry(character))
+                else:
+                    entries.append(
+                        self._apply_wizard_grimoire_migration_entry(character.id, guild_id)
+                    )
+            except Exception as exc:
+                logger.exception(
+                    "Migration grimoire échouée pour %s (%s)",
+                    character.name,
+                    character.id,
+                )
+                entries.append(
+                    WizardGrimoireMigrationEntry(
+                        character_id=character.id,
+                        character_name=character.name,
+                        status=WizardGrimoireMigrationStatus.ERROR,
+                        error=str(exc),
+                    )
+                )
+
+        return WizardGrimoireMigrationReport.from_entries(guild_id, dry_run, entries)
+
+    def _preview_wizard_grimoire_migration_entry(self, character: Character):
+        from jdr_engine.application.dto.wizard_grimoire_migration import (
+            WizardGrimoireMigrationEntry,
+            WizardGrimoireMigrationStatus,
+        )
+        from jdr_engine.application.dto.wizard_grimoire_reset import (
+            WizardGrimoireResetResult,
+        )
+        from jdr_engine.rules.spellcasting.preparation import (
+            is_wizard_spellcasting_canonical,
+            project_wizard_spellcasting_reset,
+        )
+        from jdr_engine.rules.spellcasting.state import (
+            get_cantrips_known,
+            get_spellbook,
+            get_spells_prepared_list,
+        )
+
+        cantrips_before = tuple(get_cantrips_known(character))
+        spellbook_before = tuple(get_spellbook(character))
+        prepared_before = tuple(get_spells_prepared_list(character))
+
+        if is_wizard_spellcasting_canonical(character):
+            result = WizardGrimoireResetResult(
+                character_id=character.id,
+                character_name=character.name,
+                already_clean=True,
+                cantrips_before=cantrips_before,
+                cantrips_after=cantrips_before,
+                spellbook_before=spellbook_before,
+                spellbook_after=spellbook_before,
+                prepared_before=prepared_before,
+                prepared_after=prepared_before,
+            )
+            return WizardGrimoireMigrationEntry(
+                character_id=character.id,
+                character_name=character.name,
+                status=WizardGrimoireMigrationStatus.SKIP,
+                result=result,
+            )
+
+        projected = project_wizard_spellcasting_reset(character)
+        result = WizardGrimoireResetResult(
+            character_id=character.id,
+            character_name=character.name,
+            already_clean=False,
+            cantrips_before=cantrips_before,
+            cantrips_after=tuple(get_cantrips_known(projected)),
+            spellbook_before=spellbook_before,
+            spellbook_after=tuple(get_spellbook(projected)),
+            prepared_before=prepared_before,
+            prepared_after=tuple(get_spells_prepared_list(projected)),
+        )
+        return WizardGrimoireMigrationEntry(
+            character_id=character.id,
+            character_name=character.name,
+            status=WizardGrimoireMigrationStatus.WILL_MODIFY,
+            result=result,
+        )
+
+    def _apply_wizard_grimoire_migration_entry(
+        self,
+        character_id: str,
+        guild_id: str,
+    ):
+        from jdr_engine.application.dto.wizard_grimoire_migration import (
+            WizardGrimoireMigrationEntry,
+            WizardGrimoireMigrationStatus,
+        )
+
+        result = self.reset_wizard_grimoire_on_guild(character_id, guild_id)
+        status = (
+            WizardGrimoireMigrationStatus.SKIP
+            if result.already_clean
+            else WizardGrimoireMigrationStatus.MODIFIED
+        )
+        return WizardGrimoireMigrationEntry(
+            character_id=result.character_id,
+            character_name=result.character_name,
+            status=status,
+            result=result,
+        )
+
+    def migrate_wizard_grimoires_on_guild(
+        self,
+        guild_id: str,
+        *,
+        dry_run: bool = True,
+    ):
+        """
+        Migration batch grimoires mage sur une guild (P2h).
+
+        ``dry_run=True`` : projection sans écriture.
+        ``dry_run=False`` : re-scan + ``reset_wizard_grimoire_on_guild`` par mage
+        (état frais au moment de l'appel, pas de diff figé du preview).
+        """
+        from jdr_engine.application.dto.wizard_grimoire_migration import (
+            WizardGrimoireMigrationEntry,
+            WizardGrimoireMigrationReport,
+            WizardGrimoireMigrationStatus,
+        )
+
+        guild_id = str(guild_id)
+        wizards = [
+            character
+            for character in self.list_by_guild(guild_id)
+            if character.class_id == "wizard"
+        ]
+        entries: list[WizardGrimoireMigrationEntry] = []
+
+        for character in wizards:
+            try:
+                if dry_run:
+                    entries.append(self._preview_wizard_grimoire_migration_entry(character))
+                else:
+                    entries.append(
+                        self._apply_wizard_grimoire_migration_entry(character.id, guild_id)
+                    )
+            except Exception as exc:
+                logger.exception(
+                    "Migration grimoire échouée pour %s (%s)",
+                    character.name,
+                    character.id,
+                )
+                entries.append(
+                    WizardGrimoireMigrationEntry(
+                        character_id=character.id,
+                        character_name=character.name,
+                        status=WizardGrimoireMigrationStatus.ERROR,
+                        error=str(exc),
+                    )
+                )
+
+        return WizardGrimoireMigrationReport.from_entries(guild_id, dry_run, entries)
+
+    def _preview_wizard_grimoire_migration_entry(self, character: Character):
+        from jdr_engine.application.dto.wizard_grimoire_migration import (
+            WizardGrimoireMigrationEntry,
+            WizardGrimoireMigrationStatus,
+        )
+        from jdr_engine.application.dto.wizard_grimoire_reset import (
+            WizardGrimoireResetResult,
+        )
+        from jdr_engine.rules.spellcasting.preparation import (
+            is_wizard_spellcasting_canonical,
+            project_wizard_spellcasting_reset,
+        )
+        from jdr_engine.rules.spellcasting.state import (
+            get_cantrips_known,
+            get_spellbook,
+            get_spells_prepared_list,
+        )
+
+        cantrips_before = tuple(get_cantrips_known(character))
+        spellbook_before = tuple(get_spellbook(character))
+        prepared_before = tuple(get_spells_prepared_list(character))
+
+        if is_wizard_spellcasting_canonical(character):
+            result = WizardGrimoireResetResult(
+                character_id=character.id,
+                character_name=character.name,
+                already_clean=True,
+                cantrips_before=cantrips_before,
+                cantrips_after=cantrips_before,
+                spellbook_before=spellbook_before,
+                spellbook_after=spellbook_before,
+                prepared_before=prepared_before,
+                prepared_after=prepared_before,
+            )
+            return WizardGrimoireMigrationEntry(
+                character_id=character.id,
+                character_name=character.name,
+                status=WizardGrimoireMigrationStatus.SKIP,
+                result=result,
+            )
+
+        projected = project_wizard_spellcasting_reset(character)
+        result = WizardGrimoireResetResult(
+            character_id=character.id,
+            character_name=character.name,
+            already_clean=False,
+            cantrips_before=cantrips_before,
+            cantrips_after=tuple(get_cantrips_known(projected)),
+            spellbook_before=spellbook_before,
+            spellbook_after=tuple(get_spellbook(projected)),
+            prepared_before=prepared_before,
+            prepared_after=tuple(get_spells_prepared_list(projected)),
+        )
+        return WizardGrimoireMigrationEntry(
+            character_id=character.id,
+            character_name=character.name,
+            status=WizardGrimoireMigrationStatus.WILL_MODIFY,
+            result=result,
+        )
+
+    def _apply_wizard_grimoire_migration_entry(
+        self,
+        character_id: str,
+        guild_id: str,
+    ):
+        from jdr_engine.application.dto.wizard_grimoire_migration import (
+            WizardGrimoireMigrationEntry,
+            WizardGrimoireMigrationStatus,
+        )
+
+        result = self.reset_wizard_grimoire_on_guild(character_id, guild_id)
+        status = (
+            WizardGrimoireMigrationStatus.SKIP
+            if result.already_clean
+            else WizardGrimoireMigrationStatus.MODIFIED
+        )
+        return WizardGrimoireMigrationEntry(
+            character_id=result.character_id,
+            character_name=result.character_name,
+            status=status,
+            result=result,
+        )

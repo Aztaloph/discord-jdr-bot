@@ -11,6 +11,7 @@ from discord.ext import commands
 from interfaces.discord.handlers import mj_rest as mj_rest_handler
 from interfaces.discord.handlers import mj_level_up as mj_level_up_handler
 from interfaces.discord.handlers import mj_grimoire as mj_grimoire_handler
+from interfaces.discord.handlers import mj_grimoire_migration as mj_grimoire_migration_handler
 from interfaces.discord.handlers.mj_delete import guild_character_autocomplete
 
 log = logging.getLogger(__name__)
@@ -108,6 +109,19 @@ class RestCog(commands.Cog):
             )
             return
         await mj_grimoire_handler.mj_reset_grimoire(interaction, ctx, personnage)
+
+    @app_commands.command(
+        name="migrer-grimoires",
+        description="[MJ] Migration batch des grimoires mage (persos legacy) sur ce serveur",
+    )
+    async def migrer_grimoires(self, interaction: discord.Interaction):
+        ctx = self._jdr
+        if ctx is None or not ctx.use_engine_v2:
+            await interaction.response.send_message(
+                "Moteur v2 requis.", ephemeral=True
+            )
+            return
+        await mj_grimoire_migration_handler.mj_migrer_grimoires(interaction, ctx)
 
 
 async def setup(bot: commands.Bot):

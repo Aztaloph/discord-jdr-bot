@@ -14,10 +14,10 @@
 
 | Indicateur | Valeur |
 |---|---|
-| Tests unitaires | **556** verts (`python -m unittest discover -s tests/unit -p "test_*.py" -q`) |
+| Tests unitaires | **566** verts (`python -m unittest discover -s tests/unit -p "test_*.py" -q`) |
 | Classes SRD 2014 | 12/12 jouables (création + montée de niveau 1–3) |
 | Catalogue sorts curated | 28 sorts (9 cantrips + 15 niv. 1 + 4 niv. 2) |
-| Derniers commits | P2g outil MJ grimoire mage (`/reset-grimoire`) sur `main` |
+| Derniers commits | P2h migration batch grimoires mage (`/migrer-grimoires`) sur `main` |
 
 ---
 
@@ -45,7 +45,7 @@
     - [x] **P2e — Re-préparation joueur (repos long)** : `/preparer-sorts` (clerc, druide, paladin), pool fermé + quota moteur, flag `prepared_rechoice_pending`
     - [ ] **P2f — Magicien** : autocomplete `/sort` strict (cantrips + **préparés** uniquement ; grimoire non préparé = 📘)
     - [x] **P2g — Outil MJ** : `/reset-grimoire` — rebuild grimoire + cantrips + préparés (persos legacy) ; `reset_wizard_grimoire_on_guild()` réutilisable par P2h
-    - [ ] **P2h — Migration MJ** : batch des ~12 persos legacy — boucle `reset_wizard_grimoire_on_guild()` par guild (prochaine étape)
+    - [x] **P2h — Migration MJ** : `/migrer-grimoires` — batch dry-run + confirm, `migrate_wizard_grimoires_on_guild()` (best-effort par perso, re-scan au clic)
   - [ ] **Passe 3 — Automatisation des aptitudes** (forme sauvage, métamagie à l'incantation, canalisation d'énergie, arme/familier de pacte…)
   - [ ] **Passe 4 — Passe UI / affichage** (libellés, fix limite de caractères des embeds, libellé « Sous-classe (niv. 3) »)
 - [ ] **ÉTAPE 4 : Système de combat complet** (initiative, tour par tour, PV ennemis, level-up par XP) — GROS CHANTIER
@@ -53,13 +53,13 @@
 
 ---
 
-## Clarification : pourquoi la Passe 2 n'était pas cochée ?
+## Clarification : état de la Passe 2
 
-Les mécaniques **connus / préparés / grimoire** sont bien en place côté **moteur** (familles, quotas, `cast_spell`, fiche perso, autocomplete). Ce qui manque pour cocher la Passe 2 **entièrement** :
+Les mécaniques **connus / préparés / grimoire** sont en place côté **moteur** (familles, quotas, `cast_spell`, fiche perso, autocomplete). Jalons restants avant de cocher la Passe 2 **entièrement** :
 
-1. ~~**Choix joueur** — re-préparation après repos long (`/preparer-sorts`)~~ ✅ P2e
-2. **Magicien strict** — le grimoire complet reste visible dans l'autocomplete (marqué 📘) ; le filtrage « préparés seulement » est optionnel (P2f).
-3. **Migration & outils MJ** — P2g ✅ (`/reset-grimoire`, service batch-ready) ; P2h (migration batch ~12 persos) = prochaine étape.
+1. ~~**Choix joueur** — re-préparation après repos long (`/preparer-sorts`)~~ ✅ P2e (+ P2f-0 magicien depuis grimoire)
+2. **Magicien strict (P2f)** — autocomplete `/sort` : cantrips + **préparés** uniquement ; grimoire non préparé masqué ou 📘 — **prochain jalon spellcasting mage**
+3. ~~**Migration & outils MJ**~~ ✅ P2g + P2h
 
 ---
 
