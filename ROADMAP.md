@@ -14,10 +14,10 @@
 
 | Indicateur | Valeur |
 |---|---|
-| Tests unitaires | **531** verts (`python -m unittest discover -s tests/unit -p "test_*.py" -q`) |
+| Tests unitaires | **556** verts (`python -m unittest discover -s tests/unit -p "test_*.py" -q`) |
 | Classes SRD 2014 | 12/12 jouables (création + montée de niveau 1–3) |
 | Catalogue sorts curated | 28 sorts (9 cantrips + 15 niv. 1 + 4 niv. 2) |
-| Derniers commits | P0-P1c + P1-fixes-sorts (`e5caabc` sur `main`) |
+| Derniers commits | P2g outil MJ grimoire mage (`/reset-grimoire`) sur `main` |
 
 ---
 
@@ -44,8 +44,8 @@
     - [x] **P2d — Correctifs lanceurs** (P1-fixes-sorts) : `scorching_ray`, `hellish_rebuke`, confirmation métamagie ensorceleur
     - [x] **P2e — Re-préparation joueur (repos long)** : `/preparer-sorts` (clerc, druide, paladin), pool fermé + quota moteur, flag `prepared_rechoice_pending`
     - [ ] **P2f — Magicien** : autocomplete `/sort` strict (cantrips + **préparés** uniquement ; grimoire non préparé = 📘)
-    - [ ] **P2g — Outil MJ** : recopie / réinitialisation grimoire mage (persos legacy)
-    - [ ] **P2h — Migration MJ** : normaliser les ~12 persos existants vers le schéma `spellcasting` v2 (non automatique au démarrage)
+    - [x] **P2g — Outil MJ** : `/reset-grimoire` — rebuild grimoire + cantrips + préparés (persos legacy) ; `reset_wizard_grimoire_on_guild()` réutilisable par P2h
+    - [ ] **P2h — Migration MJ** : batch des ~12 persos legacy — boucle `reset_wizard_grimoire_on_guild()` par guild (prochaine étape)
   - [ ] **Passe 3 — Automatisation des aptitudes** (forme sauvage, métamagie à l'incantation, canalisation d'énergie, arme/familier de pacte…)
   - [ ] **Passe 4 — Passe UI / affichage** (libellés, fix limite de caractères des embeds, libellé « Sous-classe (niv. 3) »)
 - [ ] **ÉTAPE 4 : Système de combat complet** (initiative, tour par tour, PV ennemis, level-up par XP) — GROS CHANTIER
@@ -59,7 +59,7 @@ Les mécaniques **connus / préparés / grimoire** sont bien en place côté **m
 
 1. ~~**Choix joueur** — re-préparation après repos long (`/preparer-sorts`)~~ ✅ P2e
 2. **Magicien strict** — le grimoire complet reste visible dans l'autocomplete (marqué 📘) ; le filtrage « préparés seulement » est optionnel (P2f).
-3. **Migration & outils MJ** — persos créés avant P2a (ex. Joe le mage sans clé `spellbook`) : repli legacy OK, migration outillée non faite.
+3. **Migration & outils MJ** — P2g ✅ (`/reset-grimoire`, service batch-ready) ; P2h (migration batch ~12 persos) = prochaine étape.
 
 ---
 

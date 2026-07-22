@@ -10,6 +10,7 @@ from discord.ext import commands
 
 from interfaces.discord.handlers import mj_rest as mj_rest_handler
 from interfaces.discord.handlers import mj_level_up as mj_level_up_handler
+from interfaces.discord.handlers import mj_grimoire as mj_grimoire_handler
 from interfaces.discord.handlers.mj_delete import guild_character_autocomplete
 
 log = logging.getLogger(__name__)
@@ -90,6 +91,23 @@ class RestCog(commands.Cog):
             )
             return
         await mj_level_up_handler.mj_monter_niveau(interaction, ctx, personnage)
+
+    @app_commands.command(
+        name="reset-grimoire",
+        description="[MJ] Réinitialise le grimoire d'un magicien (persos legacy / données polluées)",
+    )
+    @app_commands.describe(
+        personnage="Magicien ciblé (nom ou id court, ex. joe00001)",
+    )
+    @app_commands.autocomplete(personnage=_personnage_autocomplete)
+    async def reset_grimoire(self, interaction: discord.Interaction, personnage: str):
+        ctx = self._jdr
+        if ctx is None or not ctx.use_engine_v2:
+            await interaction.response.send_message(
+                "Moteur v2 requis.", ephemeral=True
+            )
+            return
+        await mj_grimoire_handler.mj_reset_grimoire(interaction, ctx, personnage)
 
 
 async def setup(bot: commands.Bot):

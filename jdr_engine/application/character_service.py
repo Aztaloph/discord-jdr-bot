@@ -470,3 +470,71 @@ class CharacterService:
             pact_boon=pact_boon,
             base_character=base_character,
         )
+
+    def reset_wizard_grimoire_on_guild(
+        self,
+        character_id: str,
+        guild_id: str,
+    ):
+        """
+        Réinitialise grimoire / cantrips / préparés d'un magicien (P2g / P2h).
+
+        Sans dépendance Discord. No-op persistant si déjà canonique.
+        """
+        from jdr_engine.application.dto.wizard_grimoire_reset import (
+            WizardGrimoireResetResult,
+        )
+        from jdr_engine.rules.spellcasting.preparation import (
+            WizardSpellbookResetError,
+            is_wizard_spellcasting_canonical,
+            project_wizard_spellcasting_reset,
+            rebuild_wizard_spellcasting_at_level,
+        )
+        from jdr_engine.rules.spellcasting.state import (
+            get_cantrips_known,
+            get_spellbook,
+            get_spells_prepared_list,
+        )
+
+        character = self.get_on_guild(character_id, guild_id)
+        if character.class_id != "wizard":
+            raise CharacterValidationError(
+                "Seuls les magiciens possèdent un grimoire réinitialisable."
+            )
+
+        cantrips_before = tuple(get_cantrips_known(character))
+        spellbook_before = tuple(get_spellbook(character))
+        prepared_before = tuple(get_spells_prepared_list(character))
+
+        if is_wizard_spellcasting_canonical(character):
+            return WizardGrimoireResetResult(
+                character_id=character.id,
+                character_name=character.name,
+                already_clean=True,
+                cantrips_before=cantrips_before,
+                cantrips_after=cantrips_before,
+                spellbook_before=spellbook_before,
+                spellbook_after=spellbook_before,
+                prepared_before=prepared_before,
+                prepared_after=prepared_before,
+            )
+
+        projected = project_wizard_spellcasting_reset(character)
+        try:
+            updated = rebuild_wizard_spellcasting_at_level(character)
+        except WizardSpellbookResetError as exc:
+            raise CharacterValidationError(str(exc)) from exc
+
+        self._repo.save(updated)
+
+        return WizardGrimoireResetResult(
+            character_id=updated.id,
+            character_name=updated.name,
+            already_clean=False,
+            cantrips_before=cantrips_before,
+            cantrips_after=tuple(get_cantrips_known(projected)),
+            spellbook_before=spellbook_before,
+            spellbook_after=tuple(get_spellbook(projected)),
+            prepared_before=prepared_before,
+            prepared_after=tuple(get_spells_prepared_list(projected)),
+        )

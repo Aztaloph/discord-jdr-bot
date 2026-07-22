@@ -2,6 +2,8 @@
 """Préparation / sorts connus — Barde, Clerc, Magicien & Ensorceleur SRD 2014."""
 from __future__ import annotations
 
+from jdr_engine.domain.character.character import Character
+from jdr_engine.rules.spellcasting.state import get_spellcasting_state
 from jdr_engine.rules.spellcasting.model import (
     BARD_CANTRIPS_BY_LEVEL,
     BARD_SPELLS_KNOWN_BY_LEVEL,
@@ -259,6 +261,79 @@ def upgrade_wizard_spellcasting(
     )
     state.setdefault("slots_used", {})
     return {**choices, "spellcasting": state}
+
+
+class WizardSpellbookResetError(Exception):
+    """Réinitialisation grimoire mage impossible ou non applicable."""
+
+
+def _wizard_int_mod(character: Character) -> int:
+    from jdr_engine.domain.character.ability_scores import ability_modifier
+    from jdr_engine.rules.spellcasting.model import casting_ability_for_class
+
+    ability_id = casting_ability_for_class("wizard")
+    scores = character.ability_scores.with_defaults(
+        ["str", "dex", "con", "int", "wis", "cha"]
+    )
+    return ability_modifier(scores.scores.get(ability_id, 10))
+
+
+def rebuild_wizard_spellcasting_at_level(character: Character) -> Character:
+    """
+    Normalise cantrips, grimoire et sorts préparés au niveau actuel (pool curated).
+
+    Conserve ``slots_used`` et ``prepared_rechoice_pending``. Réutilisable P2g / P2h.
+    """
+    if character.class_id != "wizard":
+        raise WizardSpellbookResetError(
+            "Seuls les magiciens possèdent un grimoire réinitialisable."
+        )
+
+    int_mod = _wizard_int_mod(character)
+    choices = dict(character.choices or {})
+    old_state = dict(get_spellcasting_state(character))
+    slots_used = dict(old_state.get("slots_used") or {})
+    pending = old_state.get("prepared_rechoice_pending")
+
+    choices = upgrade_wizard_spellcasting(
+        choices,
+        new_level=character.level,
+        int_mod=int_mod,
+    )
+    state = dict(choices.get("spellcasting") or {})
+    state["slots_used"] = slots_used
+    if pending:
+        state["prepared_rechoice_pending"] = True
+    else:
+        state.pop("prepared_rechoice_pending", None)
+    choices["spellcasting"] = state
+    character.choices = choices
+    return character
+
+
+def project_wizard_spellcasting_reset(character: Character) -> Character:
+    """Projection sans persistance — preview / test idempotence."""
+    return rebuild_wizard_spellcasting_at_level(
+        Character.from_dict(character.to_dict())
+    )
+
+
+def is_wizard_spellcasting_canonical(character: Character) -> bool:
+    """True si cantrips, grimoire et préparés correspondent déjà au canon curated."""
+    if character.class_id != "wizard":
+        return False
+    from jdr_engine.rules.spellcasting.state import (
+        get_cantrips_known,
+        get_spellbook,
+        get_spells_prepared_list,
+    )
+
+    projected = project_wizard_spellcasting_reset(character)
+    return (
+        get_cantrips_known(character) == get_cantrips_known(projected)
+        and get_spellbook(character) == get_spellbook(projected)
+        and get_spells_prepared_list(character) == get_spells_prepared_list(projected)
+    )
 
 
 def _sorcerer_cantrips(level: int) -> list[str]:
