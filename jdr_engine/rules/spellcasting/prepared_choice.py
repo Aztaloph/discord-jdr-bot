@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from jdr_engine.domain.character.ability_scores import ability_modifier
 from jdr_engine.domain.character.character import Character
 from jdr_engine.domain.character.choices_schema import get_specialization_id
+from jdr_engine.rules.effective_scores import get_effective_ability_modifier
 from jdr_engine.rules.engine import RuleEngine
 from jdr_engine.rules.spellcasting.model import (
     SpellcastingFamily,
@@ -72,14 +72,6 @@ def mark_prepared_rechoice_pending(
     return character
 
 
-def _casting_ability_mod(character: Character) -> int:
-    ability_id = casting_ability_for_class(character.class_id)
-    scores = character.ability_scores.with_defaults(
-        ["str", "dex", "con", "int", "wis", "cha"]
-    )
-    return ability_modifier(scores.scores.get(ability_id, 10))
-
-
 def get_prepared_spell_pool(
     character: Character,
     *,
@@ -107,9 +99,10 @@ def get_prepared_spell_pool(
     )
 
 
-def get_player_prepared_quota(character: Character) -> int:
+def get_player_prepared_quota(character: Character, *, engine: RuleEngine) -> int:
     """Nombre de sorts que le joueur doit choisir (hors domaine clerc)."""
-    mod = _casting_ability_mod(character)
+    ability_id = casting_ability_for_class(character.class_id)
+    mod = get_effective_ability_modifier(character, engine, ability_id)
     return prepared_capacity_for_class(
         character.class_id,
         mod,
@@ -139,7 +132,7 @@ def build_prepared_choice_context(
         class_id=character.class_id,
         level=character.level,
         pool=get_prepared_spell_pool(character, engine=engine),
-        quota=get_player_prepared_quota(character),
+        quota=get_player_prepared_quota(character, engine=engine),
         domain_spells=domain,
         paladin_no_slots_notice=paladin_no_slots_notice(character),
     )
@@ -179,7 +172,7 @@ def validate_prepared_selection(
 
     domain = set(get_domain_spells(character))
     chosen = list(dict.fromkeys(str(spell_id).strip() for spell_id in selected if spell_id))
-    quota = get_player_prepared_quota(character)
+    quota = get_player_prepared_quota(character, engine=engine)
     cantrips = set(get_cantrips_known(character))
 
     if len(chosen) != quota:

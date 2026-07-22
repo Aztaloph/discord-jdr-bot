@@ -97,7 +97,7 @@ class TestLot3Ranger(unittest.TestCase):
         self.assertEqual(get_spells_known(char), prepared)
 
         mod, atk, dc = get_spellcasting_stats(char, self.engine)
-        self.assertEqual(mod, 2)  # SAG 15 → +2
+        self.assertEqual(mod, 3)  # SAG 15 base + humain +1 → effectif 16 (+3)
         sheet = build_character_sheet(char, self.engine)
         self.assertTrue(any("Ennemi juré" in line for line in sheet.class_features_lines))
         self.assertTrue(any("archery" in line.lower() or "Archerie" in line for line in sheet.class_features_lines))

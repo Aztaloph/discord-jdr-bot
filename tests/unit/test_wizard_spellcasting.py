@@ -171,6 +171,36 @@ class TestWizardSpellCast(unittest.TestCase):
         self.assertIn("Emplacements restants", text)
 
 
+class TestFireBoltCantripScaling(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.engine = RuleEngine.load("dnd5e", validate=True, strict=True)
+
+    def test_fire_bolt_level_1_rolls_1d10(self):
+        char = _wizard(1)
+        rng = SequenceRng([14, 7])
+        result = cast_spell(char, "fire_bolt", self.engine, rng=rng, persist_slots=False)
+        self.assertEqual(result.damage_notation, "1d10")
+        self.assertEqual(result.damage_total, 7)
+        self.assertEqual(len(result.damage_rolls), 1)
+
+    def test_fire_bolt_level_4_still_1d10(self):
+        char = _wizard(4)
+        rng = SequenceRng([14, 8])
+        result = cast_spell(char, "fire_bolt", self.engine, rng=rng, persist_slots=False)
+        self.assertEqual(result.damage_notation, "1d10")
+        self.assertEqual(result.damage_total, 8)
+        self.assertEqual(len(result.damage_rolls), 1)
+
+    def test_fire_bolt_level_5_rolls_2d10(self):
+        char = _wizard(5)
+        rng = SequenceRng([14, 6, 4])
+        result = cast_spell(char, "fire_bolt", self.engine, rng=rng, persist_slots=False)
+        self.assertEqual(result.damage_notation, "2d10")
+        self.assertEqual(result.damage_total, 10)
+        self.assertEqual(len(result.damage_rolls), 2)
+
+
 class TestSpellKnownVsCatalog(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

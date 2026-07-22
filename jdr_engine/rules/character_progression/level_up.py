@@ -33,7 +33,7 @@ from jdr_engine.rules.character_creation.class_choices import (
 )
 from jdr_engine.rules.character_creation.playable import LEVEL_UP_CLASSES
 from jdr_engine.rules.derived_stats import collect_proficient_skills
-from jdr_engine.domain.character.ability_scores import ability_modifier
+from jdr_engine.domain.character.ability_scores import DEFAULT_ABILITY_IDS, ability_modifier
 from jdr_engine.domain.character.choices_schema import get_specialization_id
 from jdr_engine.rules.character_creation.starting_spells import (
     init_half_caster_spellcasting_if_needed,
@@ -50,9 +50,23 @@ from jdr_engine.rules.character_creation.subclass_choices import (
 from jdr_engine.rules.derived_stats import calculate_hp_gain_per_level
 from jdr_engine.rules.engine import RuleEngine
 from jdr_engine.rules.rest.state import hit_dice_remaining, hit_dice_total, sync_hit_dice_total
+from jdr_engine.rules.character_progression.asi import (
+    ABILITY_LABELS_FR,
+    AsiValidationError,
+    apply_asi_to_base,
+    asi_already_applied,
+    eligible_asi_abilities,
+    record_asi_applied,
+    requires_asi_at_level,
+    validate_asi,
+)
+from jdr_engine.rules.racial.resolve import get_racial_ability_bonuses
 from jdr_engine.rules.spellcasting.slots import get_max_spell_slots
 
-MAX_LEVEL_LOT2 = 3
+from jdr_engine.rules.progression_constants import (
+    MAX_CHARACTER_LEVEL,
+    MAX_LEVEL_LOT2,
+)
 
 
 class LevelUpError(Exception):
@@ -74,6 +88,7 @@ class LevelUpPending:
         "metamagic_options",
         "eldritch_invocations",
         "pact_boon",
+        "ability_score_improvement",
     ]
     options: tuple[str, ...]
     parent_subclass: str | None = None
@@ -108,6 +123,11 @@ class LevelUpPending:
             )
         if self.choice_type == "pact_boon":
             return "Choisissez votre **Faveur du pacte**."
+        if self.choice_type == "ability_score_improvement":
+            return (
+                "Choisissez **+2** à une caractéristique "
+                "ou **+1** à deux caractéristiques (cap effectif **20**)."
+            )
         return f"Choisissez votre sous-classe (niv. {self.target_level})."
 
 
@@ -594,6 +614,48 @@ def _ensure_pact_boon_for_level(
     )
 
 
+def _ensure_asi_for_level(
+    character: Character,
+    engine: RuleEngine,
+    new_level: int,
+    *,
+    asi_choice: dict[str, int] | None = None,
+) -> Character:
+    if not requires_asi_at_level(new_level):
+        return character
+
+    choices = dict(character.choices or {})
+    if asi_already_applied(choices, new_level):
+        return character
+
+    base_scores = character.ability_scores.with_defaults(list(DEFAULT_ABILITY_IDS)).scores
+    racial_bonuses = get_racial_ability_bonuses(character, engine)
+
+    if asi_choice is not None:
+        try:
+            bonuses = validate_asi(base_scores, racial_bonuses, asi_choice)
+        except AsiValidationError as exc:
+            raise LevelUpError(str(exc)) from exc
+        new_scores = apply_asi_to_base(character.ability_scores, bonuses)
+        choices = record_asi_applied(choices, new_level, bonuses)
+        return replace(character, ability_scores=new_scores, choices=choices)
+
+    options = eligible_asi_abilities(base_scores, racial_bonuses, increment=1)
+    if not options:
+        raise LevelUpError(
+            "Aucune caractéristique n'est éligible à un ASI (cap 20 atteint)."
+        )
+    raise LevelUpPendingChoice(
+        LevelUpPending(
+            character=character,
+            target_level=new_level,
+            choice_type="ability_score_improvement",
+            options=options,
+            required_count=2,
+        )
+    )
+
+
 def apply_level_up(
     character: Character,
     engine: RuleEngine,
@@ -607,6 +669,7 @@ def apply_level_up(
     metamagic_options: list[str] | tuple[str, ...] | None = None,
     eldritch_invocations: list[str] | tuple[str, ...] | None = None,
     pact_boon: str | None = None,
+    asi_choice: dict[str, int] | None = None,
 ) -> tuple[Character, LevelUpResult]:
     """
     Monte le personnage d'un niveau (SRD 2014, niv. 2–3).
@@ -617,9 +680,9 @@ def apply_level_up(
         raise LevelUpError(
             f"Montée de niveau non supportée pour la classe « {character.class_id} »."
         )
-    if character.level >= MAX_LEVEL_LOT2:
+    if character.level >= MAX_CHARACTER_LEVEL:
         raise LevelUpError(
-            f"**{character.name}** est déjà au niveau maximum pour ce lot (niv. {MAX_LEVEL_LOT2})."
+            f"**{character.name}** est déjà au niveau maximum (niv. {MAX_CHARACTER_LEVEL})."
         )
 
     old_level = character.level
@@ -668,6 +731,12 @@ def apply_level_up(
         engine,
         new_level,
         pact_boon=pact_boon,
+    )
+    character = _ensure_asi_for_level(
+        character,
+        engine,
+        new_level,
+        asi_choice=asi_choice,
     )
 
     sheet = build_character_sheet(character, engine)

@@ -12,6 +12,12 @@ from jdr_engine.rules.character_progression import LevelUpError, LevelUpPending,
 from jdr_engine.rules.derived_stats import skill_label_fr
 from jdr_engine.rules.engine import RuleEngine
 
+from interfaces.discord.components.asi_distribution import (
+    AsiConfirmCallback,
+    AsiDistributionState,
+    AsiDistributionView,
+)
+
 from interfaces.discord.formatters.character_embed import COULEUR_ERREUR, COULEUR_SUCCES
 
 logger = logging.getLogger(__name__)
@@ -96,16 +102,113 @@ async def _handle_level_up_pending(
     guild_id: str,
     character_id: str,
 ) -> None:
+    pending = exc.pending
+
+    async def on_asi_confirm(
+        interaction: discord.Interaction,
+        _state: AsiDistributionState,
+        asi_choice: dict[str, int],
+    ) -> None:
+        await _on_asi_distribution_confirmed(
+            interaction,
+            asi_choice,
+            pending=pending,
+            engine=engine,
+            character_service=character_service,
+            guild_id=guild_id,
+            character_id=character_id,
+        )
+
+    view, embed = build_level_up_pending_ui(
+        pending,
+        engine=engine,
+        character_service=character_service,
+        guild_id=guild_id,
+        character_id=character_id,
+        on_asi_confirm=on_asi_confirm,
+    )
     await _edit_level_up_message(
         interaction,
-        embed=_pending_embed(exc.pending),
-        view=LevelUpChoiceView(
-            exc.pending,
+        embed=embed,
+        view=view,
+    )
+
+
+def build_level_up_pending_ui(
+    pending: LevelUpPending,
+    *,
+    engine: RuleEngine,
+    character_service: CharacterService,
+    guild_id: str,
+    character_id: str,
+    on_asi_confirm: AsiConfirmCallback,
+) -> tuple[discord.ui.View, discord.Embed]:
+    """Vue + embed pour un choix de montée de niveau en attente (testable)."""
+    if pending.choice_type == "ability_score_improvement":
+        state = AsiDistributionState.from_character(pending.character, engine=engine)
+        owner_id = int(pending.character.owner_id)
+        view: discord.ui.View = AsiDistributionView(
+            pending=pending,
+            engine=engine,
+            character_service=character_service,
+            guild_id=guild_id,
+            character_id=character_id,
+            state=state,
+            owner_id=owner_id,
+            on_confirm=on_asi_confirm,
+        )
+        embed = view.build_embed()
+    else:
+        view = LevelUpChoiceView(
+            pending,
             engine,
             character_service,
             guild_id,
             character_id,
-        ),
+        )
+        embed = _pending_embed(pending)
+    return view, embed
+
+
+async def _on_asi_distribution_confirmed(
+    interaction: discord.Interaction,
+    asi_choice: dict[str, int],
+    *,
+    pending: LevelUpPending,
+    engine: RuleEngine,
+    character_service: CharacterService,
+    guild_id: str,
+    character_id: str,
+) -> None:
+    await interaction.response.defer(ephemeral=True)
+    try:
+        result = character_service.complete_level_up_choice_on_guild(
+            character_id,
+            guild_id,
+            asi_choice=asi_choice,
+            base_character=pending.character,
+        )
+    except LevelUpPendingChoice as exc:
+        await _handle_level_up_pending(
+            interaction,
+            exc,
+            engine=engine,
+            character_service=character_service,
+            guild_id=guild_id,
+            character_id=character_id,
+        )
+        return
+    except LevelUpError as exc:
+        await _handle_level_up_error(interaction, exc)
+        return
+
+    await _handle_level_up_result(
+        interaction,
+        engine=engine,
+        character_service=character_service,
+        guild_id=guild_id,
+        character_id=character_id,
+        result=result,
     )
 
 
@@ -428,6 +531,12 @@ class LevelUpChoiceView(discord.ui.View):
         self.character_id = character_id
         self.selected_values: list[str] = list(selected_values or [])
 
+        if pending.choice_type == "ability_score_improvement":
+            raise ValueError(
+                "ASI : utiliser AsiDistributionView via build_level_up_pending_ui(), "
+                "pas LevelUpChoiceView."
+            )
+
         if pending.choice_type in (
             "lore_bonus_skills",
             "expertise_skills",
@@ -466,15 +575,24 @@ def _pending_embed(
         title = f"⬆️ Manifestations occultes — {pending.character.name}"
     elif pending.choice_type == "pact_boon":
         title = f"⬆️ Faveur du pacte — {pending.character.name}"
+    elif pending.choice_type == "ability_score_improvement":
+        title = f"⬆️ Amélioration de caractéristiques — {pending.character.name}"
     else:
         title = f"⬆️ Choix requis — {pending.character.name}"
+    confirm_hint = (
+        "Utilisez les boutons **+**/**−** pour répartir **2 points ASI**, puis **Confirmer ASI**."
+        if pending.choice_type == "ability_score_improvement"
+        else "Sélectionnez vos choix puis appuyez sur **Confirmer**."
+    )
     description = (
         f"**{pending.character.name}** passe au **niveau {pending.target_level}**.\n\n"
         f"{pending.message}\n\n"
-        "Sélectionnez vos choix puis appuyez sur **Confirmer**."
+        f"{confirm_hint}"
     )
     if selected:
-        if pending.choice_type == "metamagic_options":
+        if pending.choice_type == "ability_score_improvement":
+            labels = [ABILITY_LABELS_FR.get(v, v) for v in selected]
+        elif pending.choice_type == "metamagic_options":
             from jdr_engine.rules.class_features.sorcerer import METAMAGIC_LABELS_FR
 
             labels = [METAMAGIC_LABELS_FR.get(v, v) for v in selected]

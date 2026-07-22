@@ -63,9 +63,9 @@ class TestLot6Druid(unittest.TestCase):
         self.assertEqual(get_spells_known(char), prepared)
 
         mod, attack, save_dc = get_spellcasting_stats(char, self.engine)
-        self.assertEqual(mod, 2)
-        self.assertEqual(save_dc, 12)
-        self.assertEqual(attack, 4)
+        self.assertEqual(mod, 3)  # SAG effectif 16 (+3)
+        self.assertEqual(save_dc, 13)
+        self.assertEqual(attack, 5)
 
         sheet = build_character_sheet(char, self.engine)
         self.assertIn("Préparation (affichage)", sheet.spellcasting_summary or "")

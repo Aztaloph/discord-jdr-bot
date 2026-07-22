@@ -63,8 +63,8 @@ class TestLot4Bard(unittest.TestCase):
         self.assertTrue(has_spellcasting_access(char, self.engine))
         self.assertEqual(len(get_cantrips_known(char)), 2)
         mod, attack, dc = get_spellcasting_stats(char, self.engine)
-        self.assertEqual(mod, 2)  # CHA 15
-        self.assertEqual(dc, 12)
+        self.assertEqual(mod, 3)  # CHA 15 base + humain +1 → effectif 16 (+3)
+        self.assertEqual(dc, 13)
         self.assertEqual(get_max_spell_slots("bard", 1), {1: 2})
         max_insp = bardic_inspiration_uses_max(15)
         self.assertEqual(
@@ -197,9 +197,9 @@ class TestLot4Cleric(unittest.TestCase):
             rng=SequenceRng([5]),
             persist_slots=True,
         )
-        # 1d8=5 +2 SAG +3 Disciple (niv.1) = 10
-        self.assertEqual(result.healing_total, 10)
-        self.assertEqual(result.healing_applied, 10)
+        # 1d8=5 +3 SAG effectif +3 Disciple (niv.1) = 11
+        self.assertEqual(result.healing_total, 11)
+        self.assertEqual(result.healing_applied, 11)
 
 
 class TestLot4PaladinFightingStyleFr(unittest.TestCase):

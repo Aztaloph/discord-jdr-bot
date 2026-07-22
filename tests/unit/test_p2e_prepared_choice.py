@@ -17,17 +17,19 @@ from jdr_engine.rules.spellcasting.prepared_choice import (
     PreparedChoiceError,
     apply_prepared_selection,
     get_player_prepared_quota,
+    get_prepared_spell_pool,
     is_prepared_rechoice_pending,
     mark_prepared_rechoice_pending,
     validate_prepared_selection,
 )
-from jdr_engine.rules.spellcasting.state import get_spells_prepared_list
+from jdr_engine.rules.spellcasting.state import get_domain_spells, get_spells_prepared_list
 from tests.helpers.creation import (
     cleric_creation_kwargs,
     druid_creation_kwargs,
     paladin_creation_kwargs,
     ranger_creation_kwargs,
     sorcerer_creation_kwargs,
+    valid_point_buy_scores,
 )
 
 
@@ -93,10 +95,51 @@ class TestPreparedChoiceValidation(unittest.TestCase):
         self.assertTrue(is_prepared_rechoice_pending(char))
         return char
 
+    def _pending_druid_quota_three(self):
+        """Druide SAG base 13 + humain → mod +2, quota 3 (= pool niv. 1)."""
+        char = finalize_new_character(
+            owner_id="1",
+            guild_id="1",
+            name="Fern",
+            engine=self.engine,
+            **druid_creation_kwargs(
+                level=1,
+                base_scores=valid_point_buy_scores(wis=13, con=14),
+            ),
+        )
+        char, _ = apply_long_rest(char, self.engine)
+        self.assertTrue(is_prepared_rechoice_pending(char))
+        return char
+
+    def _pending_cleric_quota_three(self):
+        """Clerc SAG base 13 + humain → mod +2, quota 3."""
+        char = finalize_new_character(
+            owner_id="1",
+            guild_id="1",
+            name="Marie",
+            engine=self.engine,
+            **cleric_creation_kwargs(
+                base_scores=valid_point_buy_scores(wis=13, con=14),
+            ),
+        )
+        char, _ = apply_long_rest(char, self.engine)
+        self.assertTrue(is_prepared_rechoice_pending(char))
+        return char
+
+    def _player_prepared_pool(self, char):
+        domain = set(get_domain_spells(char))
+        return [
+            spell_id
+            for spell_id in get_prepared_spell_pool(char, engine=self.engine)
+            if spell_id not in domain
+        ]
+
     def test_valid_selection_persisted(self):
-        char = self._pending_druid()
-        quota = get_player_prepared_quota(char)
-        selection = ["entangle", "cure_wounds", "faerie_fire"][:quota]
+        char = self._pending_druid_quota_three()
+        quota = get_player_prepared_quota(char, engine=self.engine)
+        self.assertEqual(quota, 3)
+        pool = list(get_prepared_spell_pool(char, engine=self.engine))
+        selection = pool[:quota]
         updated = apply_prepared_selection(
             char, self.engine, selection, require_pending=True
         )
@@ -104,24 +147,27 @@ class TestPreparedChoiceValidation(unittest.TestCase):
         self.assertFalse(is_prepared_rechoice_pending(updated))
 
     def test_refuse_spell_outside_pool(self):
-        char = self._pending_druid()
-        quota = get_player_prepared_quota(char)
+        char = self._pending_druid_quota_three()
+        quota = get_player_prepared_quota(char, engine=self.engine)
+        pool = list(get_prepared_spell_pool(char, engine=self.engine))
         with self.assertRaises(PreparedChoiceError) as ctx:
             validate_prepared_selection(
                 char,
                 self.engine,
-                ["magic_missile", "entangle", "cure_wounds"][:quota],
+                ["magic_missile", *pool[: quota - 1]],
             )
         self.assertIn("hors liste", str(ctx.exception).lower())
 
     def test_refuse_cleric_domain_spell_in_selection(self):
-        char = self._pending_cleric()
-        quota = get_player_prepared_quota(char)
+        char = self._pending_cleric_quota_three()
+        quota = get_player_prepared_quota(char, engine=self.engine)
+        self.assertEqual(quota, 3)
+        pool = self._player_prepared_pool(char)
         with self.assertRaises(PreparedChoiceError) as ctx:
             validate_prepared_selection(
                 char,
                 self.engine,
-                ["bless", "inflict_wounds", "detect_magic"][:quota],
+                ["bless", *pool[: quota - 1]],
             )
         self.assertIn("domaine", str(ctx.exception).lower())
 
@@ -139,7 +185,7 @@ class TestPreparedChoiceValidation(unittest.TestCase):
             engine=self.engine,
             **cleric_creation_kwargs(),
         )
-        quota = get_player_prepared_quota(char)
+        quota = get_player_prepared_quota(char, engine=self.engine)
         with self.assertRaises(PreparedChoiceError) as ctx:
             validate_prepared_selection(
                 char,
@@ -200,16 +246,18 @@ class TestPreparedChoiceValidation(unittest.TestCase):
         self.assertFalse(result.prepared_rechoice_pending)
 
     def test_autocomplete_reflects_new_preparation(self):
-        char = self._pending_druid()
-        quota = get_player_prepared_quota(char)
+        char = self._pending_druid_quota_three()
+        quota = get_player_prepared_quota(char, engine=self.engine)
+        pool = list(get_prepared_spell_pool(char, engine=self.engine))
+        selection = pool[:quota]
         updated = apply_prepared_selection(
             char,
             self.engine,
-            ["entangle", "cure_wounds", "faerie_fire"][:quota],
+            selection,
             require_pending=True,
         )
         castable, _ = compute_spell_autocomplete_availability(
-            updated, "entangle", engine=self.engine
+            updated, selection[0], engine=self.engine
         )
         self.assertEqual(castable, SpellAutocompleteAvailability.CASTABLE)
 

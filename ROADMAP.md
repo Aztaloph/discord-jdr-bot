@@ -26,8 +26,8 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
 
 | Indicateur | Valeur |
 |---|---|
-| Tests unitaires | **572** verts (`python -m unittest discover -s tests/unit -p "test_*.py" -q`) |
-| Classes SRD 2014 | 12/12 jouables (création + montée de niveau 1–3) |
+| Tests unitaires | **608** verts (`python -m unittest discover -s tests/unit -p "test_*.py" -q`) |
+| Classes SRD 2014 | 12/12 jouables (création + montée de niveau 1–5, ASI niv. 4) |
 | Catalogue sorts curated | 28 sorts (9 cantrips + 15 niv. 1 + 4 niv. 2) |
 | Derniers commits | P2f autocomplete /sort strict mage sur `main` |
 
@@ -58,14 +58,15 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
     - [x] **P2f — Magicien** : autocomplete `/sort` strict (cantrips + **préparés** uniquement ; grimoire visible sur `/perso-afficher` et `/preparer-sorts`)
     - [x] **P2g — Outil MJ** : `/reset-grimoire` — rebuild grimoire + cantrips + préparés (persos legacy) ; `reset_wizard_grimoire_on_guild()` réutilisable par P2h
     - [x] **P2h — Migration MJ** : `/migrer-grimoires` — batch dry-run + confirm, `migrate_wizard_grimoires_on_guild()` (best-effort par perso, re-scan au clic)
-  - [ ] **Lot Level-up 4+ (ASI)** — après Passe 2, avant / en parallèle Passe 3
-    - [ ] Lever `MAX_LEVEL_LOT2 = 3` → niveau 4+
-    - [ ] `requires_asi_at_level` (4/8/12/16/19), `validate_asi` (cap 20, +2 ou +1/+1)
-    - [ ] `_ensure_asi_for_level()` dans `apply_level_up`
-    - [ ] UI Discord `LevelUpChoiceView` ASI
-    - [ ] `choices["asi_applied"] = [{level, bonuses}]` pour idempotence / audit
-    - [ ] Application sur `ability_scores` base (bonus raciaux recalculés)
-    - _Note : premier ASI = niveau 4. Flux jamais testé aujourd'hui (persos ≤ niv. 3)._
+  - [x] **Lot Level-up 4+ (ASI)** — niv. 4–5 jouables, ASI niv. 4 validé live
+    - [x] `MAX_CHARACTER_LEVEL = 5` (cap phase actuelle ; table slots SRD 1–20 prête)
+    - [x] `requires_asi_at_level` (4/8/12/16/19), `validate_asi` (cap 20, +2 ou +1/+1)
+    - [x] `_ensure_asi_for_level()` dans `apply_level_up`
+    - [x] UI Discord **`AsiDistributionView`** (+/− multi-stat, budget 2 pts, cap effectif 20) — câblage `/monter-niveau` via `build_level_up_pending_ui`
+    - [x] `choices["asi_applied"] = [{level, bonuses}]` pour idempotence / audit
+    - [x] Application sur `ability_scores` base + recalcul effectif (`effective_scores.py` → DD / attaque / quota préparés)
+    - [x] **Scaling cantrips au lancement** (`resolve_cantrip_scaling_tier` dans `cast.py` — ex. *fire bolt* 2d10 au niv. 5)
+    - _Note : extension niv. 6–20 et ASI aux paliers 8/12/16/19 = prochaine passe progression._
   - [ ] **Passe 3 — Automatisation des aptitudes** (forme sauvage, métamagie à l'incantation, canalisation d'énergie, arme/familier de pacte…)
   - [ ] **Passe 4 — Passe UI / affichage** (libellés, fix limite de caractères des embeds, libellé « Sous-classe (niv. 3) »)
 - [ ] **ÉTAPE 4 : Système de combat complet** (initiative, tour par tour, PV ennemis, level-up par XP) — GROS CHANTIER
@@ -77,7 +78,11 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
 
 Tous les jalons P2a–P2h sont livrés. Grimoire mage : consultable via **`/perso-afficher`** / **`/perso-mp`** (`format_spellcasting_detail`) et **`/preparer-sorts`** (pool = grimoire) ; **`/sort`** autocomplete = cantrips + préparés seulement (P2f).
 
-**Prochain jalon spellcasting / progression** : **Lot Level-up 4+ (ASI)**.
+## Lot Level-up 4+ (ASI) — terminé ✅
+
+Chaîne validée live (Joe mage niv. 3→5) : ASI **INT +2** (base 15→17, effectif 18), DD / attaque / quota préparés recalculés, maîtrise +3 au niv. 5, cantrip *fire bolt* **2d10** au niv. 5. UI **`AsiDistributionView`** (+/−, pas de Select mono-choix).
+
+**Prochain jalon spellcasting / progression** : **Passe 3 — aptitudes automatisées** (ou extension niv. 6–20 + ASI paliers suivants).
 
 ---
 
@@ -87,6 +92,7 @@ Items hors périmètre des lots fonctionnels — à traiter en passes dédiées,
 
 | Priorité | Item | Contexte |
 |---|---|---|
+| 🔵 | **Edge cap-20 ASI (base 18 vs 19 + racial)** | Invariant cap effectif ≤ 20 démontré ; cas limite UI/validation à durcir en passe dédiée |
 | 🔵 | **Calcul effectif du `slot_scaling` à l'upcast** (`cast.py`) | Métadonnées + affichage embed OK (Lots B/C) ; calcul réel à l'incantation (ex. +1 rayon `scorching_ray`, +1d8 `spiritual_weapon`) — lot transverse |
 | 🔵 | **Tracking de concentration persistant** | `darkness`, `flaming_sphere`, `hex`, `detect_magic` — état `choices.spellcasting.concentration` non posé pour `effect.type: utility` |
 | 🔵 | **Log défensif `_sort_autocomplete`** | Diagnostic autocomplete `/sort` (« Échec des options de chargement ») — traçabilité sans masquer les exceptions |

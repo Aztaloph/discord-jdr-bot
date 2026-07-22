@@ -52,9 +52,9 @@ class TestLot7Warlock(unittest.TestCase):
         self.assertNotIn("darkness", known)
 
         mod, attack, save_dc = get_spellcasting_stats(char, self.engine)
-        self.assertEqual(mod, 2)
-        self.assertEqual(save_dc, 12)
-        self.assertEqual(attack, 4)
+        self.assertEqual(mod, 3)  # CHA effectif 16 (+3)
+        self.assertEqual(save_dc, 13)
+        self.assertEqual(attack, 5)
 
         sheet = build_character_sheet(char, self.engine)
         self.assertIn("Magie de pacte", sheet.spellcasting_summary or "")

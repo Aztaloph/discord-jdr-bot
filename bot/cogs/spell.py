@@ -88,7 +88,7 @@ class SpellCog(commands.Cog):
 
     @app_commands.command(
         name="sort",
-        description="Lance un sort du personnage actif (lanceurs SRD, niv. 1–3)",
+        description="Lance un sort du personnage actif (lanceurs SRD, niv. 1–5)",
     )
     @app_commands.describe(
         perso="Personnage (optionnel — utilise le perso actif par défaut)",

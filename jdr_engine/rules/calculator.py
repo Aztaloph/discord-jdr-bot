@@ -8,6 +8,7 @@ from jdr_engine.domain.character.ability_scores import (
     DEFAULT_ABILITY_IDS,
     ability_modifier,
 )
+from jdr_engine.domain.character.effective_scores import compute_effective_ability_scores
 from jdr_engine.domain.character.character import Character
 from jdr_engine.domain.character.character_sheet import CharacterSheet
 from jdr_engine.rules.derived_stats import (
@@ -59,10 +60,7 @@ def apply_racial_bonuses(
     base_scores: dict[str, int],
     racial_bonuses: dict[str, int],
 ) -> dict[str, int]:
-    effective = dict(base_scores)
-    for ability_id, bonus in racial_bonuses.items():
-        effective[ability_id] = effective.get(ability_id, 10) + bonus
-    return effective
+    return compute_effective_ability_scores(base_scores, racial_bonuses)
 
 
 def calculate_hp_max_level_1(hit_die_faces: int, con_modifier: int) -> int:

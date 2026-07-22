@@ -32,6 +32,7 @@ CHOICE_KEYS: frozenset[str] = frozenset(
         "metamagic_options",
         "eldritch_invocations",
         "pact_boon",
+        "asi_applied",
     }
 )
 

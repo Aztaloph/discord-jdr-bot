@@ -120,7 +120,10 @@ class TestWizardPreparedRechoice(unittest.TestCase):
             },
             int_score=15,
         )
-        self.assertEqual(get_player_prepared_quota(char), wizard_prepared_capacity(2, 1))
+        self.assertEqual(
+            get_player_prepared_quota(char, engine=self.engine),
+            wizard_prepared_capacity(3, 1),
+        )
 
     def test_valid_selection_from_spellbook_persisted(self):
         char = _wizard(
@@ -134,7 +137,7 @@ class TestWizardPreparedRechoice(unittest.TestCase):
             int_score=15,
         )
         char = mark_prepared_rechoice_pending(char, pending=True)
-        quota = get_player_prepared_quota(char)
+        quota = get_player_prepared_quota(char, engine=self.engine)
         selection = ["magic_missile", "burning_hands", "shield", "detect_magic"][:quota]
         updated = apply_prepared_selection(
             char, self.engine, selection, require_pending=True
@@ -154,12 +157,12 @@ class TestWizardPreparedRechoice(unittest.TestCase):
             int_score=15,
         )
         char = mark_prepared_rechoice_pending(char, pending=True)
-        quota = get_player_prepared_quota(char)
+        quota = get_player_prepared_quota(char, engine=self.engine)
         with self.assertRaises(PreparedChoiceError) as ctx:
             validate_prepared_selection(
                 char,
                 self.engine,
-                ["magic_missile", "burning_hands", "chromatic_orb"][:quota],
+                ["magic_missile", "burning_hands", "shield", "chromatic_orb"][:quota],
             )
         self.assertIn("grimoire", str(ctx.exception).lower())
 
@@ -190,7 +193,7 @@ class TestWizardPreparedRechoice(unittest.TestCase):
             },
             int_score=15,
         )
-        quota = get_player_prepared_quota(char)
+        quota = get_player_prepared_quota(char, engine=self.engine)
         with self.assertRaises(PreparedChoiceError) as ctx:
             validate_prepared_selection(
                 char,

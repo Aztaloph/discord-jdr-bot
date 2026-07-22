@@ -402,6 +402,7 @@ class CharacterService:
         metamagic_options: list[str] | tuple[str, ...] | None = None,
         eldritch_invocations: list[str] | tuple[str, ...] | None = None,
         pact_boon: str | None = None,
+        asi_choice: dict[str, int] | None = None,
         base_character: Character | None = None,
     ):
         """Montée de niveau SRD — persiste le personnage mis à jour."""
@@ -431,6 +432,7 @@ class CharacterService:
                 metamagic_options=metamagic_options,
                 eldritch_invocations=eldritch_invocations,
                 pact_boon=pact_boon,
+                asi_choice=asi_choice,
             )
         except LevelUpPendingChoice:
             raise
@@ -453,6 +455,7 @@ class CharacterService:
         metamagic_options: list[str] | tuple[str, ...] | None = None,
         eldritch_invocations: list[str] | tuple[str, ...] | None = None,
         pact_boon: str | None = None,
+        asi_choice: dict[str, int] | None = None,
         base_character: Character | None = None,
     ):
         """Finalise une montée de niveau après choix interactif."""
@@ -468,6 +471,7 @@ class CharacterService:
             metamagic_options=metamagic_options,
             eldritch_invocations=eldritch_invocations,
             pact_boon=pact_boon,
+            asi_choice=asi_choice,
             base_character=base_character,
         )
 

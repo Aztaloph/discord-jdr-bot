@@ -13,7 +13,7 @@ from interfaces.discord.formatters.character_embed import (
     COULEUR_SUCCES,
 )
 from interfaces.discord.permissions.mj import require_mj_role
-from interfaces.discord.views.level_up_choice import LevelUpChoiceView, _pending_embed
+from interfaces.discord.views.level_up_choice import _handle_level_up_pending
 
 FOOTER = "JDR Bot — D&D 5e SRD 2014"
 
@@ -77,15 +77,13 @@ async def mj_monter_niveau(
     try:
         result = ctx.character_service.level_up_on_guild(character_ref, guild_id)
     except LevelUpPendingChoice as exc:
-        await interaction.edit_original_response(
-            embed=_pending_embed(exc.pending),
-            view=LevelUpChoiceView(
-                exc.pending,
-                ctx.rule_engine,
-                ctx.character_service,
-                guild_id,
-                character_ref,
-            ),
+        await _handle_level_up_pending(
+            interaction,
+            exc,
+            engine=ctx.rule_engine,
+            character_service=ctx.character_service,
+            guild_id=guild_id,
+            character_id=character_ref,
         )
         return
     except LevelUpError as exc:

@@ -1,5 +1,5 @@
 # jdr_engine/rules/spellcasting/cast.py
-"""Lancement de sorts SRD 2014 — Magicien & Clerc niv. 1-3."""
+"""Lancement de sorts SRD 2014 — lanceurs niv. 1–5 (cap MAX_CHARACTER_LEVEL)."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -7,13 +7,15 @@ from typing import Any, Callable
 
 from jdr_engine.dice.d20 import D20RollContext, D20RollRequest, D20RollResult, roll_d20
 from jdr_engine.dice.roller import roll
-from jdr_engine.domain.character.ability_scores import ability_modifier
 from jdr_engine.domain.character.character import Character
 from jdr_engine.rules.calculator import build_character_sheet
+from jdr_engine.rules.progression_constants import MAX_CHARACTER_LEVEL
+from jdr_engine.rules.effective_scores import get_effective_ability_modifier
 from jdr_engine.rules.engine import RuleEngine
 from jdr_engine.rules.spellcasting.access import has_spellcasting_access
 from jdr_engine.rules.spellcasting.mechanics_display import (
     build_spell_mechanics_reference_lines,
+    resolve_cantrip_scaling_tier,
 )
 from jdr_engine.rules.spellcasting.slots import get_max_spell_slots, get_remaining_slots
 from jdr_engine.rules.spellcasting.spells_catalog import SUPPORTED_SPELLCASTING_CLASSES
@@ -97,8 +99,7 @@ def _spellcasting_ability(character: Character, engine: RuleEngine) -> str:
 
 def _ability_mod_for_spellcasting(character: Character, engine: RuleEngine) -> int:
     ability_id = _spellcasting_ability(character, engine)
-    scores = character.ability_scores.with_defaults(["str", "dex", "con", "int", "wis", "cha"])
-    return ability_modifier(scores.scores.get(ability_id, 10))
+    return get_effective_ability_modifier(character, engine, ability_id)
 
 
 def get_spellcasting_stats(
@@ -114,8 +115,10 @@ def get_spellcasting_stats(
         raise SpellCastError(
             "Cette classe n'a pas encore accès à la magie (niveau requis)."
         )
-    if character.level < 1 or character.level > 3:
-        raise SpellCastError("Niveaux 1 à 3 uniquement pour cette phase.")
+    if character.level < 1 or character.level > MAX_CHARACTER_LEVEL:
+        raise SpellCastError(
+            f"Niveaux 1 à {MAX_CHARACTER_LEVEL} uniquement pour cette phase."
+        )
 
     prof = engine.get_proficiency_bonus(character.level)
     mod = _ability_mod_for_spellcasting(character, engine)
@@ -177,6 +180,24 @@ def _resolve_damage_instance_count(
     if slot_level is None or slot_level <= spell_level:
         return base
     return base + int(extra_missiles) * (slot_level - spell_level)
+
+
+def _resolve_damage_notation(
+    spell_def: dict[str, Any],
+    effect: dict[str, Any],
+    *,
+    spell_level: int,
+    character_level: int,
+) -> str:
+    """Dégâts effectifs — cantrips : tier SRD selon le niveau de personnage."""
+    notation = str(effect.get("damage", ""))
+    if spell_level != 0:
+        return notation
+    mechanics = spell_def.get("mechanics", {})
+    tier = resolve_cantrip_scaling_tier(mechanics, character_level)
+    if tier and tier.get("damage_dice"):
+        return str(tier["damage_dice"])
+    return notation
 
 
 def _roll_spell_attack(
@@ -263,8 +284,10 @@ def cast_spell(
         raise SpellCastError(
             "Cette classe n'a pas encore accès à la magie (niveau requis)."
         )
-    if character.level < 1 or character.level > 3:
-        raise SpellCastError("Niveaux 1 à 3 uniquement pour cette phase.")
+    if character.level < 1 or character.level > MAX_CHARACTER_LEVEL:
+        raise SpellCastError(
+            f"Niveaux 1 à {MAX_CHARACTER_LEVEL} uniquement pour cette phase."
+        )
 
     entry = engine.get_entity("spell", spell_id)
     if entry is None:
@@ -339,7 +362,12 @@ def cast_spell(
     updated = character
 
     if effect_type == "spell_attack":
-        damage_notation = str(effect.get("damage", ""))
+        damage_notation = _resolve_damage_notation(
+            spell_def,
+            effect,
+            spell_level=spell_level,
+            character_level=character.level,
+        )
         add_mod = bool(effect.get("add_ability_mod", False))
         auto_hit = _is_auto_hit_spell(spell_def, effect)
         instances = _resolve_damage_instance_count(

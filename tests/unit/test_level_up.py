@@ -11,7 +11,7 @@ from jdr_engine.persistence.database import init_database
 from jdr_engine.persistence.sqlite_character_repository import SqliteCharacterRepository
 from jdr_engine.rules import RuleEngine
 from jdr_engine.rules.calculator import build_character_sheet
-from jdr_engine.rules.character_progression import LevelUpError, apply_level_up
+from jdr_engine.rules.character_progression import MAX_CHARACTER_LEVEL, LevelUpError, apply_level_up
 from jdr_engine.rules.spellcasting.slots import get_max_spell_slots
 from jdr_engine.rules.spellcasting.state import format_slots_display
 
@@ -101,10 +101,22 @@ class TestLevelUpEngine(unittest.TestCase):
         char, r2 = apply_level_up(char, self.engine)
         self.assertEqual(r2.hit_dice_after, 3)
 
-    def test_level_3_cannot_level_up_again(self):
+    def test_wizard_level_3_to_4_slots(self):
         char = self._wizard()
         char, _ = apply_level_up(char, self.engine, subclass="evocation")
         char, _ = apply_level_up(char, self.engine)
+        char, result = apply_level_up(char, self.engine, asi_choice={"int": 2})
+        self.assertEqual(result.new_level, 4)
+        self.assertEqual(get_max_spell_slots("wizard", 4), {1: 4, 2: 3, 3: 1})
+        self.assertEqual(result.slots_max_after, "niv.1: 4, niv.2: 3, niv.3: 1")
+
+    def test_level_5_cannot_level_up_again(self):
+        char = self._wizard()
+        char, _ = apply_level_up(char, self.engine, subclass="evocation")
+        char, _ = apply_level_up(char, self.engine)
+        char, _ = apply_level_up(char, self.engine, asi_choice={"int": 2})
+        char, _ = apply_level_up(char, self.engine)
+        self.assertEqual(char.level, MAX_CHARACTER_LEVEL)
         with self.assertRaises(LevelUpError):
             apply_level_up(char, self.engine)
 
