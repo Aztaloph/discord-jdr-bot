@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: '2.0'
 type: spell
 id: cure_wounds
 name:
@@ -8,8 +8,8 @@ mechanics:
   level: 1
   school: evocation
   casting_time:
-    fr: "1 action"
-    en: "1 action"
+    fr: 1 action
+    en: 1 action
   range:
     fr: Contact
     en: Touch
@@ -26,12 +26,24 @@ mechanics:
   damage_type: null
   save: null
   description:
-    fr: "Une créature que vous touchez récupère 1d8 + modificateur de caractéristique d'incantation PV."
-    en: "A creature you touch regains 1d8 + spellcasting ability modifier hit points."
+    fr: Une créature que vous touchez récupère 1d8 + modificateur de caractéristique d'incantation PV.
+    en: A creature you touch regains 1d8 + spellcasting ability modifier hit points.
   slot_scaling:
     per_slot_above_base:
       healing_dice: 1d8
-  effect:
-    type: healing
-    healing: 1d8
+  effects:
+  - type: healing
     add_ability_mod: true
+    healing: 1d8
+classes:
+- bard
+- cleric
+- druid
+- paladin
+- ranger
+class_pool_order:
+  cleric: 0
+  bard: 0
+  druid: 1
+  ranger: 1
+  paladin: 1

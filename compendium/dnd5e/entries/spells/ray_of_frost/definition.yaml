@@ -1,0 +1,54 @@
+schema_version: '2.0'
+type: spell
+id: ray_of_frost
+name:
+  fr: Trait de givre
+  en: Ray of Frost
+mechanics:
+  level: 0
+  school: evocation
+  casting_time:
+    fr: 1 action
+    en: 1 action
+  range:
+    fr: 18 mètres
+    en: 60 feet
+  components:
+    verbal: true
+    somatic: true
+    material: false
+  duration:
+    fr: Instantané
+    en: Instantaneous
+  concentration: false
+  attack_roll: true
+  damage_dice: 1d8
+  damage_type: cold
+  save: null
+  description:
+    fr: Un rayon glacial frappant fonce vers une creature a portee. Attaque de sort a distance ; en cas de reussite, 1d8
+      degats de froid et vitesse reduite de 3 m jusqu'au debut du prochain tour de la cible (SRD 2014).
+    en: A frigid beam streaks toward a creature within range. Ranged spell attack; on a hit, 1d8 cold damage and the target's
+      speed is reduced by 10 feet until the start of its next turn (SRD 2014).
+  cantrip_scaling:
+    tiers:
+    - character_level: 1
+      damage_dice: 1d8
+    - character_level: 5
+      damage_dice: 2d8
+    - character_level: 11
+      damage_dice: 3d8
+    - character_level: 17
+      damage_dice: 4d8
+  utility_effect:
+    fr: Touché — vitesse réduite de 3 m jusqu'au début du prochain tour de la cible (SRD 2014).
+    en: On hit — speed reduced by 10 feet until the start of the target's next turn (SRD 2014).
+  effects:
+  - type: spell_attack
+    attack_type: ranged
+    damage: 1d8
+    damage_type: cold
+classes:
+- wizard
+class_pool_order:
+  wizard: 3

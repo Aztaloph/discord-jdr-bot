@@ -1,0 +1,42 @@
+schema_version: '2.0'
+type: spell
+id: dispel_magic
+name:
+  fr: Dissipation de la magie
+  en: Dispel Magic
+mechanics:
+  level: 3
+  school: abjuration
+  casting_time:
+    fr: 1 action
+    en: 1 action
+  range:
+    fr: 36 mètres
+    en: 120 feet
+  components:
+    verbal: true
+    somatic: true
+    material: false
+  duration:
+    fr: Instantané
+    en: Instantaneous
+  concentration: false
+  attack_roll: false
+  damage_dice: null
+  damage_type: null
+  save: null
+  description:
+    fr: 'Choisissez une créature, un objet ou un effet magique à portée. Tout sort de niveau 3 ou inférieur sur la cible
+      prend fin. Pour un sort de niveau 4+, test d''incantation DD 10 + niveau du sort (SRD 2014).'
+    en: 'Choose one creature, object, or magical effect within range. Any spell of 3rd level or lower on the target ends. For
+      a spell of 4th level or higher, spellcasting ability check DC 10 + the spell''s level (SRD 2014).'
+  slot_scaling: null
+  utility_effect:
+    fr: 'Met fin aux sorts niv. ≤ 3 sur la cible ; au-dessus, test d''incantation DD 10 + niveau (SRD 2014). Moteur B4.'
+    en: 'Ends spells of level 3 or lower on the target; above that, spellcasting check DC 10 + level (SRD 2014). Engine B4.'
+  effects:
+  - type: utility
+classes:
+- wizard
+class_pool_order:
+  wizard: 11

@@ -54,7 +54,7 @@ def _wizard(
             "spellcasting": {
                 "cantrips_known": cantrips or ["fire_bolt"],
                 "spells_prepared": prepared
-                or ["chromatic_orb", "burning_hands", "detect_magic", "scorching_ray"],
+                or ["mage_armor", "burning_hands", "detect_magic", "scorching_ray"],
                 "slots_used": {str(k): v for k, v in (slots_used or {}).items()},
             }
         },
@@ -209,7 +209,7 @@ class TestSpellKnownVsCatalog(unittest.TestCase):
     def test_known_spell_casts(self):
         char = _wizard(
             1,
-            prepared=["chromatic_orb", "burning_hands", "detect_magic"],
+            prepared=["mage_armor", "burning_hands", "detect_magic"],
         )
         result = cast_spell(char, "burning_hands", self.engine, rng=SequenceRng([4, 3, 2, 1]))
         self.assertEqual(result.spell_id, "burning_hands")
@@ -217,7 +217,7 @@ class TestSpellKnownVsCatalog(unittest.TestCase):
     def test_unknown_spell_clear_error(self):
         char = _wizard(
             1,
-            prepared=["chromatic_orb", "burning_hands", "detect_magic"],
+            prepared=["mage_armor", "burning_hands", "detect_magic"],
         )
         with self.assertRaises(SpellCastError) as ctx:
             cast_spell(char, "scorching_ray", self.engine)
@@ -231,7 +231,7 @@ class TestSpellCompendium(unittest.TestCase):
         cls.engine = RuleEngine.load("dnd5e", validate=True, strict=True)
 
     def test_five_lot_b_spells_loaded(self):
-        ids = {"fire_bolt", "chromatic_orb", "burning_hands", "detect_magic", "scorching_ray"}
+        ids = {"fire_bolt", "mage_armor", "burning_hands", "detect_magic", "scorching_ray"}
         for spell_id in ids:
             self.assertIsNotNone(self.engine.get_entity("spell", spell_id), spell_id)
 

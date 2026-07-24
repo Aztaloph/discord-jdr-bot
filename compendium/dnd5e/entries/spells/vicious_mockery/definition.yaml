@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: '2.0'
 type: spell
 id: vicious_mockery
 name:
@@ -8,11 +8,11 @@ mechanics:
   level: 0
   school: enchantment
   casting_time:
-    fr: "1 action"
-    en: "1 action"
+    fr: 1 action
+    en: 1 action
   range:
-    fr: "18 mètres"
-    en: "60 feet"
+    fr: 18 mètres
+    en: 60 feet
   components:
     verbal: true
     somatic: false
@@ -26,24 +26,34 @@ mechanics:
   damage_type: psychic
   save: WIS
   description:
-    fr: "Vous lancez une pluie d'insultes enchantées à une créature à portée qui vous entend. Jet de sauvegarde de Sagesse : échec = dégâts psychiques et désavantage à la prochaine attaque de la cible avant la fin de son prochain tour."
-    en: "You unleash insults laced with enchantments at a creature within range that can hear you. Wisdom save: on a fail, psychic damage and disadvantage on the target's next attack before the end of its next turn."
+    fr: 'Vous lancez une pluie d''insultes enchantées à une créature à portée qui vous entend. Jet de sauvegarde de Sagesse
+      : échec = dégâts psychiques et désavantage à la prochaine attaque de la cible avant la fin de son prochain tour.'
+    en: 'You unleash insults laced with enchantments at a creature within range that can hear you. Wisdom save: on a fail,
+      psychic damage and disadvantage on the target''s next attack before the end of its next turn.'
   cantrip_scaling:
     tiers:
-      - character_level: 1
-        damage_dice: 1d4
-      - character_level: 5
-        damage_dice: 2d4
-      - character_level: 11
-        damage_dice: 3d4
-      - character_level: 17
-        damage_dice: 4d4
-  effect:
-    type: saving_throw
-    ability: wis
+    - character_level: 1
+      damage_dice: 1d4
+    - character_level: 5
+      damage_dice: 2d4
+    - character_level: 11
+      damage_dice: 3d4
+    - character_level: 17
+      damage_dice: 4d4
+  utility_effect:
+    fr: 'Échec : désavantage à la prochaine attaque de la cible avant la fin de son prochain tour (SRD 2014).'
+    en: 'On fail: disadvantage on target''s next attack before end of its next turn (SRD 2014).'
+  effects:
+  - type: saving_throw
     damage: 1d4
     damage_type: psychic
-    half_on_save: false
-  utility_effect:
-    fr: "Échec : désavantage à la prochaine attaque de la cible avant la fin de son prochain tour (SRD 2014)."
-    en: "On fail: disadvantage on target's next attack before end of its next turn (SRD 2014)."
+    saving_throw:
+      ability: wis
+      half_on_save: false
+  - type: utility
+classes:
+- bard
+- sorcerer
+class_pool_order:
+  sorcerer: 3
+  bard: 0

@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: '2.0'
 type: spell
 id: healing_word
 name:
@@ -8,11 +8,11 @@ mechanics:
   level: 1
   school: evocation
   casting_time:
-    fr: "1 action bonus"
-    en: "1 bonus action"
+    fr: 1 action bonus
+    en: 1 bonus action
   range:
-    fr: "18 mètres"
-    en: "60 feet"
+    fr: 18 mètres
+    en: 60 feet
   components:
     verbal: true
     somatic: false
@@ -26,12 +26,17 @@ mechanics:
   damage_type: null
   save: null
   description:
-    fr: "Une créature visible à portée récupère 1d4 + modificateur de caractéristique d'incantation PV (action bonus, verbal uniquement)."
-    en: "A visible creature in range regains 1d4 + spellcasting ability modifier hit points (bonus action, verbal only)."
+    fr: Une créature visible à portée récupère 1d4 + modificateur de caractéristique d'incantation PV (action bonus, verbal
+      uniquement).
+    en: A visible creature in range regains 1d4 + spellcasting ability modifier hit points (bonus action, verbal only).
   slot_scaling:
     per_slot_above_base:
       healing_dice: 1d4
-  effect:
-    type: healing
-    healing: 1d4
+  effects:
+  - type: healing
     add_ability_mod: true
+    healing: 1d4
+classes:
+- bard
+class_pool_order:
+  bard: 1

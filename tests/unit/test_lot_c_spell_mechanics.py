@@ -116,9 +116,10 @@ class TestLotCSpellMechanics(unittest.TestCase):
 
     def test_darkness_no_tiefling_note_in_effect(self):
         mech = self.spell_entries["darkness"]
-        effect = mech.get("effect") or {}
-        self.assertEqual(effect.get("type"), "utility")
-        self.assertNotIn("srd_note", effect)
+        effects = mech.get("effects") or []
+        self.assertTrue(effects)
+        self.assertEqual(effects[0].get("type"), "utility")
+        self.assertNotIn("srd_note", effects[0])
         racial = mech.get("racial_reference") or {}
         self.assertIn("tiefling", racial)
         self.assertIn("fr", racial["tiefling"])
@@ -147,8 +148,8 @@ class TestLotCSpellMechanics(unittest.TestCase):
         self.assertIsNotNone(line)
         self.assertIn("dard", line)
 
-    def test_all_28_spells_still_load_strict(self):
-        self.assertEqual(len(self.spell_entries), 28)
+    def test_all_42_spells_still_load_strict(self):
+        self.assertEqual(len(self.spell_entries), 42)
 
 
 if __name__ == "__main__":

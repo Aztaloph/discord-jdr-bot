@@ -160,7 +160,10 @@ class TestP2gWizardGrimoireResetRules(unittest.TestCase):
         char = _polluted_wizard_level1()
         char.choices["spellcasting"]["cantrips_known"] = ["fire_bolt"]
         updated = rebuild_wizard_spellcasting_at_level(char)
-        self.assertEqual(get_cantrips_known(updated), ["fire_bolt", "thaumaturgy", "guidance"])
+        self.assertEqual(
+            get_cantrips_known(updated),
+            ["fire_bolt", "mage_hand", "light"],
+        )
 
 
 class TestP2gWizardGrimoireResetService(unittest.TestCase):
@@ -252,18 +255,18 @@ class TestP2gGrimoireResetEmbeds(unittest.TestCase):
         self.assertIn("`inflict_wounds`", desc)
         self.assertNotIn("Retirés du grimoire", desc)
         self.assertIn(
-            "**Grimoire actuel** : `chromatic_orb`, `burning_hands`, `detect_magic`, "
+            "**Grimoire actuel** : `mage_armor`, `burning_hands`, `detect_magic`, "
             "`magic_missile`, `shield`, `scorching_ray`, `bless`, `inflict_wounds`",
             desc,
         )
         self.assertIn(
-            "**Grimoire après** : `chromatic_orb`, `burning_hands`, `detect_magic`, "
+            "**Grimoire après** : `mage_armor`, `burning_hands`, `detect_magic`, "
             "`magic_missile`, `shield`, `scorching_ray`",
             desc,
         )
         self.assertIn("**Préparés actuels** : `bless`, `magic_missile`, `shield`", desc)
         self.assertIn(
-            "**Préparés après** : `magic_missile`, `shield`, `chromatic_orb`",
+            "**Préparés après** : `magic_missile`, `shield`, `mage_armor`",
             desc,
         )
 
@@ -279,7 +282,7 @@ class TestP2gGrimoireResetEmbeds(unittest.TestCase):
         self.assertIn("**Retirés du grimoire** : `bless`, `inflict_wounds`", desc)
         self.assertIn("**Retirés des préparés** : `bless`", desc)
         self.assertIn("**Préparés** : `bless`, `magic_missile`, `shield`", desc)
-        self.assertIn("→ `magic_missile`, `shield`, `chromatic_orb`", desc)
+        self.assertIn("→ `magic_missile`, `shield`, `mage_armor`", desc)
 
 
 if __name__ == "__main__":

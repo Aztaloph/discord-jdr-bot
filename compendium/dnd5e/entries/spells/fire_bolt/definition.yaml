@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: '2.0'
 type: spell
 id: fire_bolt
 name:
@@ -8,11 +8,11 @@ mechanics:
   level: 0
   school: evocation
   casting_time:
-    fr: "1 action"
-    en: "1 action"
+    fr: 1 action
+    en: 1 action
   range:
-    fr: "36 mètres"
-    en: "120 feet"
+    fr: 36 mètres
+    en: 120 feet
   components:
     verbal: true
     somatic: true
@@ -26,20 +26,28 @@ mechanics:
   damage_type: fire
   save: null
   description:
-    fr: "Vous lancez une parcelle de feu sur une créature ou un objet à portée. Faites une attaque de sort à distance ; en cas de réussite, la cible subit des dégâts de feu."
-    en: "You hurl a mote of fire at a creature or object within range. Make a ranged spell attack; on a hit, the target takes fire damage."
+    fr: Vous lancez une parcelle de feu sur une créature ou un objet à portée. Faites une attaque de sort à distance ; en
+      cas de réussite, la cible subit des dégâts de feu.
+    en: You hurl a mote of fire at a creature or object within range. Make a ranged spell attack; on a hit, the target takes
+      fire damage.
   cantrip_scaling:
     tiers:
-      - character_level: 1
-        damage_dice: 1d10
-      - character_level: 5
-        damage_dice: 2d10
-      - character_level: 11
-        damage_dice: 3d10
-      - character_level: 17
-        damage_dice: 4d10
-  effect:
-    type: spell_attack
+    - character_level: 1
+      damage_dice: 1d10
+    - character_level: 5
+      damage_dice: 2d10
+    - character_level: 11
+      damage_dice: 3d10
+    - character_level: 17
+      damage_dice: 4d10
+  effects:
+  - type: spell_attack
     attack_type: ranged
     damage: 1d10
     damage_type: fire
+classes:
+- sorcerer
+- wizard
+class_pool_order:
+  wizard: 0
+  sorcerer: 0

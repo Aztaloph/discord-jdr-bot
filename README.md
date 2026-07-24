@@ -10,7 +10,7 @@ Organisez vos parties directement sur Discord : fiches personnages, lancer de so
 
 | Tests | Classes | Sorts curated | Python |
 |:-----:|:-------:|:-------------:|:------:|
-| **543** ✅ | **12/12** | **28** | **3.10+** |
+| **645** ✅ | **12/12** | **42** | **3.10+** |
 
 </p>
 
@@ -33,16 +33,18 @@ Organisez vos parties directement sur Discord : fiches personnages, lancer de so
 | Domaine | Slash commands |
 |---------|----------------|
 | **Repos** | `/repos-long` · `/repos-court` |
-| **Progression** | `/monter-niveau` — niv. 2–3 (PV, emplacements, sorts ; SRD strict) |
-| **Admin** | `/perso-supprimer` |
+| **Progression** | `/monter-niveau` — niv. 2–20 (PV, emplacements, sorts, ASI aux paliers 4/8/12/16/19) |
+| **Admin** | `/perso-supprimer` · `/reset-grimoire` · `/migrer-grimoires` |
 
 ### Contenu SRD 2014
 
 **9 races** — Humain · Elfe · Nain · Halfelin · Drakéide · Gnome des roches · Demi-elfe · Demi-orc · Tieffelin
 
-**12 classes** (niv. 1–3) — Barbar · Barde · Clerc · Druide · Guerrier · Moine · Occultiste · Paladin · Rôdeur · Roublard · Ensorceleur · **Magicien**
+**12 classes** (niv. 1–20 full casters) — Barbar · Barde · Clerc · Druide · Guerrier · Moine · Occultiste · Paladin · Rôdeur · Roublard · Ensorceleur · **Magicien**
 
-**28 sorts** curated — cantrips, niv. 1 et niv. 2 avec métadonnées mécaniques et incantation instantanée.
+**42 sorts** curated — schéma v2.0 (`effects[]`, pools dérivés du compendium YAML), cantrips à niv. 4 pour le magicien, incantation instantanée avec métadonnées mécaniques.
+
+**Magicien (pool curated)** — 4 cantrips · 18 sorts au grimoire (quota SRD niv. 7) : niv. 1–2, puis `fireball`, `lightning_bolt`, `counterspell`, `dispel_magic`, `fly`, `haste`, `polymorph`, `banishment`, `dimension_door`, `ice_storm`.
 
 ---
 
@@ -102,10 +104,10 @@ Créez un rôle Discord nommé **`MJ`**. Les commandes repos, montée de niveau 
 
 ```powershell
 .\venv\Scripts\activate
-python -m unittest discover -s tests/unit -p "test_*.py" -q
+python -m unittest discover -s tests -p "test_*.py" -q
 ```
 
-**543 tests** unitaires — moteur de règles, sorts, persistance SQLite, handlers Discord.
+**645 tests** unitaires — moteur de règles, sorts, persistance SQLite, handlers Discord.
 
 ---
 
@@ -120,31 +122,34 @@ discord-jdr-bot/
 │   ├── application/             # CharacterService (use cases)
 │   ├── domain/                  # Character, CharacterSheet
 │   ├── rules/                   # Rule Engine (stateless, data-driven)
+│   │   └── spellcasting/        # Pools, préparation, cast, spell_pool_builder
 │   ├── persistence/             # SQLite + migrations
 │   └── dice/                    # Parser et roller de dés
 ├── compendium/dnd5e/entries/    # Données YAML (races, classes, sorts, traits)
+├── docs/                        # SPELLS_INVENTORY, SPELL_SCHEMA, migration B2
 ├── data/bot.db                  # Base locale (ignorée par git)
 ├── installer.bat / launcher_bot.bat
 └── tests/unit/                  # Suite unitaire
 ```
 
-Le **Rule Engine** charge le Compendium YAML et calcule les stats dérivées — aucune règle D&D codée en dur dans les cogs.
+Le **Rule Engine** charge le Compendium YAML et calcule les stats dérivées — aucune règle D&D codée en dur dans les cogs. Les pools de sorts par classe sont **dérivés** des fiches YAML (`classes[]`, `class_pool_order`), pas dupliqués en dur.
 
 ---
 
-## Incantation — où on en est
+## Où on en est
 
-| Lot | Statut | Détail |
+| Axe | Statut | Détail |
 |-----|--------|--------|
-| P2a–P2d | ✅ | Taxonomie lanceurs, règles par classe, `/sort`, correctifs |
-| P2e | ✅ | `/preparer-sorts` clerc / druide / paladin |
-| P2f-0 | ✅ | `/preparer-sorts` magicien — pool = grimoire personnel |
-| **P2f** | 🔜 | Autocomplete `/sort` strict mage (préparés + cantrips seulement) |
-| P2g–P2h | 🔜 | Outils MJ grimoire + migration persos legacy |
+| **Passe 2 sorts** | ✅ | Préparés / grimoire / autocomplete mage, outils MJ migration grimoire |
+| **Lot Level-up 4+** | ✅ | Cap niv. 20, ASI 4/8/12/16/19, tables full casters 1–20 |
+| **Axe B — Schéma sorts v2.0** | ✅ | `effects[]`, migration 28→42 sorts, pools dérivés YAML |
+| **B3-a / B3-b mage** | ✅ | +6 sorts niv. 3, +4 sorts niv. 4 (grimoire 18 = quota niv. 7) |
+| **B4 — Moteur d'effets** | 🔜 | Upcast, concentration persistante, réactions (`counterspell`)… |
+| **Étape 4 — Combat** | 🔜 | Initiative, tour par tour, XP |
+
+Documentation sorts → [`docs/SPELLS_INVENTORY.md`](docs/SPELLS_INVENTORY.md) · [`docs/SPELL_SCHEMA.md`](docs/SPELL_SCHEMA.md)
 
 Détail complet → [ROADMAP.md](ROADMAP.md)
-
-**Prochaine étape majeure après la Passe 2 :** système de combat (Étape 4).
 
 ---
 

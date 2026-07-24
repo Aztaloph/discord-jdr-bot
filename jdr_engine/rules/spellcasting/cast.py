@@ -129,12 +129,36 @@ def _get_spell_level(spell_def: dict[str, Any]) -> int:
     return int(spell_def.get("mechanics", {}).get("level", 0))
 
 
-def _get_effect(spell_def: dict[str, Any]) -> dict[str, Any]:
+def _get_effects(spell_def: dict[str, Any]) -> list[dict[str, Any]]:
     mechanics = spell_def.get("mechanics", {})
-    effect = mechanics.get("effect")
-    if not isinstance(effect, dict):
-        raise SpellCastError("Sort sans effet mécanique défini.")
-    return effect
+    effects = mechanics.get("effects")
+    if isinstance(effects, list) and effects:
+        return [e for e in effects if isinstance(e, dict)]
+    legacy = mechanics.get("effect")
+    if isinstance(legacy, dict):
+        return [legacy]
+    raise SpellCastError("Sort sans effet mécanique défini.")
+
+
+def _primary_effect(effects: list[dict[str, Any]]) -> dict[str, Any]:
+    """Effet principal pour le cast — priorité combat puis buff/utility."""
+    priority = ("spell_attack", "saving_throw", "healing", "buff", "utility")
+    for effect_type in priority:
+        for effect in effects:
+            if effect.get("type") == effect_type:
+                return effect
+    return effects[0]
+
+
+def _save_spec(effect: dict[str, Any]) -> dict[str, Any]:
+    nested = effect.get("saving_throw")
+    if isinstance(nested, dict):
+        return nested
+    return {
+        "ability": effect.get("ability", "dex"),
+        "half_on_save": effect.get("half_on_save", True),
+        "reaction": effect.get("reaction", False),
+    }
 
 
 def _localized(spell_def: dict[str, Any], field: str, locale: str = "fr") -> str:
@@ -334,7 +358,8 @@ def cast_spell(
     ability_id = _spellcasting_ability(character, engine)
     ability_mod, attack_bonus, save_dc = get_spellcasting_stats(character, engine)
     proficiency = engine.get_proficiency_bonus(character.level)
-    effect = _get_effect(spell_def)
+    effects = _get_effects(spell_def)
+    effect = _primary_effect(effects)
     effect_type = str(effect.get("type", ""))
     damage_type = str(effect.get("damage_type", ""))
 
@@ -466,9 +491,10 @@ def cast_spell(
             result.utility_text = _localized(spell_def, "invocation_effect", locale)
 
     elif effect_type == "saving_throw":
-        save_ability = str(effect.get("ability", "dex"))
+        save_info = _save_spec(effect)
+        save_ability = str(save_info.get("ability", "dex"))
         damage_notation = str(effect.get("damage", ""))
-        half_on_save = bool(effect.get("half_on_save", True))
+        half_on_save = bool(save_info.get("half_on_save", True))
         dmg_total, dmg_rolls = _roll_dice(damage_notation, rng=rng)
         result.save_dc = save_dc
         result.save_ability = save_ability
@@ -476,7 +502,7 @@ def cast_spell(
         result.damage_notation = damage_notation
         result.damage_rolls = dmg_rolls
         result.half_on_save = half_on_save
-        if effect.get("reaction"):
+        if save_info.get("reaction"):
             result.utility_text = "Réaction — en réponse à des dégâts reçus (SRD 2014)"
         if updated.class_id == "sorcerer" and dmg_total > 0 and damage_type:
             from jdr_engine.rules.class_features.sorcerer import elemental_affinity_bonus

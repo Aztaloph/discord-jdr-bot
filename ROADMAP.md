@@ -26,10 +26,10 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
 
 | Indicateur | Valeur |
 |---|---|
-| Tests unitaires | **608** verts (`python -m unittest discover -s tests/unit -p "test_*.py" -q`) |
-| Classes SRD 2014 | 12/12 jouables (création + montée de niveau 1–5, ASI niv. 4) |
-| Catalogue sorts curated | 28 sorts (9 cantrips + 15 niv. 1 + 4 niv. 2) |
-| Derniers commits | P2f autocomplete /sort strict mage sur `main` |
+| Tests unitaires | **645** verts (`python -m unittest discover -s tests -p "test_*.py" -q`) |
+| Classes SRD 2014 | 12/12 jouables (création + montée de niveau 1–20 full casters, ASI 5 paliers) |
+| Catalogue sorts curated | **42** sorts (schéma v2.0 ; grimoire mage **18** = quota niv. 7) |
+| Derniers commits | Axe B2–B3-b (schéma sorts v2.0 + catalogue mage niv. 1–4) sur `main` |
 
 ---
 
@@ -58,19 +58,35 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
     - [x] **P2f — Magicien** : autocomplete `/sort` strict (cantrips + **préparés** uniquement ; grimoire visible sur `/perso-afficher` et `/preparer-sorts`)
     - [x] **P2g — Outil MJ** : `/reset-grimoire` — rebuild grimoire + cantrips + préparés (persos legacy) ; `reset_wizard_grimoire_on_guild()` réutilisable par P2h
     - [x] **P2h — Migration MJ** : `/migrer-grimoires` — batch dry-run + confirm, `migrate_wizard_grimoires_on_guild()` (best-effort par perso, re-scan au clic)
-  - [x] **Lot Level-up 4+ (ASI)** — niv. 4–5 jouables, ASI niv. 4 validé live
-    - [x] `MAX_CHARACTER_LEVEL = 5` (cap phase actuelle ; table slots SRD 1–20 prête)
-    - [x] `requires_asi_at_level` (4/8/12/16/19), `validate_asi` (cap 20, +2 ou +1/+1)
-    - [x] `_ensure_asi_for_level()` dans `apply_level_up`
-    - [x] UI Discord **`AsiDistributionView`** (+/− multi-stat, budget 2 pts, cap effectif 20) — câblage `/monter-niveau` via `build_level_up_pending_ui`
-    - [x] `choices["asi_applied"] = [{level, bonuses}]` pour idempotence / audit
-    - [x] Application sur `ability_scores` base + recalcul effectif (`effective_scores.py` → DD / attaque / quota préparés)
-    - [x] **Scaling cantrips au lancement** (`resolve_cantrip_scaling_tier` dans `cast.py` — ex. *fire bolt* 2d10 au niv. 5)
-    - _Note : extension niv. 6–20 et ASI aux paliers 8/12/16/19 = prochaine passe progression._
+  - [x] **Lot Level-up 4+ (ASI)** — full casters niv. 1–20
+    - [x] `MAX_CHARACTER_LEVEL = 20`
+    - [x] `requires_asi_at_level` (4/8/12/16/19), `validate_asi`, `AsiDistributionView`
+    - [x] Tables progression niv. 6–20 (A1), correction slot niv. 4 (A1-bis), cap + tests 5→20 (A2)
   - [ ] **Passe 3 — Automatisation des aptitudes** (forme sauvage, métamagie à l'incantation, canalisation d'énergie, arme/familier de pacte…)
   - [ ] **Passe 4 — Passe UI / affichage** (libellés, fix limite de caractères des embeds, libellé « Sous-classe (niv. 3) »)
 - [ ] **ÉTAPE 4 : Système de combat complet** (initiative, tour par tour, PV ennemis, level-up par XP) — GROS CHANTIER
 - [ ] **ÉTAPE 5 : Portage / fix version 2024** (armes, dégâts, actions bonus, sous-classes niv.3…) — TOUT À LA FIN, après le combat
+
+---
+
+## Axe A — Progression des personnages (mécanique)
+
+- [x] **A1** — Tables niv. 6–20 (emplacements, cantrips, connus, grimoire, préparés, maîtrise) — validé SRD.
+- [x] **A1-bis** — Correction slot niv. 3 fantôme au niveau 4.
+- [x] **A2** — Cap niveau 5→20 + ASI paliers 8/12/16/19 + tests montée 5→20.
+- [ ] **A3** — Demi-casters (paladin, rôdeur) + non-casters. Tables de progression dédiées.
+- [ ] **A4** — Occultiste (Pact Magic) — logique d'emplacements distincte.
+
+## Axe B — Sorts (contenu + moteur d'effets)
+
+- [x] **B1** — Inventaire de l'existant + schéma de fiche de sort → `docs/SPELLS_INVENTORY.md`, `docs/SPELL_SCHEMA.md`
+- [x] **B2** — Schéma v2.0 (`effects[]`, `classes[]`, `saving_throw` sous-objet) + migration 28 sorts + `spells_catalog` dérivé YAML → `docs/SPELLS_B2_MIGRATION_NOTES.md`
+- [x] **B2-bis** — Retrait `guidance` du pool cantrip mage + audit SRD (écarts documentés, pas d'autre suppression)
+- [x] **B2-ter** — Pool mage SRD : 4 cantrips + 8 grimoire (`mage_hand`, `light`, `ray_of_frost`, `mage_armor` ; retraits mage `thaumaturgy`, `vicious_mockery`, `chromatic_orb`)
+- [x] **B3-a** — +6 sorts niv. 3 mage (pool grimoire 14 = quota niv. 5)
+- [x] **B3-b** — +4 sorts niv. 4 mage Option A (pool grimoire 18 = quota niv. 7)
+- [ ] **B3** — Élargissement catalogue (suite niv. 5+, autres classes)
+- [ ] **B4** — Moteur d'effets : dégâts, jets de sauvegarde, concentration.
 
 ---
 
@@ -80,9 +96,9 @@ Tous les jalons P2a–P2h sont livrés. Grimoire mage : consultable via **`/pers
 
 ## Lot Level-up 4+ (ASI) — terminé ✅
 
-Chaîne validée live (Joe mage niv. 3→5) : ASI **INT +2** (base 15→17, effectif 18), DD / attaque / quota préparés recalculés, maîtrise +3 au niv. 5, cantrip *fire bolt* **2d10** au niv. 5. UI **`AsiDistributionView`** (+/−, pas de Select mono-choix).
+Chaîne validée : ASI **5 paliers** (4/8/12/16/19), cap **niv. 20** full casters, cantrip scaling 2d10/3d10/4d10, UI **`AsiDistributionView`**.
 
-**Prochain jalon spellcasting / progression** : **Passe 3 — aptitudes automatisées** (ou extension niv. 6–20 + ASI paliers suivants).
+**Prochain jalon** : **Axe B3** (élargissement catalogue) ou **Axe A3** (demi-casters).
 
 ---
 
@@ -96,4 +112,4 @@ Items hors périmètre des lots fonctionnels — à traiter en passes dédiées,
 | 🔵 | **Calcul effectif du `slot_scaling` à l'upcast** (`cast.py`) | Métadonnées + affichage embed OK (Lots B/C) ; calcul réel à l'incantation (ex. +1 rayon `scorching_ray`, +1d8 `spiritual_weapon`) — lot transverse |
 | 🔵 | **Tracking de concentration persistant** | `darkness`, `flaming_sphere`, `hex`, `detect_magic` — état `choices.spellcasting.concentration` non posé pour `effect.type: utility` |
 | 🔵 | **Log défensif `_sort_autocomplete`** | Diagnostic autocomplete `/sort` (« Échec des options de chargement ») — traçabilité sans masquer les exceptions |
-| 🔵 | **Élargissement catalogue curated** | Sorts SRD 2014 hors périmètre actuel (ex. `mirror_image`, `misty_step`, `hold_person`…) — nouvelles entrées compendium + pools classes |
+| 🔵 | **Élargissement catalogue curated (B3)** | 42 sorts actuels vs quotas SRD niv. 20 — voir `docs/SPELLS_INVENTORY.md` |

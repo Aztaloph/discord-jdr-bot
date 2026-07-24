@@ -1,0 +1,45 @@
+schema_version: '2.0'
+type: spell
+id: mage_armor
+name:
+  fr: Armure du mage
+  en: Mage Armor
+mechanics:
+  level: 1
+  school: abjuration
+  casting_time:
+    fr: 1 action
+    en: 1 action
+  range:
+    fr: Contact
+    en: Touch
+  components:
+    verbal: true
+    somatic: true
+    material: true
+    material_description:
+      fr: un morceau de cuir cure
+      en: a piece of cured leather
+  duration:
+    fr: 8 heures
+    en: 8 hours
+  concentration: false
+  attack_roll: false
+  damage_dice: null
+  damage_type: null
+  save: null
+  description:
+    fr: Vous touchez une creature consentante qui ne porte pas d'armure. Sa CA devient 13 + son modificateur de Dexterite
+      pour la duree du sort (SRD 2014).
+    en: You touch a willing creature who isn't wearing armor. The target's base AC becomes 13 + its Dexterity modifier for
+      the spell's duration (SRD 2014).
+  slot_scaling: null
+  buff_effect:
+    fr: CA de base = 13 + modificateur de Dexterite (cible sans armure, 8 h) (SRD 2014).
+    en: Base AC = 13 + Dexterity modifier (unarmored target, 8 hours) (SRD 2014).
+  effects:
+  - type: buff
+classes:
+- wizard
+class_pool_order:
+  wizard: 0

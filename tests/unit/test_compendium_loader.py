@@ -23,8 +23,8 @@ class TestCompendiumLoader(unittest.TestCase):
         self.assertIn("fr", self.manifest.locales)
 
     def test_entry_count(self):
-        # 9 races + 12 classes + 103 traits + 28 spells = 152
-        self.assertEqual(len(self.registry), 152)
+        # 9 races + 12 classes + 103 traits + 42 spells = 166
+        self.assertEqual(len(self.registry), 166)
 
     def test_races_loaded(self):
         races = self.registry.list_entries("race")

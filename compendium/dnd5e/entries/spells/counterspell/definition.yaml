@@ -1,0 +1,44 @@
+schema_version: '2.0'
+type: spell
+id: counterspell
+name:
+  fr: Contresort
+  en: Counterspell
+mechanics:
+  level: 3
+  school: abjuration
+  casting_time:
+    fr: 1 réaction
+    en: 1 reaction
+  range:
+    fr: 18 mètres
+    en: 60 feet
+  components:
+    verbal: true
+    somatic: false
+    material: false
+  duration:
+    fr: Instantané
+    en: Instantaneous
+  concentration: false
+  attack_roll: false
+  damage_dice: null
+  damage_type: null
+  save: null
+  description:
+    fr: 'Réaction lorsque vous voyez une créature à 18 m ou moins lancer un sort. Interrompt le sort si son niveau est
+      3 ou inférieur ; au-dessus, jet de caractéristique d''incantation DD 10 + niveau du sort (SRD 2014).'
+    en: 'Reaction when you see a creature within 60 feet casting a spell. Interrupts the spell if its level is 3 or lower;
+      for higher levels, an ability check against DC 10 + the spell''s level (SRD 2014).'
+  slot_scaling: null
+  utility_effect:
+    fr: 'Réaction — interrompt un sort niv. ≤ 3 ; au-dessus, test d''incantation DD 10 + niveau du sort (SRD 2014). Moteur
+      B4.'
+    en: 'Reaction — interrupts a spell of level 3 or lower; above that, spellcasting ability check DC 10 + spell level
+      (SRD 2014). Engine B4.'
+  effects:
+  - type: utility
+classes:
+- wizard
+class_pool_order:
+  wizard: 10

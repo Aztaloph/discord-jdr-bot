@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: '2.0'
 type: spell
 id: burning_hands
 name:
@@ -8,11 +8,11 @@ mechanics:
   level: 1
   school: evocation
   casting_time:
-    fr: "1 action"
-    en: "1 action"
+    fr: 1 action
+    en: 1 action
   range:
-    fr: "Personnel (cône de 4,5 m)"
-    en: "Self (15-foot cone)"
+    fr: Personnel (cône de 4,5 m)
+    en: Self (15-foot cone)
   components:
     verbal: true
     somatic: true
@@ -26,14 +26,22 @@ mechanics:
   damage_type: fire
   save: DEX
   description:
-    fr: "Un cône de flammes jaillit de vos mains. Jet de sauvegarde de Dextérité : échec = 3d6 feu, réussite = moitié."
-    en: "A cone of flames shoots from your hands. Dexterity save: fail = 3d6 fire, success = half."
+    fr: 'Un cône de flammes jaillit de vos mains. Jet de sauvegarde de Dextérité : échec = 3d6 feu, réussite = moitié.'
+    en: 'A cone of flames shoots from your hands. Dexterity save: fail = 3d6 fire, success = half.'
   slot_scaling:
     per_slot_above_base:
       damage_dice: 1d6
-  effect:
-    type: saving_throw
-    ability: dex
+  effects:
+  - type: saving_throw
     damage: 3d6
     damage_type: fire
-    half_on_save: true
+    saving_throw:
+      ability: dex
+      half_on_save: true
+      reaction: false
+classes:
+- sorcerer
+- wizard
+class_pool_order:
+  wizard: 1
+  sorcerer: 1

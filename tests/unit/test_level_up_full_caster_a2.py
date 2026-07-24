@@ -100,8 +100,40 @@ class TestWizardProgressionSixToTwenty(unittest.TestCase):
                 )
                 self.assertEqual(hit_dice_total(char), level)
 
-    def test_curated_pool_caps_spellbook_and_cantrips_before_srd_quota(self):
-        """Catalogue curated (Lot B) < quotas SRD niv. 20 — signal pour axe B."""
+    def test_spell_list_respects_srd_quota_cap(self):
+        """Grimoire / cantrips ne dépassent jamais le quota SRD au niv. donné."""
+        for level in range(1, 21):
+            with self.subTest(level=level):
+                char = wizard_at_level(self.engine, level)
+                quota_book = wizard_spellbook_capacity_at_level(level)
+                quota_cantrips = cantrips_known_capacity("wizard", level)
+                self.assertLessEqual(len(get_spellbook(char)), quota_book)
+                self.assertLessEqual(len(get_cantrips_known(char)), quota_cantrips)
+                self.assertEqual(
+                    len(get_spellbook(char)),
+                    min(quota_book, len(WIZARD_SPELLBOOK_POOL)),
+                )
+                self.assertEqual(
+                    len(get_cantrips_known(char)),
+                    min(quota_cantrips, len(WIZARD_CANTRIP_IDS)),
+                )
+
+    def test_spell_list_fills_quota_when_pool_large_enough_at_level_five(self):
+        """B3-a : pool grimoire (14) ≥ quota niv. 5 (14) → égalité stricte."""
+        char = wizard_at_level(self.engine, 5)
+        self.assertEqual(wizard_spellbook_capacity_at_level(5), 14)
+        self.assertEqual(len(WIZARD_SPELLBOOK_POOL), 18)
+        self.assertEqual(len(get_spellbook(char)), 14)
+
+    def test_spell_list_fills_quota_when_pool_large_enough_at_level_seven(self):
+        """B3-b : pool grimoire (18) ≥ quota niv. 7 (18) → égalité stricte."""
+        char = wizard_at_level(self.engine, 7)
+        self.assertEqual(wizard_spellbook_capacity_at_level(7), 18)
+        self.assertEqual(len(WIZARD_SPELLBOOK_POOL), 18)
+        self.assertEqual(len(get_spellbook(char)), 18)
+
+    def test_curated_pool_still_below_srd_quota_at_level_twenty(self):
+        """Signal B3+ : catalogue niv. 20 encore sous quota grimoire 44."""
         char = wizard_at_level(self.engine, 20)
         self.assertEqual(len(get_spellbook(char)), len(WIZARD_SPELLBOOK_POOL))
         self.assertLess(len(get_spellbook(char)), wizard_spellbook_capacity_at_level(20))

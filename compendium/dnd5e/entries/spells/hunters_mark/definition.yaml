@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: '2.0'
 type: spell
 id: hunters_mark
 name:
@@ -9,28 +9,34 @@ mechanics:
   school: divination
   concentration: true
   casting_time:
-    fr: "1 action bonus"
-    en: "1 bonus action"
+    fr: 1 action bonus
+    en: 1 bonus action
   range:
-    fr: "27 mètres"
-    en: "90 feet"
+    fr: 27 mètres
+    en: 90 feet
   components:
     verbal: true
     somatic: false
     material: false
   duration:
-    fr: "Concentration, jusqu'à 1 heure"
-    en: "Concentration, up to 1 hour"
+    fr: Concentration, jusqu'à 1 heure
+    en: Concentration, up to 1 hour
   attack_roll: false
   damage_dice: null
   damage_type: null
   save: null
   description:
-    fr: "Marque une cible : +1d6 dégâts à vos attaques d'arme contre elle ; avantage Survie pour la pister. Emplacements niv. 3–4 : concentration 8 h ; niv. 5+ : 24 h."
-    en: "Mark a target: +1d6 damage on weapon attacks against it; advantage on Survival to track. Slots 3–4: 8 h concentration; 5+: 24 h."
+    fr: 'Marque une cible : +1d6 dégâts à vos attaques d''arme contre elle ; avantage Survie pour la pister. Emplacements
+      niv. 3–4 : concentration 8 h ; niv. 5+ : 24 h.'
+    en: 'Mark a target: +1d6 damage on weapon attacks against it; advantage on Survival to track. Slots 3–4: 8 h concentration;
+      5+: 24 h.'
   slot_scaling: null
-  effect:
-    type: buff
   buff_effect:
-    fr: "Cible marquée : +1d6 dégâts à vos attaques contre elle ; avantage sur Survie pour la pister (SRD 2014)."
-    en: "Marked target: +1d6 damage on attacks against it; advantage on Survival to track (SRD 2014)."
+    fr: 'Cible marquée : +1d6 dégâts à vos attaques contre elle ; avantage sur Survie pour la pister (SRD 2014).'
+    en: 'Marked target: +1d6 damage on attacks against it; advantage on Survival to track (SRD 2014).'
+  effects:
+  - type: buff
+classes:
+- ranger
+class_pool_order:
+  ranger: 0

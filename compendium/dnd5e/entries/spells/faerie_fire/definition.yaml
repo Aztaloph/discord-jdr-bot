@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: '2.0'
 type: spell
 id: faerie_fire
 name:
@@ -9,28 +9,36 @@ mechanics:
   school: evocation
   concentration: true
   casting_time:
-    fr: "1 action"
-    en: "1 action"
+    fr: 1 action
+    en: 1 action
   range:
-    fr: "18 mètres"
-    en: "60 feet"
+    fr: 18 mètres
+    en: 60 feet
   components:
     verbal: true
     somatic: false
     material: false
   duration:
-    fr: "Concentration, jusqu'à 1 minute"
-    en: "Concentration, up to 1 minute"
+    fr: Concentration, jusqu'à 1 minute
+    en: Concentration, up to 1 minute
   attack_roll: false
   damage_dice: null
   damage_type: null
   save: DEX
   description:
-    fr: "Cube de 6 m de lumière colorée. Jet de sauvegarde de Dextérité : échec = cible affectée (contour visible, attaquants avantage, jets DEX désavantage)."
-    en: "20-foot cube of colored light. Dexterity save: fail = outlined (visible, attackers have advantage, DEX saves at disadvantage)."
+    fr: 'Cube de 6 m de lumière colorée. Jet de sauvegarde de Dextérité : échec = cible affectée (contour visible, attaquants
+      avantage, jets DEX désavantage).'
+    en: '20-foot cube of colored light. Dexterity save: fail = outlined (visible, attackers have advantage, DEX saves at disadvantage).'
   slot_scaling: null
   utility_effect:
-    fr: "Jet de sauvegarde DEX ; échec : cible affectée par lumière faérique (SRD 2014)."
-    en: "DEX save ; fail : target outlined by faerie fire (SRD 2014)."
-  effect:
-    type: utility
+    fr: 'Jet de sauvegarde DEX ; échec : cible affectée par lumière faérique (SRD 2014).'
+    en: 'DEX save ; fail : target outlined by faerie fire (SRD 2014).'
+  effects:
+  - type: utility
+    saving_throw:
+      ability: dex
+      half_on_save: false
+classes:
+- druid
+class_pool_order:
+  druid: 2

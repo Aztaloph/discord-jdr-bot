@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: '2.0'
 type: spell
 id: guidance
 name:
@@ -9,28 +9,38 @@ mechanics:
   school: divination
   concentration: true
   casting_time:
-    fr: "1 action"
-    en: "1 action"
+    fr: 1 action
+    en: 1 action
   range:
-    fr: "Contact"
+    fr: Contact
     en: Touch
   components:
     verbal: true
     somatic: true
     material: false
   duration:
-    fr: "Concentration, jusqu'à 1 minute"
-    en: "Concentration, up to 1 minute"
+    fr: Concentration, jusqu'à 1 minute
+    en: Concentration, up to 1 minute
   attack_roll: false
   damage_dice: null
   damage_type: null
   save: null
   description:
-    fr: "Vous touchez une créature consentante. Une fois avant la fin du sort, la cible peut lancer 1d4 et ajouter le résultat à un jet de caractéristique de son choix."
-    en: "You touch one willing creature. Once before the spell ends, the target can roll a d4 and add the number rolled to one ability check of its choice."
+    fr: Vous touchez une créature consentante. Une fois avant la fin du sort, la cible peut lancer 1d4 et ajouter le résultat
+      à un jet de caractéristique de son choix.
+    en: You touch one willing creature. Once before the spell ends, the target can roll a d4 and add the number rolled to
+      one ability check of its choice.
   cantrip_scaling: null
-  effect:
-    type: buff
   buff_effect:
-    fr: "+1d4 à un jet de caractéristique (SRD 2014)."
-    en: "+1d4 to one ability check (SRD 2014)."
+    fr: +1d4 à un jet de caractéristique (SRD 2014).
+    en: +1d4 to one ability check (SRD 2014).
+  effects:
+  - type: buff
+classes:
+- cleric
+- druid
+- sorcerer
+class_pool_order:
+  sorcerer: 2
+  cleric: 1
+  druid: 2

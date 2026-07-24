@@ -1,0 +1,51 @@
+schema_version: '2.0'
+type: spell
+id: lightning_bolt
+name:
+  fr: Éclair
+  en: Lightning Bolt
+mechanics:
+  level: 3
+  school: evocation
+  casting_time:
+    fr: 1 action
+    en: 1 action
+  range:
+    fr: Personnel (ligne de 30 m)
+    en: Self (100-foot line)
+  components:
+    verbal: true
+    somatic: true
+    material: true
+    material_description:
+      fr: un peu de fourrure et une baguette d'ambre, de cristal ou de verre
+      en: a bit of fur and a rod of amber, crystal, or glass
+  duration:
+    fr: Instantané
+    en: Instantaneous
+  concentration: false
+  attack_roll: false
+  damage_dice: 8d6
+  damage_type: lightning
+  save: DEX
+  description:
+    fr: 'Un éclair forme une ligne de 30 m × 1,5 m. Chaque créature sur la ligne doit réussir un jet de sauvegarde de
+      Dextérité ou subir 8d6 dégâts de foudre ; réussite = moitié (SRD 2014).'
+    en: 'A stroke of lightning forming a line 100 feet long and 5 feet wide blasts out from you. Each creature in the line
+      must make a Dexterity saving throw, taking 8d6 lightning damage on a failed save, or half as much on a success
+      (SRD 2014).'
+  slot_scaling:
+    per_slot_above_base:
+      damage_dice: 1d6
+  effects:
+  - type: saving_throw
+    damage: 8d6
+    damage_type: lightning
+    saving_throw:
+      ability: dex
+      half_on_save: true
+      reaction: false
+classes:
+- wizard
+class_pool_order:
+  wizard: 9

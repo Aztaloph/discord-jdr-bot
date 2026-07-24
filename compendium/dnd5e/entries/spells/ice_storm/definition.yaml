@@ -1,0 +1,48 @@
+schema_version: '2.0'
+type: spell
+id: ice_storm
+name:
+  fr: Tempête de grêle
+  en: Ice Storm
+mechanics:
+  level: 4
+  school: evocation
+  casting_time:
+    fr: 1 action
+    en: 1 action
+  range:
+    fr: 90 mètres
+    en: 300 feet
+  components:
+    verbal: true
+    somatic: true
+    material: true
+    material_description:
+      fr: une pincée de poussière et quelques gouttes d'eau
+      en: a pinch of dust and a few drops of water
+  duration:
+    fr: Instantané
+    en: Instantaneous
+  concentration: false
+  attack_roll: false
+  damage_dice: 4d6+2d8
+  damage_type: cold
+  save: DEX
+  description:
+    fr: 'Grêle tombe dans un cylindre de 6 m de rayon et 12 m de hauteur. Jet de sauvegarde de Dextérité : échec = 2d8
+      contondants + 4d6 froid ; réussite = moitié (SRD 2014).'
+    en: 'Hail falls in a 20-foot-radius, 40-foot-high cylinder. Dexterity save: fail = 2d8 bludgeoning + 4d6 cold; success
+      = half (SRD 2014).'
+  slot_scaling: null
+  effects:
+  - type: saving_throw
+    damage: 4d6+2d8
+    damage_type: cold
+    saving_throw:
+      ability: dex
+      half_on_save: true
+      reaction: false
+classes:
+- wizard
+class_pool_order:
+  wizard: 17

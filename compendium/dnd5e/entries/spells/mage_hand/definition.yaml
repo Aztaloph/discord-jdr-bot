@@ -1,0 +1,40 @@
+schema_version: '2.0'
+type: spell
+id: mage_hand
+name:
+  fr: Main du mage
+  en: Mage Hand
+mechanics:
+  level: 0
+  school: conjuration
+  casting_time:
+    fr: 1 action
+    en: 1 action
+  range:
+    fr: 9 mètres
+    en: 30 feet
+  components:
+    verbal: true
+    somatic: true
+    material: false
+  duration:
+    fr: 1 minute
+    en: 1 minute
+  concentration: false
+  attack_roll: false
+  damage_dice: null
+  damage_type: null
+  save: null
+  description:
+    fr: Une main spectrale flottante apparait a portee. Vous pouvez la deplacer et manipuler des objets legers (SRD 2014).
+    en: A spectral floating hand appears within range. You can move it and manipulate light objects (SRD 2014).
+  cantrip_scaling: null
+  utility_effect:
+    fr: Main spectrale — manipulation d'objets legers a distance (SRD 2014).
+    en: Spectral hand — manipulate light objects at range (SRD 2014).
+  effects:
+  - type: utility
+classes:
+- wizard
+class_pool_order:
+  wizard: 1

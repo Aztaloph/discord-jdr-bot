@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: '2.0'
 type: spell
 id: hex
 name:
@@ -9,28 +9,34 @@ mechanics:
   school: enchantment
   concentration: true
   casting_time:
-    fr: "1 action"
-    en: "1 action"
+    fr: 1 action
+    en: 1 action
   range:
-    fr: "27 mètres"
-    en: "90 feet"
+    fr: 27 mètres
+    en: 90 feet
   components:
     verbal: true
     somatic: true
     material: false
   duration:
-    fr: "Concentration, jusqu'à 1 heure"
-    en: "Concentration, up to 1 hour"
+    fr: Concentration, jusqu'à 1 heure
+    en: Concentration, up to 1 hour
   attack_roll: false
   damage_dice: null
   damage_type: null
   save: null
   description:
-    fr: "Malédiction une créature : désavantage aux tests d'une caractéristique choisie ; +1d6 dégâts nécrotiques quand vous la touchez avec un sort. Emplacements niv. 3–4 : concentration 8 h ; niv. 5+ : 24 h."
-    en: "Curse a creature: disadvantage on checks with one chosen ability; +1d6 necrotic when you hit it with a spell. Slots 3–4: 8 h concentration; 5+: 24 h."
+    fr: 'Malédiction une créature : désavantage aux tests d''une caractéristique choisie ; +1d6 dégâts nécrotiques quand vous
+      la touchez avec un sort. Emplacements niv. 3–4 : concentration 8 h ; niv. 5+ : 24 h.'
+    en: 'Curse a creature: disadvantage on checks with one chosen ability; +1d6 necrotic when you hit it with a spell. Slots
+      3–4: 8 h concentration; 5+: 24 h.'
   slot_scaling: null
   utility_effect:
-    fr: "Malus aux tests d'une caractéristique ; +1d6 dégâts occultes sur la cible (SRD 2014)."
-    en: "Disadvantage on ability checks; +1d6 necrotic on target (SRD 2014)."
-  effect:
-    type: utility
+    fr: Malus aux tests d'une caractéristique ; +1d6 dégâts occultes sur la cible (SRD 2014).
+    en: Disadvantage on ability checks; +1d6 necrotic on target (SRD 2014).
+  effects:
+  - type: utility
+classes:
+- warlock
+class_pool_order:
+  warlock: 0

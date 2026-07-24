@@ -28,6 +28,7 @@ LEVEL_1_SPELL_IDS: frozenset[str] = frozenset(
         "hunters_mark",
         "inflict_wounds",
         "magic_missile",
+        "mage_armor",
         "shield",
     }
 )
@@ -58,6 +59,7 @@ NO_SLOT_SCALING: frozenset[str] = frozenset(
     {
         "shield",
         "detect_magic",
+        "mage_armor",
         "entangle",
         "faerie_fire",
         "hex",

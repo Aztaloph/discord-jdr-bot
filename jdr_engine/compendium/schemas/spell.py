@@ -1,10 +1,12 @@
 # jdr_engine/compendium/schemas/spell.py
-"""Schéma typé mechanics pour les sorts (Passe 1 — Lots A & B)."""
+"""Schéma typé mechanics pour les sorts — v2.0 (Lot B2)."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
+
+EffectType = Literal["spell_attack", "saving_throw", "healing", "buff", "utility"]
 
 
 class SpellComponents(BaseModel):
@@ -55,13 +57,44 @@ class SlotScaling(BaseModel):
     per_slot_above_base: SlotScalingIncrement
 
 
+class SavingThrowSpec(BaseModel):
+    """Jet de sauvegarde porté par un effet (D7 — sous-objet, pas au niveau mechanics)."""
+
+    ability: str
+    half_on_save: bool = True
+    reaction: bool = False
+
+    @field_validator("ability")
+    @classmethod
+    def normalize_ability(cls, value: str) -> str:
+        return value.strip().lower()
+
+
+class SpellEffect(BaseModel):
+    """Un effet exécutable ou descriptif d'un sort (D4 — tableau multi-effets)."""
+
+    type: EffectType
+    attack_type: str | None = None
+    damage: str | None = None
+    damage_type: str | None = None
+    attacks: int | None = Field(default=None, ge=1)
+    instances: int | None = Field(default=None, ge=1)
+    auto_hit: bool | None = None
+    add_ability_mod: bool | None = None
+    invocation: bool | None = None
+    upcast_damage: str | None = None
+    healing: str | None = None
+    saving_throw: SavingThrowSpec | None = None
+
+    model_config = {"extra": "forbid"}
+
+
 class SpellMechanics(BaseModel):
     """
-    Champs mécaniques structurés d'un sort.
+    Champs mécaniques structurés d'un sort (schema mechanics v2.0).
 
-    Les champs Lot A/B (damage_dice, save, attack_roll, cantrip_scaling,
-    slot_scaling, description) enrichissent le compendium ; optionnels pour
-    rétrocompat. Le bloc ``effect`` reste la source du moteur de lancement.
+    ``effects[]`` est la source du moteur de lancement ; les champs
+    ``damage_dice``, ``save``, etc. restent des miroirs d'affichage.
     """
 
     level: int = Field(..., ge=0, le=9)
@@ -81,7 +114,7 @@ class SpellMechanics(BaseModel):
     slot_scaling: SlotScaling | None = None
     description: dict[str, str] | str | None = None
 
-    effect: dict[str, Any] | None = None
+    effects: list[SpellEffect] = Field(..., min_length=1)
     buff_effect: dict[str, str] | str | None = None
     utility_effect: dict[str, str] | str | None = None
 
@@ -93,3 +126,18 @@ class SpellMechanics(BaseModel):
         if value is None:
             return None
         return value.strip().upper()
+
+    @model_validator(mode="after")
+    def validate_cantrip_scaling_level(self) -> SpellMechanics:
+        if self.level > 0 and self.cantrip_scaling is not None:
+            raise ValueError("cantrip_scaling interdit si level > 0")
+        return self
+
+    @model_validator(mode="after")
+    def validate_saving_throw_effects(self) -> SpellMechanics:
+        for effect in self.effects:
+            if effect.type == "saving_throw" and effect.saving_throw is None:
+                raise ValueError(
+                    f"effet saving_throw sans sous-objet saving_throw"
+                )
+        return self

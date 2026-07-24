@@ -1,0 +1,46 @@
+schema_version: '2.0'
+type: spell
+id: polymorph
+name:
+  fr: Métamorphose
+  en: Polymorph
+mechanics:
+  level: 4
+  school: transmutation
+  casting_time:
+    fr: 1 action
+    en: 1 action
+  range:
+    fr: 18 mètres
+    en: 60 feet
+  components:
+    verbal: true
+    somatic: true
+    material: true
+    material_description:
+      fr: un cocon de chenille
+      en: a caterpillar cocoon
+  duration:
+    fr: Concentration, jusqu'à 1 heure
+    en: Concentration, up to 1 hour
+  concentration: true
+  attack_roll: false
+  damage_dice: null
+  damage_type: null
+  save: null
+  description:
+    fr: 'Vous transformez une créature consentante en bête de FP ≤ niveau d''emplacement (niv. 4 → FP 4 max). Statistiques
+      remplacées par celles de la bête ; conserve l''alignement et la personnalité (SRD 2014).'
+    en: 'You transform a willing creature into a beast whose challenge rating is equal to or less than the spell level
+      (4th level → CR 4 max). Stats replaced by the beast''s; alignment and personality retained (SRD 2014).'
+  slot_scaling: null
+  buff_effect:
+    fr: 'Forme de bête (FP ≤ niveau d''emplacement) — stats de la bête, HP temporaires = PV de la forme (SRD 2014). Moteur
+      B4.'
+    en: 'Beast form (CR ≤ spell level) — beast stats, temp HP = form HP (SRD 2014). Engine B4.'
+  effects:
+  - type: buff
+classes:
+- wizard
+class_pool_order:
+  wizard: 14

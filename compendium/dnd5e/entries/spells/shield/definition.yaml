@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: '2.0'
 type: spell
 id: shield
 name:
@@ -8,8 +8,8 @@ mechanics:
   level: 1
   school: abjuration
   casting_time:
-    fr: "1 réaction"
-    en: "1 reaction"
+    fr: 1 réaction
+    en: 1 reaction
   range:
     fr: Personnelle
     en: Self
@@ -18,19 +18,24 @@ mechanics:
     somatic: true
     material: false
   duration:
-    fr: "1 round"
-    en: "1 round"
+    fr: 1 round
+    en: 1 round
   concentration: false
   attack_roll: false
   damage_dice: null
   damage_type: null
   save: null
   description:
-    fr: "Réaction lorsque vous êtes touché par une attaque ou ciblé par magic missile. +5 à la CA jusqu'à votre prochain tour, y compris contre l'attaque déclencheuse."
-    en: "Reaction when hit by an attack or targeted by magic missile. +5 AC until your next turn, including against the triggering attack."
+    fr: Réaction lorsque vous êtes touché par une attaque ou ciblé par magic missile. +5 à la CA jusqu'à votre prochain tour,
+      y compris contre l'attaque déclencheuse.
+    en: Reaction when hit by an attack or targeted by magic missile. +5 AC until your next turn, including against the triggering
+      attack.
   slot_scaling: null
-  effect:
-    type: buff
-    buff_effect:
-      fr: "+5 CA jusqu'à votre prochain tour (SRD 2014)."
-      en: "+5 AC until your next turn."
+  effects:
+  - type: buff
+classes:
+- sorcerer
+- wizard
+class_pool_order:
+  wizard: 4
+  sorcerer: 4

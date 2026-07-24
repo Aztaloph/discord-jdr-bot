@@ -162,7 +162,7 @@ class TestWizardPreparedRechoice(unittest.TestCase):
             validate_prepared_selection(
                 char,
                 self.engine,
-                ["magic_missile", "burning_hands", "shield", "chromatic_orb"][:quota],
+                ["magic_missile", "burning_hands", "shield", "mage_armor"][:quota],
             )
         self.assertIn("grimoire", str(ctx.exception).lower())
 

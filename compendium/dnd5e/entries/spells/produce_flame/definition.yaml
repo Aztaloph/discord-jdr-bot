@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: '2.0'
 type: spell
 id: produce_flame
 name:
@@ -8,8 +8,8 @@ mechanics:
   level: 0
   school: conjuration
   casting_time:
-    fr: "1 action"
-    en: "1 action"
+    fr: 1 action
+    en: 1 action
   range:
     fr: Personnel
     en: Self
@@ -18,29 +18,35 @@ mechanics:
     somatic: true
     material: false
   duration:
-    fr: "10 minutes"
-    en: "10 minutes"
+    fr: 10 minutes
+    en: 10 minutes
   concentration: false
   attack_roll: true
   damage_dice: 1d8
   damage_type: fire
   save: null
   description:
-    fr: "Une flamme vacillante apparaît dans votre main (lumière vive 3 m, faible 3 m suppl.). Vous pouvez lancer la flamme sur une créature à 9 m (attaque de sort à distance) ; l'attaque met fin au sort."
-    en: "A flickering flame appears in your hand (bright light 10 ft., dim light 10 ft. more). You can hurl the flame at a creature within 30 feet (ranged spell attack); the attack ends the spell."
+    fr: Une flamme vacillante apparaît dans votre main (lumière vive 3 m, faible 3 m suppl.). Vous pouvez lancer la flamme
+      sur une créature à 9 m (attaque de sort à distance) ; l'attaque met fin au sort.
+    en: A flickering flame appears in your hand (bright light 10 ft., dim light 10 ft. more). You can hurl the flame at a
+      creature within 30 feet (ranged spell attack); the attack ends the spell.
   cantrip_scaling:
     tiers:
-      - character_level: 1
-        damage_dice: 1d8
-      - character_level: 5
-        damage_dice: 2d8
-      - character_level: 11
-        damage_dice: 3d8
-      - character_level: 17
-        damage_dice: 4d8
-  effect:
-    type: spell_attack
+    - character_level: 1
+      damage_dice: 1d8
+    - character_level: 5
+      damage_dice: 2d8
+    - character_level: 11
+      damage_dice: 3d8
+    - character_level: 17
+      damage_dice: 4d8
+  effects:
+  - type: spell_attack
     attack_type: ranged
-    attacks: 1
     damage: 1d8
     damage_type: fire
+    attacks: 1
+classes:
+- druid
+class_pool_order:
+  druid: 1

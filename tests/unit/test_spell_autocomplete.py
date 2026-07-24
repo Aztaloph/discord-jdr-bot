@@ -10,6 +10,7 @@ from jdr_engine.application.character_service import CharacterService
 from jdr_engine.persistence.database import init_database
 from jdr_engine.persistence.sqlite_character_repository import SqliteCharacterRepository
 from jdr_engine.rules import RuleEngine
+from jdr_engine.rules.spellcasting.spells_catalog import get_spell_ids_for_class
 from jdr_engine.rules.spellcasting.state import list_castable_spell_ids, list_spell_autocomplete_ids
 
 from interfaces.discord.container import DiscordJdrContext
@@ -36,7 +37,7 @@ class TestSpellAutocomplete(unittest.TestCase):
 
     def test_all_five_wizard_spells_when_empty_query(self):
         choices = build_spell_autocomplete_choices(self.engine, "", class_id="wizard")
-        self.assertEqual(len(choices), 12)
+        self.assertEqual(len(choices), len(get_spell_ids_for_class("wizard")))
 
     def test_partial_fire_matches_fire_bolt(self):
         choices = build_lot_b_spell_autocomplete_choices(self.engine, "fire")

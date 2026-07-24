@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: '2.0'
 type: spell
 id: magic_missile
 name:
@@ -8,11 +8,11 @@ mechanics:
   level: 1
   school: evocation
   casting_time:
-    fr: "1 action"
-    en: "1 action"
+    fr: 1 action
+    en: 1 action
   range:
-    fr: "36 mètres"
-    en: "120 feet"
+    fr: 36 mètres
+    en: 120 feet
   components:
     verbal: true
     somatic: true
@@ -22,19 +22,25 @@ mechanics:
     en: Instantaneous
   concentration: false
   attack_roll: false
-  damage_dice: "3×(1d4+1)"
+  damage_dice: 3×(1d4+1)
   damage_type: force
   save: null
   description:
-    fr: "Trois projectiles de force frappent automatiquement une ou plusieurs créatures à portée (1d4+1 force chacun)."
-    en: "Three darts of force automatically hit one or more creatures in range (1d4+1 force each)."
+    fr: Trois projectiles de force frappent automatiquement une ou plusieurs créatures à portée (1d4+1 force chacun).
+    en: Three darts of force automatically hit one or more creatures in range (1d4+1 force each).
   slot_scaling:
     per_slot_above_base:
       missiles: 1
-  effect:
-    type: spell_attack
-    auto_hit: true
-    attacks: 3
+  effects:
+  - type: spell_attack
     damage: 1d4+1
-    add_ability_mod: false
     damage_type: force
+    attacks: 3
+    auto_hit: true
+    add_ability_mod: false
+classes:
+- sorcerer
+- wizard
+class_pool_order:
+  wizard: 3
+  sorcerer: 3

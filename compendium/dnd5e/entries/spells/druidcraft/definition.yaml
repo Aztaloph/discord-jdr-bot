@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: '2.0'
 type: spell
 id: druidcraft
 name:
@@ -8,11 +8,11 @@ mechanics:
   level: 0
   school: transmutation
   casting_time:
-    fr: "1 action"
-    en: "1 action"
+    fr: 1 action
+    en: 1 action
   range:
-    fr: "9 mètres"
-    en: "30 feet"
+    fr: 9 mètres
+    en: 30 feet
   components:
     verbal: true
     somatic: true
@@ -26,11 +26,16 @@ mechanics:
   damage_type: null
   save: null
   description:
-    fr: "Effet mineur de nature ou présage : brise météo, effet sensoriel, éteindre une flamme, faire éclore une fleur, faire bourgeonner une feuille, etc. (SRD 2014)."
-    en: "Minor nature effect or omen: weather whisper, sensory effect, snuff flame, bloom flower, bud leaf, etc. (SRD 2014)."
+    fr: 'Effet mineur de nature ou présage : brise météo, effet sensoriel, éteindre une flamme, faire éclore une fleur, faire
+      bourgeonner une feuille, etc. (SRD 2014).'
+    en: 'Minor nature effect or omen: weather whisper, sensory effect, snuff flame, bloom flower, bud leaf, etc. (SRD 2014).'
   cantrip_scaling: null
   utility_effect:
-    fr: "Effet mineur de nature ou présage (SRD 2014)."
-    en: "Minor nature effect or omen (SRD 2014)."
-  effect:
-    type: utility
+    fr: Effet mineur de nature ou présage (SRD 2014).
+    en: Minor nature effect or omen (SRD 2014).
+  effects:
+  - type: utility
+classes:
+- druid
+class_pool_order:
+  druid: 0

@@ -1,0 +1,42 @@
+schema_version: '2.0'
+type: spell
+id: dimension_door
+name:
+  fr: Porte dimensionnelle
+  en: Dimension Door
+mechanics:
+  level: 4
+  school: conjuration
+  casting_time:
+    fr: 1 action
+    en: 1 action
+  range:
+    fr: 150 mètres
+    en: 500 feet
+  components:
+    verbal: true
+    somatic: false
+    material: false
+  duration:
+    fr: Instantané
+    en: Instantaneous
+  concentration: false
+  attack_roll: false
+  damage_dice: null
+  damage_type: null
+  save: null
+  description:
+    fr: 'Vous vous téléportez, vous et un passager consentant que vous touchez, vers un emplacement à portée que vous voyez
+      ou dont vous connaissez la disposition (SRD 2014).'
+    en: 'You teleport yourself and one willing passenger you touch to a destination within range that you can see or describe
+      (SRD 2014).'
+  slot_scaling: null
+  utility_effect:
+    fr: 'Téléportation jusqu''à 150 m (vous + 1 passager consentant) (SRD 2014). Moteur B4.'
+    en: 'Teleport up to 500 ft (self + 1 willing passenger) (SRD 2014). Engine B4.'
+  effects:
+  - type: utility
+classes:
+- wizard
+class_pool_order:
+  wizard: 16

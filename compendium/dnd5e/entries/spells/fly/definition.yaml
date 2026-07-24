@@ -1,0 +1,46 @@
+schema_version: '2.0'
+type: spell
+id: fly
+name:
+  fr: Vol
+  en: Fly
+mechanics:
+  level: 3
+  school: transmutation
+  casting_time:
+    fr: 1 action
+    en: 1 action
+  range:
+    fr: Contact
+    en: Touch
+  components:
+    verbal: true
+    somatic: true
+    material: true
+    material_description:
+      fr: une plume d'aile d'oiseau
+      en: a wing feather from any bird
+  duration:
+    fr: Concentration, jusqu'à 10 minutes
+    en: Concentration, up to 10 minutes
+  concentration: true
+  attack_roll: false
+  damage_dice: null
+  damage_type: null
+  save: null
+  description:
+    fr: 'Vous touchez une créature consentante. La cible obtient une vitesse de vol de 18 m pour la durée du sort. Si le
+      sort se termine alors qu''elle vole, elle chute si rien ne la soutient (SRD 2014).'
+    en: 'You touch a willing creature. The target gains a flying speed of 60 feet for the duration. If the spell ends while
+      the target is aloft, it falls unless it can stay in the air (SRD 2014).'
+  slot_scaling: null
+  utility_effect:
+    fr: 'Cible consentante : vitesse de vol 18 m (concentration, 10 min) ; chute si le sort se termine en vol (SRD 2014).
+      Moteur B4.'
+    en: 'Willing target gains 60 ft fly speed (concentration, 10 min); falls if spell ends while aloft (SRD 2014). Engine B4.'
+  effects:
+  - type: utility
+classes:
+- wizard
+class_pool_order:
+  wizard: 12

@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: '2.0'
 type: spell
 id: bless
 name:
@@ -9,30 +9,38 @@ mechanics:
   school: enchantment
   concentration: true
   casting_time:
-    fr: "1 action"
-    en: "1 action"
+    fr: 1 action
+    en: 1 action
   range:
-    fr: "9 mètres"
-    en: "30 feet"
+    fr: 9 mètres
+    en: 30 feet
   components:
     verbal: true
     somatic: true
     material: false
   duration:
-    fr: "Concentration, jusqu'à 1 minute"
-    en: "Concentration, up to 1 minute"
+    fr: Concentration, jusqu'à 1 minute
+    en: Concentration, up to 1 minute
   attack_roll: false
   damage_dice: null
   damage_type: null
   save: null
   description:
-    fr: "Jusqu'à 3 créatures à portée : +1d4 aux jets d'attaque et de sauvegarde jusqu'à la fin du sort."
-    en: "Up to 3 creatures in range: +1d4 to attack rolls and saving throws until the spell ends."
+    fr: 'Jusqu''à 3 créatures à portée : +1d4 aux jets d''attaque et de sauvegarde jusqu''à la fin du sort.'
+    en: 'Up to 3 creatures in range: +1d4 to attack rolls and saving throws until the spell ends.'
   slot_scaling:
     per_slot_above_base:
       extra_targets: 1
-  effect:
-    type: buff
   buff_effect:
-    fr: "Jusqu'à 3 créatures : +1d4 aux jets d'attaque et de sauvegarde (SRD 2014)."
-    en: "Up to 3 creatures: +1d4 to attack rolls and saving throws (SRD 2014)."
+    fr: 'Jusqu''à 3 créatures : +1d4 aux jets d''attaque et de sauvegarde (SRD 2014).'
+    en: 'Up to 3 creatures: +1d4 to attack rolls and saving throws (SRD 2014).'
+  effects:
+  - type: buff
+classes:
+- bard
+- cleric
+- paladin
+class_pool_order:
+  cleric: 2
+  bard: 3
+  paladin: 0

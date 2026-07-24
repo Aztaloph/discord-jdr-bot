@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Dossiers entries/ (pluriel) ↔ type dans definition.yaml (singulier)
 ENTRY_TYPE_PLURAL_TO_SINGULAR: dict[str, str] = {
@@ -124,6 +124,8 @@ class DefinitionSchema(BaseModel):
     id: str
     name: dict[str, str]
     mechanics: dict[str, Any]
+    classes: list[str] = Field(default_factory=list)
+    class_pool_order: dict[str, int] = Field(default_factory=dict)
 
     @field_validator("name")
     @classmethod
@@ -131,6 +133,18 @@ class DefinitionSchema(BaseModel):
         if not value:
             raise ValueError("name ne peut pas être vide")
         return value
+
+    @model_validator(mode="after")
+    def spell_requires_classes(self) -> DefinitionSchema:
+        if self.type == "spell":
+            if self.schema_version != "2.0":
+                raise ValueError(
+                    f"Sort {self.id!r} : schema_version 2.0 requis, "
+                    f"trouvé {self.schema_version!r}"
+                )
+            if not self.classes:
+                raise ValueError(f"Sort {self.id!r} : classes[] obligatoire")
+        return self
 
     def validate_mechanics_typed(self) -> BaseModel:
         """Valide mechanics selon le type d'entité (L1)."""

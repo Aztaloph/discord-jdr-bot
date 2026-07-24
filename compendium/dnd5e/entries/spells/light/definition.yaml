@@ -1,0 +1,45 @@
+schema_version: '2.0'
+type: spell
+id: light
+name:
+  fr: Lumière
+  en: Light
+mechanics:
+  level: 0
+  school: evocation
+  casting_time:
+    fr: 1 action
+    en: 1 action
+  range:
+    fr: Contact
+    en: Touch
+  components:
+    verbal: true
+    somatic: false
+    material: true
+    material_description:
+      fr: une luciole ou de la mousse phosphorescente
+      en: a firefly or phosphorescent moss
+  duration:
+    fr: 1 heure
+    en: 1 hour
+  concentration: false
+  attack_roll: false
+  damage_dice: null
+  damage_type: null
+  save: null
+  description:
+    fr: Vous touchez un objet de taille M ou inferieure. Il emet une lumiere vive sur 6 m et une lumiere faible sur 6 m
+      supplementaires (SRD 2014).
+    en: You touch one object that is no larger than Medium. It sheds bright light in a 20-foot radius and dim light for an
+      additional 20 feet (SRD 2014).
+  cantrip_scaling: null
+  utility_effect:
+    fr: Objet touche — lumiere vive 6 m + faible 6 m (SRD 2014).
+    en: Touched object — bright light 20 ft + dim 20 ft (SRD 2014).
+  effects:
+  - type: utility
+classes:
+- wizard
+class_pool_order:
+  wizard: 2

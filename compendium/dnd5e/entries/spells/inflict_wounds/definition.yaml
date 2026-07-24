@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: '2.0'
 type: spell
 id: inflict_wounds
 name:
@@ -8,8 +8,8 @@ mechanics:
   level: 1
   school: necromancy
   casting_time:
-    fr: "1 action"
-    en: "1 action"
+    fr: 1 action
+    en: 1 action
   range:
     fr: Contact
     en: Touch
@@ -26,13 +26,17 @@ mechanics:
   damage_type: necrotic
   save: null
   description:
-    fr: "Attaque de sort au corps à corps au contact. En cas de réussite, la cible subit 3d10 dégâts nécrotiques."
-    en: "Melee spell attack on touch. On a hit, the target takes 3d10 necrotic damage."
+    fr: Attaque de sort au corps à corps au contact. En cas de réussite, la cible subit 3d10 dégâts nécrotiques.
+    en: Melee spell attack on touch. On a hit, the target takes 3d10 necrotic damage.
   slot_scaling:
     per_slot_above_base:
       damage_dice: 1d10
-  effect:
-    type: spell_attack
+  effects:
+  - type: spell_attack
     attack_type: melee
     damage: 3d10
     damage_type: necrotic
+classes:
+- cleric
+class_pool_order:
+  cleric: 1

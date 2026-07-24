@@ -1,0 +1,51 @@
+schema_version: '2.0'
+type: spell
+id: fireball
+name:
+  fr: Boule de feu
+  en: Fireball
+mechanics:
+  level: 3
+  school: evocation
+  casting_time:
+    fr: 1 action
+    en: 1 action
+  range:
+    fr: 45 mètres
+    en: 120 feet
+  components:
+    verbal: true
+    somatic: true
+    material: true
+    material_description:
+      fr: une petite boule de guano de chauve-souris et de soufre
+      en: a tiny ball of bat guano and sulfur
+  duration:
+    fr: Instantané
+    en: Instantaneous
+  concentration: false
+  attack_roll: false
+  damage_dice: 8d6
+  damage_type: fire
+  save: DEX
+  description:
+    fr: 'Une boule de feu s''écrase à un point à portée. Chaque créature dans une sphère de 6 m doit réussir un jet de
+      sauvegarde de Dextérité ou subir 8d6 dégâts de feu ; réussite = moitié (SRD 2014).'
+    en: 'A bright streak flashes to a point within range and blossoms into an explosion of flame. Each creature in a 20-foot-radius
+      sphere must make a Dexterity saving throw, taking 8d6 fire damage on a failed save, or half as much on a success
+      (SRD 2014).'
+  slot_scaling:
+    per_slot_above_base:
+      damage_dice: 1d6
+  effects:
+  - type: saving_throw
+    damage: 8d6
+    damage_type: fire
+    saving_throw:
+      ability: dex
+      half_on_save: true
+      reaction: false
+classes:
+- wizard
+class_pool_order:
+  wizard: 8

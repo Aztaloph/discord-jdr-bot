@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: '2.0'
 type: spell
 id: prestidigitation
 name:
@@ -8,29 +8,33 @@ mechanics:
   level: 0
   school: transmutation
   casting_time:
-    fr: "1 action"
-    en: "1 action"
+    fr: 1 action
+    en: 1 action
   range:
-    fr: "3 mètres"
-    en: "10 feet"
+    fr: 3 mètres
+    en: 10 feet
   components:
     verbal: true
     somatic: true
     material: false
   duration:
-    fr: "Jusqu'à 1 heure"
-    en: "Up to 1 hour"
+    fr: Jusqu'à 1 heure
+    en: Up to 1 hour
   concentration: false
   attack_roll: false
   damage_dice: null
   damage_type: null
   save: null
   description:
-    fr: "Effet magique mineur : étincelle, odeur, son, nettoyage, réchauffement, symbole, etc. (SRD 2014)."
-    en: "Minor magical trick: spark, odor, sound, clean, warm, mark, etc. (SRD 2014)."
+    fr: 'Effet magique mineur : étincelle, odeur, son, nettoyage, réchauffement, symbole, etc. (SRD 2014).'
+    en: 'Minor magical trick: spark, odor, sound, clean, warm, mark, etc. (SRD 2014).'
   cantrip_scaling: null
   utility_effect:
-    fr: "Effet mineur magique (SRD 2014)."
-    en: "Minor magical effect (SRD 2014)."
-  effect:
-    type: utility
+    fr: Effet mineur magique (SRD 2014).
+    en: Minor magical effect (SRD 2014).
+  effects:
+  - type: utility
+classes:
+- warlock
+class_pool_order:
+  warlock: 1

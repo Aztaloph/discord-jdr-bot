@@ -1,0 +1,46 @@
+schema_version: '2.0'
+type: spell
+id: haste
+name:
+  fr: Hâte
+  en: Haste
+mechanics:
+  level: 3
+  school: transmutation
+  casting_time:
+    fr: 1 action
+    en: 1 action
+  range:
+    fr: 9 mètres
+    en: 30 feet
+  components:
+    verbal: true
+    somatic: true
+    material: true
+    material_description:
+      fr: un éclat de réglisse
+      en: a shaving of licorice root
+  duration:
+    fr: Concentration, jusqu'à 1 minute
+    en: Concentration, up to 1 minute
+  concentration: true
+  attack_roll: false
+  damage_dice: null
+  damage_type: null
+  save: null
+  description:
+    fr: 'Choisissez une créature consentante à portée. Vitesse doublée, +2 CA, avantage aux jets de Dextérité, action
+      supplémentaire (Attaquer, Foncer, Désengager, Se cacher ou Utiliser un objet). Létargie au tour suivant la fin du
+      sort (SRD 2014).'
+    en: 'Choose a willing creature within range. Its speed is doubled, +2 AC, advantage on Dexterity saves, and an extra
+      action (Attack, Dash, Disengage, Hide, or Use an Object). Lethargy on the turn after the spell ends (SRD 2014).'
+  slot_scaling: null
+  buff_effect:
+    fr: 'Vitesse ×2, +2 CA, avantage DEX, action bonus limitée ; léthargie au tour suivant (SRD 2014). Moteur B4.'
+    en: 'Double speed, +2 AC, Dex save advantage, limited bonus action; lethargy next turn (SRD 2014). Engine B4.'
+  effects:
+  - type: buff
+classes:
+- wizard
+class_pool_order:
+  wizard: 13

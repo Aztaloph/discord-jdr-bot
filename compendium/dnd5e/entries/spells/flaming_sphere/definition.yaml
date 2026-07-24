@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: '2.0'
 type: spell
 id: flaming_sphere
 name:
@@ -9,31 +9,41 @@ mechanics:
   school: conjuration
   concentration: true
   casting_time:
-    fr: "1 action"
-    en: "1 action"
+    fr: 1 action
+    en: 1 action
   range:
-    fr: "18 mètres"
-    en: "60 feet"
+    fr: 18 mètres
+    en: 60 feet
   components:
     verbal: true
     somatic: true
     material: false
   duration:
-    fr: "Concentration, jusqu'à 1 minute"
-    en: "Concentration, up to 1 minute"
+    fr: Concentration, jusqu'à 1 minute
+    en: Concentration, up to 1 minute
   attack_roll: false
   damage_dice: 2d6
   damage_type: fire
   save: DEX
   description:
-    fr: "Une sphère de feu de 1,5 m de diamètre apparaît. Une créature qui termine son tour à 1,5 m ou moins subit un jet de sauvegarde de Dextérité : échec = 2d6 feu, réussite = moitié. Action bonus : déplacer la sphère (SRD 2014)."
-    en: "A 5-foot-diameter sphere of fire appears. A creature that ends its turn within 5 feet makes a Dexterity save: fail = 2d6 fire, success = half. Bonus action: move the sphere (SRD 2014)."
+    fr: 'Une sphère de feu de 1,5 m de diamètre apparaît. Une créature qui termine son tour à 1,5 m ou moins subit un jet
+      de sauvegarde de Dextérité : échec = 2d6 feu, réussite = moitié. Action bonus : déplacer la sphère (SRD 2014).'
+    en: 'A 5-foot-diameter sphere of fire appears. A creature that ends its turn within 5 feet makes a Dexterity save: fail
+      = 2d6 fire, success = half. Bonus action: move the sphere (SRD 2014).'
   slot_scaling:
     per_slot_above_base:
       damage_dice: 1d6
-  effect:
-    type: saving_throw
-    ability: dex
+  effects:
+  - type: saving_throw
     damage: 2d6
     damage_type: fire
-    half_on_save: true
+    saving_throw:
+      ability: dex
+      half_on_save: true
+      reaction: false
+classes:
+- druid
+- wizard
+class_pool_order:
+  wizard: 7
+  druid: 3

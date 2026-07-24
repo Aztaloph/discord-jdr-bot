@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: '2.0'
 type: spell
 id: scorching_ray
 name:
@@ -8,11 +8,11 @@ mechanics:
   level: 2
   school: evocation
   casting_time:
-    fr: "1 action"
-    en: "1 action"
+    fr: 1 action
+    en: 1 action
   range:
-    fr: "36 mètres"
-    en: "120 feet"
+    fr: 36 mètres
+    en: 120 feet
   components:
     verbal: true
     somatic: true
@@ -26,14 +26,22 @@ mechanics:
   damage_type: fire
   save: null
   description:
-    fr: "Vous lancez trois rayons ardents. Chaque rayon exige un jet d'attaque à distance distinct ; à impact, 2d6 dégâts de feu (même cible ou cibles différentes, SRD 2014)."
-    en: "You hurl three scorching rays. Each ray requires a separate ranged spell attack; on a hit, 2d6 fire damage (same or different targets, SRD 2014)."
+    fr: Vous lancez trois rayons ardents. Chaque rayon exige un jet d'attaque à distance distinct ; à impact, 2d6 dégâts de
+      feu (même cible ou cibles différentes, SRD 2014).
+    en: You hurl three scorching rays. Each ray requires a separate ranged spell attack; on a hit, 2d6 fire damage (same or
+      different targets, SRD 2014).
   slot_scaling:
     per_slot_above_base:
       missiles: 1
-  effect:
-    type: spell_attack
+  effects:
+  - type: spell_attack
     attack_type: ranged
-    attacks: 3
     damage: 2d6
     damage_type: fire
+    attacks: 3
+classes:
+- sorcerer
+- wizard
+class_pool_order:
+  wizard: 5
+  sorcerer: 5

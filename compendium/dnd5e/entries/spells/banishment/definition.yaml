@@ -1,0 +1,49 @@
+schema_version: '2.0'
+type: spell
+id: banishment
+name:
+  fr: Bannissement
+  en: Banishment
+mechanics:
+  level: 4
+  school: abjuration
+  casting_time:
+    fr: 1 action
+    en: 1 action
+  range:
+    fr: 18 mètres
+    en: 60 feet
+  components:
+    verbal: true
+    somatic: true
+    material: true
+    material_description:
+      fr: un objet répugnant pour la cible
+      en: an item distasteful to the target
+  duration:
+    fr: Concentration, jusqu'à 1 minute
+    en: Concentration, up to 1 minute
+  concentration: true
+  attack_roll: false
+  damage_dice: null
+  damage_type: null
+  save: CHA
+  description:
+    fr: 'Vous tentez d''envoyer une créature visible sur un autre plan. Jet de sauvegarde de Charisme : échec = bannissement
+      (démiplan ou plan d''origine selon le cas) ; réussite = aucun effet (SRD 2014).'
+    en: 'You attempt to send one creature you can see to another plane. Charisma save: fail = banished (demiplane or home
+      plane); success = no effect (SRD 2014).'
+  slot_scaling: null
+  utility_effect:
+    fr: 'Échec au save CHA : cible bannie pour la durée du sort (SRD 2014). Moteur B4.'
+    en: 'Failed CHA save: target banished for the duration (SRD 2014). Engine B4.'
+  effects:
+  - type: utility
+    saving_throw:
+      ability: cha
+      half_on_save: false
+      reaction: false
+classes:
+- wizard
+class_pool_order:
+  wizard: 15

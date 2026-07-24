@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: '2.0'
 type: spell
 id: hellish_rebuke
 name:
@@ -8,11 +8,11 @@ mechanics:
   level: 1
   school: evocation
   casting_time:
-    fr: "1 réaction"
-    en: "1 reaction"
+    fr: 1 réaction
+    en: 1 reaction
   range:
-    fr: "18 mètres"
-    en: "60 feet"
+    fr: 18 mètres
+    en: 60 feet
   components:
     verbal: true
     somatic: true
@@ -26,17 +26,21 @@ mechanics:
   damage_type: fire
   save: DEX
   description:
-    fr: "Réaction lorsque vous subissez des dégâts d'une créature visible. Jet de sauvegarde de Dextérité : échec = 2d10 feu, réussite = moitié."
-    en: "Reaction when damaged by a visible creature. Dexterity save: fail = 2d10 fire, success = half."
+    fr: 'Réaction lorsque vous subissez des dégâts d''une créature visible. Jet de sauvegarde de Dextérité : échec = 2d10
+      feu, réussite = moitié.'
+    en: 'Reaction when damaged by a visible creature. Dexterity save: fail = 2d10 fire, success = half.'
   slot_scaling:
     per_slot_above_base:
       damage_dice: 1d10
-  effect:
-    type: saving_throw
-    ability: dex
+  effects:
+  - type: saving_throw
     damage: 2d10
     damage_type: fire
-    half_on_save: true
-    upcast_damage: 1d10
-    reaction: true
-    srd_note: "Sort inné Tieffelin niv. 3+ — 1/repos long"
+    saving_throw:
+      ability: dex
+      half_on_save: true
+      reaction: true
+classes:
+- sorcerer
+class_pool_order:
+  sorcerer: 6
