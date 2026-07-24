@@ -1,5 +1,5 @@
 # tests/unit/test_level_up_cap5.py
-"""Sous-lot 2 — montée mécanique niv. 4–5 (slots SRD, maîtrise, cap MAX_CHARACTER_LEVEL)."""
+"""Sous-lot 2 / Lot A2 — montée mécanique niv. 4–20 (slots SRD, maîtrise, cap)."""
 from __future__ import annotations
 
 import unittest
@@ -15,7 +15,7 @@ from jdr_engine.rules.spellcasting.cast import get_spellcasting_stats
 from jdr_engine.rules.spellcasting.slots import FULL_CASTER_SPELL_SLOTS, get_max_spell_slots
 from jdr_engine.rules.spellcasting.stats import spell_attack_bonus, spell_save_dc
 
-from tests.helpers.creation import wizard_creation_kwargs
+from tests.helpers.level_up import wizard_at_level
 
 
 class TestFullCasterSlotTable(unittest.TestCase):
@@ -35,24 +35,10 @@ class TestLevelUpCapFive(unittest.TestCase):
         cls.engine = RuleEngine.load("dnd5e", strict=False)
 
     def _wizard_to_level(self, target: int):
-        from jdr_engine.rules.character_creation.finalize import finalize_new_character
-
-        char = finalize_new_character(
-            owner_id="1",
-            guild_id="900",
-            name="Merlin",
-            engine=self.engine,
-            **wizard_creation_kwargs(),
-        )
-        char, _ = apply_level_up(char, self.engine, subclass="evocation")
-        char, _ = apply_level_up(char, self.engine)
-        while char.level < target:
-            asi_choice = {"int": 2} if char.level == 3 else None
-            char, _ = apply_level_up(char, self.engine, asi_choice=asi_choice)
-        return char
+        return wizard_at_level(self.engine, target)
 
     def test_max_character_level_constant(self):
-        self.assertEqual(MAX_CHARACTER_LEVEL, 5)
+        self.assertEqual(MAX_CHARACTER_LEVEL, 20)
 
     def test_spellcasting_stats_level_5(self):
         char = self._wizard_to_level(5)
@@ -81,8 +67,8 @@ class TestLevelUpCapFive(unittest.TestCase):
         self.assertEqual(attack5, attack4 + 1)
         self.assertEqual(get_max_spell_slots("wizard", 5), {1: 4, 2: 3, 3: 2})
 
-    def test_level_5_cannot_level_up_again(self):
-        char = self._wizard_to_level(5)
+    def test_level_20_cannot_level_up_again(self):
+        char = self._wizard_to_level(20)
         with self.assertRaises(LevelUpError):
             apply_level_up(char, self.engine)
 

@@ -1,5 +1,5 @@
 # jdr_engine/rules/spellcasting/cast.py
-"""Lancement de sorts SRD 2014 — lanceurs niv. 1–5 (cap MAX_CHARACTER_LEVEL)."""
+"""Lancement de sorts SRD 2014 — lanceurs niv. 1–20."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
