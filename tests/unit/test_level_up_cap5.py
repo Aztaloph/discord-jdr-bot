@@ -23,7 +23,7 @@ class TestFullCasterSlotTable(unittest.TestCase):
         self.assertEqual(set(FULL_CASTER_SPELL_SLOTS.keys()), set(range(1, 21)))
 
     def test_wizard_slots_level_4_and_5(self):
-        self.assertEqual(get_max_spell_slots("wizard", 4), {1: 4, 2: 3, 3: 1})
+        self.assertEqual(get_max_spell_slots("wizard", 4), {1: 4, 2: 3})
         self.assertEqual(get_max_spell_slots("wizard", 5), {1: 4, 2: 3, 3: 2})
 
 

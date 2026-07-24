@@ -29,23 +29,85 @@ from enum import Enum
 
 from jdr_engine.rules.spellcasting.spells_catalog import SUPPORTED_SPELLCASTING_CLASSES
 
-# ── Quotas SRD 2014 (niveaux de personnage 1–3, catalogue curated) ───────────
+# ── Quotas SRD 2014 — full casters niv. 1–20 (Lot A1) ; autres classes niv. 1–3 ─
 
+def _tiered_cantrips_by_level(
+    *,
+    through_a: int,
+    count_a: int,
+    through_b: int,
+    count_b: int,
+    count_c: int,
+) -> dict[int, int]:
+    """Cantrips connus par palier SRD (ex. magicien : 3 → 4 → 5)."""
+    return {
+        level: (
+            count_a
+            if level <= through_a
+            else count_b
+            if level <= through_b
+            else count_c
+        )
+        for level in range(1, 21)
+    }
+
+
+def wizard_spellbook_capacity_at_level(level: int) -> int:
+    """SRD 2014 : 6 sorts au niv. 1, +2 par niveau de magicien."""
+    if level < 1:
+        return 0
+    return 6 + 2 * (level - 1)
+
+
+# Full casters — cantrips 1–20
+WIZARD_CANTRIPS_BY_LEVEL: dict[int, int] = _tiered_cantrips_by_level(
+    through_a=2, count_a=3, through_b=9, count_b=4, count_c=5
+)
+CLERIC_CANTRIPS_BY_LEVEL: dict[int, int] = _tiered_cantrips_by_level(
+    through_a=3, count_a=3, through_b=9, count_b=4, count_c=5
+)
+DRUID_CANTRIPS_BY_LEVEL: dict[int, int] = _tiered_cantrips_by_level(
+    through_a=3, count_a=2, through_b=9, count_b=3, count_c=4
+)
+SORCERER_CANTRIPS_BY_LEVEL: dict[int, int] = _tiered_cantrips_by_level(
+    through_a=2, count_a=4, through_b=9, count_b=5, count_c=6
+)
+
+# Ensorceleur — sorts connus niv. 1+ (SRD : +1 aux paliers impairs sauf 19→20)
+SORCERER_SPELLS_KNOWN_BY_LEVEL: dict[int, int] = {
+    1: 2,
+    2: 3,
+    3: 4,
+    4: 5,
+    5: 6,
+    6: 7,
+    7: 8,
+    8: 9,
+    9: 10,
+    10: 11,
+    11: 12,
+    12: 12,
+    13: 13,
+    14: 13,
+    15: 14,
+    16: 14,
+    17: 15,
+    18: 15,
+    19: 15,
+    20: 15,
+}
+
+# Magicien — grimoire (SRD : 6 + 2 × (niv − 1))
+WIZARD_SPELLBOOK_BY_LEVEL: dict[int, int] = {
+    level: wizard_spellbook_capacity_at_level(level) for level in range(1, 21)
+}
+
+# Hors périmètre Lot A1 — demi-lanceurs / occultiste / barde (niv. 1–3 curated)
 BARD_CANTRIPS_BY_LEVEL: dict[int, int] = {1: 2, 2: 2, 3: 2}
 BARD_SPELLS_KNOWN_BY_LEVEL: dict[int, int] = {1: 4, 2: 5, 3: 6}
 
-CLERIC_CANTRIPS_BY_LEVEL: dict[int, int] = {1: 3, 2: 3, 3: 3}
-
-SORCERER_CANTRIPS_BY_LEVEL: dict[int, int] = {1: 4, 2: 4, 3: 5}
-SORCERER_SPELLS_KNOWN_BY_LEVEL: dict[int, int] = {1: 2, 2: 3, 3: 4}
-
 WARLOCK_CANTRIPS_BY_LEVEL: dict[int, int] = {1: 2, 2: 2, 3: 2}
 WARLOCK_SPELLS_KNOWN_BY_LEVEL: dict[int, int] = {1: 2, 2: 3, 3: 4}
-
-DRUID_CANTRIPS_BY_LEVEL: dict[int, int] = {1: 2, 2: 2, 3: 2}
-
-WIZARD_CANTRIPS_BY_LEVEL: dict[int, int] = {1: 3, 2: 3, 3: 4}
-WIZARD_SPELLBOOK_BY_LEVEL: dict[int, int] = {1: 6, 2: 8, 3: 10}
 
 RANGER_PREPARED_BY_LEVEL: dict[int, int] = {2: 2, 3: 3}
 
@@ -186,5 +248,5 @@ RANGER_SPELLS_KNOWN_BY_LEVEL = RANGER_PREPARED_BY_LEVEL
 
 def spellbook_capacity(class_id: str, level: int) -> int:
     if class_id == "wizard":
-        return WIZARD_SPELLBOOK_BY_LEVEL.get(level, 6)
+        return wizard_spellbook_capacity_at_level(level)
     return 0

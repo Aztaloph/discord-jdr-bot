@@ -107,8 +107,8 @@ class TestLevelUpEngine(unittest.TestCase):
         char, _ = apply_level_up(char, self.engine)
         char, result = apply_level_up(char, self.engine, asi_choice={"int": 2})
         self.assertEqual(result.new_level, 4)
-        self.assertEqual(get_max_spell_slots("wizard", 4), {1: 4, 2: 3, 3: 1})
-        self.assertEqual(result.slots_max_after, "niv.1: 4, niv.2: 3, niv.3: 1")
+        self.assertEqual(get_max_spell_slots("wizard", 4), {1: 4, 2: 3})
+        self.assertEqual(result.slots_max_after, "niv.1: 4, niv.2: 3")
 
     def test_level_5_cannot_level_up_again(self):
         char = self._wizard()

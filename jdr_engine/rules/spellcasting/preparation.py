@@ -7,17 +7,15 @@ from jdr_engine.rules.spellcasting.state import get_spellcasting_state
 from jdr_engine.rules.spellcasting.model import (
     BARD_CANTRIPS_BY_LEVEL,
     BARD_SPELLS_KNOWN_BY_LEVEL,
-    CLERIC_CANTRIPS_BY_LEVEL,
-    DRUID_CANTRIPS_BY_LEVEL,
-    SORCERER_CANTRIPS_BY_LEVEL,
-    SORCERER_SPELLS_KNOWN_BY_LEVEL,
     WARLOCK_CANTRIPS_BY_LEVEL,
-    WIZARD_CANTRIPS_BY_LEVEL,
     WIZARD_SPELLBOOK_BY_LEVEL,
+    SORCERER_SPELLS_KNOWN_BY_LEVEL,
+    cantrips_known_capacity,
     cleric_prepared_capacity,
     druid_prepared_capacity,
     paladin_prepared_capacity,
     ranger_prepared_capacity,
+    spellbook_capacity,
     spells_known_capacity,
     wizard_prepared_capacity,
 )
@@ -102,7 +100,7 @@ def build_cleric_spellcasting(
     domain_id: str | None = None,
     prepared_spells: list[str] | tuple[str, ...] | None = None,
 ) -> dict:
-    cantrip_count = CLERIC_CANTRIPS_BY_LEVEL.get(level, 3)
+    cantrip_count = cantrips_known_capacity("cleric", level)
     cantrips = list(CLERIC_CANTRIP_IDS[:cantrip_count])
     domain = list(get_domain_spells(domain_id, level))
     capacity = cleric_prepared_capacity(wis_mod, level)
@@ -137,7 +135,7 @@ def upgrade_cleric_spellcasting(
     domain_id: str | None,
 ) -> dict:
     state = dict(choices.get("spellcasting") or {})
-    cantrip_count = CLERIC_CANTRIPS_BY_LEVEL.get(new_level, 3)
+    cantrip_count = cantrips_known_capacity("cleric", new_level)
     state["cantrips_known"] = list(CLERIC_CANTRIP_IDS[:cantrip_count])
     domain = list(get_domain_spells(domain_id, new_level))
     state["domain_spells"] = domain
@@ -206,12 +204,12 @@ def _rebalance_wizard_prepared(
 
 
 def _wizard_cantrips(level: int) -> list[str]:
-    count = WIZARD_CANTRIPS_BY_LEVEL.get(level, 3)
+    count = cantrips_known_capacity("wizard", level)
     return list(WIZARD_CANTRIP_IDS[:count])
 
 
 def _wizard_spellbook(level: int) -> list[str]:
-    count = WIZARD_SPELLBOOK_BY_LEVEL.get(level, 6)
+    count = spellbook_capacity("wizard", level)
     return list(WIZARD_SPELLBOOK_POOL[:count])
 
 
@@ -337,7 +335,7 @@ def is_wizard_spellcasting_canonical(character: Character) -> bool:
 
 
 def _sorcerer_cantrips(level: int) -> list[str]:
-    count = SORCERER_CANTRIPS_BY_LEVEL.get(level, 4)
+    count = cantrips_known_capacity("sorcerer", level)
     return list(SORCERER_CANTRIP_IDS[:count])
 
 
@@ -347,7 +345,7 @@ def _sorcerer_spell_pool(level: int) -> list[str]:
 
 
 def _sorcerer_spells_known(level: int) -> list[str]:
-    count = SORCERER_SPELLS_KNOWN_BY_LEVEL.get(level, 2)
+    count = spells_known_capacity("sorcerer", level)
     pool = _sorcerer_spell_pool(level)
     return _rebalance_leveled_spells_for_slots([], pool, count, level, "sorcerer")
 
@@ -365,7 +363,7 @@ def build_sorcerer_spellcasting(level: int) -> dict:
 def upgrade_sorcerer_spellcasting(choices: dict, *, new_level: int) -> dict:
     state = dict(choices.get("spellcasting") or {})
     state["cantrips_known"] = _sorcerer_cantrips(new_level)
-    count = SORCERER_SPELLS_KNOWN_BY_LEVEL.get(new_level, 2)
+    count = spells_known_capacity("sorcerer", new_level)
     pool = _sorcerer_spell_pool(new_level)
     existing_raw = state.get("spells_known") or state.get("spells_prepared") or []
     existing = (
@@ -381,7 +379,7 @@ def upgrade_sorcerer_spellcasting(choices: dict, *, new_level: int) -> dict:
 
 
 def _druid_cantrips(level: int) -> list[str]:
-    count = DRUID_CANTRIPS_BY_LEVEL.get(level, 2)
+    count = cantrips_known_capacity("druid", level)
     return list(DRUID_CANTRIP_IDS[:count])
 
 
