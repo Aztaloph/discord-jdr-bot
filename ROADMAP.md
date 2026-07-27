@@ -1,5 +1,15 @@
 # Feuille de route — Discord JDR Bot (D&D 5e SRD 2014)
 
+> **ROADMAP.md** est la **source de vérité opérationnelle** (quoi livrer, dans quel ordre, où on en est). La **source de vérité stratégique** (le « pourquoi », l'architecture cible, le modèle) est [`VISION.md`](VISION.md). Ce document ne duplique pas la vision : il s'y réfère.
+
+## Principes directeurs
+
+Trois décisions arrêtées dans [`VISION.md`](VISION.md) contraignent **tout choix de développement** :
+
+1. **Le Combat Engine est une API moteur pure** — fonctions déterministes + événements, **sans aucune interface** (ni Discord, ni Web). Voir VISION.md §5.
+2. **Aucune nouvelle fonctionnalité joueur n'est développée pour Discord** — l'effort d'interface va au client Web ; Discord se réduit au social/notifications. Voir VISION.md §3.
+3. **Le moteur se termine avant que le Web ne commence** — le Web consomme le moteur ; on ne bâtit l'API puis le client Web qu'une fois le combat moteur stabilisé. Voir VISION.md §9.
+
 ## Philosophie de design
 
 ### Principe d'intégrité des stats
@@ -40,7 +50,7 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
 - [x] **ÉTAPE 1a : Fondation stockage (SQLite) + rôle MJ**
 - [x] **ÉTAPE 1b : Commande de création de personnage**
 - [x] **ÉTAPE 2 : Repos long / court** (commandes réservées au MJ)
-- [ ] **ÉTAPE 3 : Compléter les classes** (sorts, compétences, styles de combat, sous-classes)
+- [ ] **ÉTAPE 3 : Compléter les classes** (sorts, compétences, styles de combat, sous-classes) — 🚧 **en cours** (VISION.md §9, ordre d'exécution 1) ; travail restant = **Passe 3**, **Passe 4**, **Axe A3/A4**, **Axe B3/B4** (détail Axes ci-dessous)
   - [x] **Lot 0 — Fondations transverses** : schéma `choices`, calculs dérivés, fiche `/perso-afficher`
   - [x] **Lot 1 — Choix à la création** (`/creer-perso` : point buy, compétences, domaine clerc)
   - [x] **Lot 2 — Montée de niveau 2-3** (`/monter-niveau` MJ, PV / emplacements / dés de vie)
@@ -64,8 +74,21 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
     - [x] Tables progression niv. 6–20 (A1), correction slot niv. 4 (A1-bis), cap + tests 5→20 (A2)
   - [ ] **Passe 3 — Automatisation des aptitudes** (forme sauvage, métamagie à l'incantation, canalisation d'énergie, arme/familier de pacte…)
   - [ ] **Passe 4 — Passe UI / affichage** (libellés, fix limite de caractères des embeds, libellé « Sous-classe (niv. 3) »)
-- [ ] **ÉTAPE 4 : Système de combat complet** (initiative, tour par tour, PV ennemis, level-up par XP) — GROS CHANTIER
-- [ ] **ÉTAPE 5 : Portage / fix version 2024** (armes, dégâts, actions bonus, sous-classes niv.3…) — TOUT À LA FIN, après le combat
+- [ ] **ÉTAPE 4 : Système de combat** — ⏭️ **prochain gros chantier** (VISION.md §9, ordre 2). **API moteur pure** (fonctions + events), **aucun rendu Discord/Web**.
+  > Cible stratégique : [`VISION.md`](VISION.md) §5. Prérequis techniques encore à créer : **EventBus** (ADR-003 — aujourd'hui placeholder `jdr_engine/core/events/`) et **Game Engine** de combat (`jdr_engine/game/` — placeholder). Résolution des jets/dégâts = **Rule Engine**. Chaque lot ci-dessous est **livrable et testable sans interface** (asserts sur l'état + événements publiés).
+  - [ ] **C0 — EventBus & socle** : `EventBus` in-process typé + `DomainEvent` (ADR-003), capture de test ; ossature `Game Engine` combat. *(aucun rendu)*
+  - [ ] **C1 — Modèle d'état de combat** : `CombatManager` — participants, PV/CA, ordre, tour courant ; état persistable. *(aucun rendu)*
+  - [ ] **C2 — Initiative** : jets, tri, événements `CombatStarted` / `InitiativeRolled` / `TurnStarted`. *(aucun rendu)*
+  - [ ] **C3 — Résolution d'attaque** : jet vs CA + dégâts (Rule Engine), événements `AttackDeclared` / `AttackResolved` / `DamageDealt`. *(aucun rendu)*
+  - [ ] **C4 — Économie d'actions** : action / action bonus / réaction / mouvement par tour, validation des dépenses. *(aucun rendu)*
+  - [ ] **C5 — Concentration** : pose/rupture sur dégâts (sauvegarde CON), liaison aux sorts de concentration (rejoint dette **Axe B4**). *(aucun rendu)*
+  - [ ] **C6 — Conditions en combat** : application/expiration (`ConditionApplied` / `ConditionRemoved`), impact sur les jets. *(aucun rendu)*
+  - [ ] **C7 — Service & persistance** : `CombatService` (use cases), auto-save via handler EventBus, log de combat. *(aucun rendu)*
+- [ ] **ÉTAPE 6 : API (REST + WebSocket)** — 🔜 nouveau (VISION.md §9, ordre 3). `interfaces/api/` expose `CharacterService`, `CombatService`, `CompendiumService` et **pousse les événements EventBus** vers les clients. Objectif : contrat unique consommé par le Web.
+- [ ] **ÉTAPE 7 : Client Web (interface de jeu principale)** — 🔜 nouveau (ordre 4). Fiche/tableau de bord, onglets, magie, inventaire, **HUD de combat**, écran MJ. Spécification UX : VISION.md §4.
+- [ ] **ÉTAPE 8 : Discord minimal** — 🔜 nouveau (ordre 5). Réduction au social : chat, lancement de partie, `/personnage` → Web, notifications (via EventBus). Voir VISION.md §3.
+- [ ] **ÉTAPE 9 : Contenu & carte** — 🔭 long terme (ordre 6). Campagnes, packs d'assets, carte/VTT, base marketplace. Voir VISION.md §4.5 et §8.
+- [ ] **ÉTAPE 5 : Portage / fix version 2024** (armes, dégâts, actions bonus, sous-classes niv.3…) — ⏸️ **TOUT À LA FIN** (ordre 7), après le combat **et** le Web
 
 ---
 
@@ -86,7 +109,7 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
 - [x] **B3-a** — +6 sorts niv. 3 mage (pool grimoire 14 = quota niv. 5)
 - [x] **B3-b** — +4 sorts niv. 4 mage Option A (pool grimoire 18 = quota niv. 7)
 - [ ] **B3** — Élargissement catalogue (suite niv. 5+, autres classes)
-- [ ] **B4** — Moteur d'effets : dégâts, jets de sauvegarde, concentration.
+- [ ] **B4** — Moteur d'effets : dégâts, jets de sauvegarde, concentration. **Alimente l'ÉTAPE 4** (la concentration en combat est le lot **C5**).
 
 ---
 
@@ -98,7 +121,8 @@ Tous les jalons P2a–P2h sont livrés. Grimoire mage : consultable via **`/pers
 
 Chaîne validée : ASI **5 paliers** (4/8/12/16/19), cap **niv. 20** full casters, cantrip scaling 2d10/3d10/4d10, UI **`AsiDistributionView`**.
 
-**Prochain jalon** : **Axe B3** (élargissement catalogue) ou **Axe A3** (demi-casters).
+**Prochain jalon opérationnel** (dans l'ÉTAPE 3) : **Axe B3** (élargissement catalogue) ou **Axe A3** (demi-casters).
+**Prochain gros chantier** : **ÉTAPE 4 — Système de combat** (API moteur pure, voir [`VISION.md`](VISION.md) §5).
 
 ---
 
