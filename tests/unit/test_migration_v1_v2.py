@@ -41,6 +41,16 @@ class TestMigrationV1V2(unittest.TestCase):
         self.assertEqual(char.class_id, "fighter")
         self.assertEqual(char.ability_scores.get("dex"), 10)
 
+    def test_convert_ranger_french_label_maps_to_ranger_not_rogue(self):
+        raw = {**V1_AZTALOPH, "classe": "Rôdeur"}
+        char = convert_v1_record(raw)
+        self.assertEqual(char.class_id, "ranger")
+
+    def test_convert_rogue_french_label_maps_to_rogue(self):
+        raw = {**V1_AZTALOPH, "classe": "Roublard"}
+        char = convert_v1_record(raw)
+        self.assertEqual(char.class_id, "rogue")
+
     def test_migrate_file(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
