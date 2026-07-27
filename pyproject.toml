@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "jdr-engine"
 version = "0.1.0"
 description = "Moteur de jeu de rôle modulaire — indépendant de Discord"
-readme = "CLAUDE.md"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "discord.py>=2.3",
