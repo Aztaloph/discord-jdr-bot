@@ -21,7 +21,8 @@ Chaque ADR documente :
 
 ## Documents associés
 
-- [ARCHITECTURE_V2.md](../ARCHITECTURE_V2.md) — Architecture cible complète
+- [ARCHITECTURE.md](../ARCHITECTURE.md) — État actuel du dépôt
+- [ARCHITECTURE_TARGET.md](../ARCHITECTURE_TARGET.md) — Architecture cible complète
 
 ## Règle
 

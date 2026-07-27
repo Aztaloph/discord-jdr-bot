@@ -1,6 +1,6 @@
 # Migration progressive — Bot Discord → Moteur JDR
 
-Voir [ARCHITECTURE_V2.md](ARCHITECTURE_V2.md) pour la vision complète.
+Voir [ARCHITECTURE.md](ARCHITECTURE.md) (état actuel) et [ARCHITECTURE_TARGET.md](ARCHITECTURE_TARGET.md) (cible).
 
 ## Statut
 

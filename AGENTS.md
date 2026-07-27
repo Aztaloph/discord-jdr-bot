@@ -15,7 +15,8 @@ Tu démarres sans mémoire des sessions précédentes. Ce fichier et les documen
 | `VISION.md` | Stratégie : le « pourquoi », décisions arrêtées D1–D8 | Toujours |
 | `ROADMAP.md` | Opérationnel : quoi livrer, dans quel ordre, statuts | Toujours |
 | `docs/adr/` | Décisions techniques actées (ADR-001/002/003) | Si tu touches l'architecture |
-| `docs/ARCHITECTURE_V2.md` | Architecture **cible** — pas l'état actuel | Si tu touches l'architecture |
+| `docs/ARCHITECTURE.md` | Architecture **actuelle** — état réel du dépôt | Si tu touches l'architecture |
+| `docs/ARCHITECTURE_TARGET.md` | Architecture **cible** — non implémentée ou partielle | Si tu touches l'architecture |
 | `compendium/dnd5e/entries/spells/` (YAML), `docs/SPELL_SCHEMA.md`, `docs/SPELLS_B2_MIGRATION_NOTES.md` | Sorts : source de vérité compendium, schéma v2.0, dette migration | Si tu touches les sorts |
 | `docs/COMBAT_ROLL_PREREQUISITES.md` | Prérequis flags `/roll` — **documenté, non implémenté** | Si tu touches les jets |
 | `docs/MIGRATION.md` | Journal historique — **s'arrête à la Phase 4.8, périmé** | Contexte seulement |
@@ -26,7 +27,7 @@ Tu démarres sans mémoire des sessions précédentes. Ce fichier et les documen
 2. **`VISION.md`** — pour toute question stratégique (cible, périmètre, décisions D1–D8).
 3. **`ROADMAP.md`** — pour toute question opérationnelle (quel lot, quel ordre, quel statut).
 4. **ADR** — pour les décisions techniques.
-5. **`docs/ARCHITECTURE_V2.md`** — cible souhaitée. Son en-tête de statut est périmé ; là où il contredit le code, **le code gagne**.
+5. **`docs/ARCHITECTURE_TARGET.md`** — cible souhaitée. **`docs/ARCHITECTURE.md`** — état réel. Là où la cible contredit le code, **le code gagne**.
 
 Une contradiction se **signale dans ton rapport**, elle ne se corrige pas en silence.
 
@@ -34,7 +35,7 @@ Une contradiction se **signale dans ton rapport**, elle ne se corrige pas en sil
 
 - `jdr_engine/` **n'importe jamais** `discord`, `interfaces` ni `bot` (zéro occurrence aujourd'hui — cet invariant doit être préservé).
 - Sens des dépendances : `bot/` → `interfaces/` → `jdr_engine/application` → `rules`/`domain`.
-- **`bot/` est vivant, pas du code mort.** `main.py` charge les cogs depuis `bot.cogs.*` ; le bot ne démarre pas sans eux. `ARCHITECTURE_V2.md` §14 les étiquette « LEGACY » : c'est une cible, pas l'état actuel. **Ne pas supprimer.**
+- **`bot/` est vivant, pas du code mort.** `main.py` charge les cogs depuis `bot.cogs.*` ; le bot ne démarre pas sans eux. `ARCHITECTURE.md` §8 documente l'état actuel ; `ARCHITECTURE_TARGET.md` prévoit une migration vers `interfaces/discord` en Phase 10. **Ne pas supprimer.**
 - `bot/cogs/*` sont des points d'entrée fins qui délèguent à `interfaces/discord/handlers/*`.
 - **Aucune règle D&D dans `bot/` ou `interfaces/`.** Les règles vivent dans `jdr_engine/rules/`, les données dans `compendium/`.
 - Placeholders réels (1–2 lignes, aucun code) : `jdr_engine/core/events/`, `jdr_engine/core/i18n/`, `jdr_engine/core/config/`, `jdr_engine/core/plugins/`, `jdr_engine/game/`, `plugins/`, `compendium/_schemas/`.
@@ -74,7 +75,7 @@ Framework de tests : **`unittest`**, jamais `pytest`. Un fichier de test par lot
 
 ## 5. Modification de la documentation
 
-- **Interdit sans accord explicite du mainteneur** : `VISION.md`, `ROADMAP.md`, `docs/ARCHITECTURE_V2.md`, `docs/adr/**`.
+- **Interdit sans accord explicite du mainteneur** : `VISION.md`, `ROADMAP.md`, `docs/ARCHITECTURE.md`, `docs/ARCHITECTURE_TARGET.md`, `docs/adr/**`.
 - Ces fichiers sont pilotés par le mainteneur et l'agent d'architecture, pas par les agents d'implémentation.
 - Toute décision structurelle **doit produire un ADR avant implémentation** (`docs/adr/README.md`).
 - Ne jamais dupliquer VISION dans ROADMAP ou inversement : on **référence** (`VISION.md` §5), on ne recopie pas.
