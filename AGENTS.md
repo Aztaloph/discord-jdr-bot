@@ -68,7 +68,7 @@ La CI (`.github/workflows/ci.yml`) exécute `python -m unittest discover -s test
 | Build | **Impossible.** `setuptools` et `build` absents. |
 | `pytest` | Déclaré dans `pyproject.toml` (extra `dev` + `[tool.pytest.ini_options]`) mais **non installé**. Utiliser `unittest`. |
 
-Python du venv : **3.14.6**. (`pyproject.toml` exige `>=3.11`, la CI utilise 3.12, le README annonce 3.10+ — divergence connue, non corrigée.)
+Python de référence : **3.12** (testé en CI). `pyproject.toml` exige `>=3.11` (minimum supporté). Venv local mesuré : **3.14.6** — toléré en dev, non couvert par la CI.
 
 Framework de tests : **`unittest`**, jamais `pytest`. Un fichier de test par lot, nommé d'après le lot.
 

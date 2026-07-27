@@ -10,7 +10,7 @@ Organisez vos parties directement sur Discord : fiches personnages, lancer de so
 
 | Tests | Classes | Sorts curated | Python |
 |:-----:|:-------:|:-------------:|:------:|
-| **645** ✅ | **12/12** | **42** | **3.10+** |
+| **645** ✅ | **12/12** | **42** | **3.12** |
 
 </p>
 
@@ -60,7 +60,7 @@ Organisez vos parties directement sur Discord : fiches personnages, lancer de so
 
 ### Prérequis
 
-- [Python 3.10+](https://www.python.org/downloads/) (testé en 3.14) — cocher **Add to PATH**
+- [Python 3.12](https://www.python.org/downloads/) recommandé — minimum 3.11 — cocher **Add to PATH**
 - Un bot sur le [portail Discord Developer](https://discord.com/developers/applications)
 
 ### Installation
