@@ -3,8 +3,8 @@
 | Attribut | Valeur |
 |---|---|
 | **Version** | 2.0 |
-| **Date** | 2026-07-02 |
-| **Statut** | Validé — en attente d'implémentation |
+| **Date** | 2026-07-27 |
+| **Statut** | Architecture cible — implémentation partielle en cours |
 | **ADRs associés** | ADR-001, ADR-002, ADR-003 |
 
 ---
