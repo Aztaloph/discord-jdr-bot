@@ -16,7 +16,7 @@ Tu démarres sans mémoire des sessions précédentes. Ce fichier et les documen
 | `ROADMAP.md` | Opérationnel : quoi livrer, dans quel ordre, statuts | Toujours |
 | `docs/adr/` | Décisions techniques actées (ADR-001/002/003) | Si tu touches l'architecture |
 | `docs/ARCHITECTURE_V2.md` | Architecture **cible** — pas l'état actuel | Si tu touches l'architecture |
-| `docs/SPELL_SCHEMA.md`, `docs/SPELLS_INVENTORY.md`, `docs/SPELLS_B2_MIGRATION_NOTES.md` | Sorts : schéma v2.0, inventaire, dette | Si tu touches les sorts |
+| `compendium/dnd5e/entries/spells/` (YAML), `docs/SPELL_SCHEMA.md`, `docs/SPELLS_B2_MIGRATION_NOTES.md` | Sorts : source de vérité compendium, schéma v2.0, dette migration | Si tu touches les sorts |
 | `docs/COMBAT_ROLL_PREREQUISITES.md` | Prérequis flags `/roll` — **documenté, non implémenté** | Si tu touches les jets |
 | `docs/MIGRATION.md` | Journal historique — **s'arrête à la Phase 4.8, périmé** | Contexte seulement |
 

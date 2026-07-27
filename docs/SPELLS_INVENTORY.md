@@ -1,5 +1,11 @@
 # Inventaire des sorts — Lot B1 (état au 24 juillet 2026)
 
+> ⚠️ **DOCUMENT OBSOLÈTE — NE PAS UTILISER COMME RÉFÉRENCE.**
+> Snapshot figé au Lot B1 (28 sorts), jamais réconcilié avec l'état réel (42 sorts, schéma v2.0).
+> Contient des affirmations factuellement fausses (nombre de sorts, `schema_version`, absence de sorts niv. 3+, nom des champs, localisation des classes).
+> **Source de vérité = les `definition.yaml` du compendium** (`compendium/dnd5e/entries/spells/`), pools dérivés via `spell_pool_builder.py`.
+> Réécriture complète planifiée (lot dédié).
+
 > **Périmètre** : recensement exhaustif du catalogue **curated** actuel (28 sorts uniques).  
 > Aucun nouveau sort, aucune modification de gameplay dans ce lot.
 
