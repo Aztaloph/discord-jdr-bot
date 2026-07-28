@@ -35,7 +35,7 @@ Sens des dépendances : `bot/` → `interfaces/discord/` → `jdr_engine/applica
 | `jdr_engine/persistence/` | **Réel** | SQLite (`jdr_engine/persistence/database.py`, `jdr_engine/persistence/sqlite_character_repository.py`), JSON legacy, `jdr_engine/persistence/migrations/v1_to_v2.py` |
 | `jdr_engine/dice/` | **Réel** | `parser`, `roller`, `d20`, `models` |
 | `jdr_engine/core/assets/` | **Réel** | `AssetResolver`, `AssetReference` |
-| `jdr_engine/core/events/` | Placeholder | `jdr_engine/core/events/__init__.py` 1 ligne — jamais importé |
+| `jdr_engine/core/events/` | Placeholder | un __init__.py d'une ligne — jamais importé (idem pour les placeholders ci-dessous) |
 | `jdr_engine/core/i18n/` | Placeholder | idem |
 | `jdr_engine/core/config/` | Placeholder | idem |
 | `jdr_engine/core/plugins/` | Placeholder | idem |
@@ -75,26 +75,36 @@ Séparation moteur / UI (ADR-002) :
 
 ## 4. Validation Compendium
 
-Niveaux implémentés dans `jdr_engine/compendium/validator.py` :
+Niveaux implémentés dans `jdr_engine/compendium/validator.py` (`validate_registry`) :
 
 | Niveau | Comportement |
 |---|---|
-| L1 — Schéma | Pydantic au chargement |
-| L2 — Références | Refs `traits/*` cassées → erreur |
+| L1 — Schéma | Pydantic au chargement (`jdr_engine/compendium/loader.py`) |
+| L2 — Références | Refs `traits/*` cassées → erreur (`broken_ref`) |
 | L3 — Cohérence | id / type au chargement |
-| L4 — JSON Schema `mechanics` | Races et classes vs `compendium/schemas/*.schema.json` |
-| L5 — Lore (warn) | `lore.{locale}.md` manquant (races) |
+| L4 — JSON Schema `mechanics` | Races et classes vs `compendium/schemas/race-mechanics.schema.json` et `compendium/schemas/class-mechanics.schema.json` ; erreur si `schema_strict=True`, sinon warning (`mechanics_schema`) |
+| L5 — Lore (warn) | `lore.{locale}.md` manquant pour une locale déclarée (races) → warning (`missing_lore`) |
 
-Pas de niveau L6. Vérification additionnelle : caractéristique inconnue dans `ability_score_increase`.
+Pas de niveau L6. Vérification additionnelle non numérotée : caractéristique inconnue dans `ability_score_increase` (comparée à `config.abilities`) → erreur (`unknown_ability`).
+
+Paramètres de `validate_registry` (défauts) : `check_lore=True`, `check_mechanics_schema=True`, `schema_strict=False`. Le CLI et le boot moteur passent `schema_strict` via leur flag/mode strict.
 
 **CLI** (`tools/validate_compendium.py`) :
 
+| Argument | Rôle |
+|---|---|
+| `ruleset` (positionnel, optionnel) | ID du ruleset ; défaut `dnd5e` |
+| `--warn` | N'échoue pas sur les erreurs (`strict=False` en interne) ; défaut = mode strict |
+
 ```bash
 python tools/validate_compendium.py              # dnd5e, strict (défaut)
+python tools/validate_compendium.py dnd5e        # ruleset explicite
 python tools/validate_compendium.py dnd5e --warn # n'échoue pas sur les erreurs
 ```
 
-**Boot Discord** : `DiscordSettings.compendium_strict` → `RuleEngine.load(..., strict=...)`.
+Sortie : en-tête `ruleset@version`, compteurs, lignes `[X]` / `[!]` par écart, verdict `[OK] Compendium valide` ou `[X] Validation echouee (mode strict)`.
+
+**Boot moteur** : `RuleEngine.load(ruleset_id, validate=True, strict=...)` (`jdr_engine/rules/ruleset.py`) — si `validate=True` et le rapport contient une erreur en mode strict, lève `ValueError`. Côté Discord : `DiscordSettings.compendium_strict` (`interfaces/discord/settings.py`) → `RuleEngine.load(..., strict=...)` dans `interfaces/discord/startup.py`.
 
 ---
 
