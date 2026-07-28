@@ -1,8 +1,10 @@
 # Architecture cible — Moteur JDR modulaire
 
-> **Portée de ce document.** Il décrit l'architecture **cible** — modules, services et conventions **non encore implémentés** ou seulement partiellement en place. Rédigé au présent de l'indicatif pour la lisibilité, il ne décrit pas l'état actuel du dépôt.
+> **Document cible — rien de ce qui suit n'est implémenté tel que décrit**, sauf renvoi explicite vers [`ARCHITECTURE.md`](ARCHITECTURE.md) pour l'existant partiel.
 >
-> Pour l'architecture **réellement implémentée** (vérifiée contre le code), voir [`ARCHITECTURE.md`](ARCHITECTURE.md). En cas d'écart entre les deux documents, **le code prime**.
+> Rédigé au **futur** ou au **conditionnel**. Ne pas utiliser ce fichier pour déduire l'état du dépôt.
+>
+> État réel vérifié : [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 | Attribut | Valeur |
 |---|---|
@@ -39,15 +41,17 @@
 └───────────────────────────────────────────────────────────────┘
 ```
 
-**Principe fondateur :** le moteur ne connaît pas Discord, D&D, ni aucune entité de jeu par son nom. Il connaît des **mécanismes** et des **identifiants**.
+**Principe fondateur :** le moteur ne devra pas connaître Discord, D&D, ni aucune entité de jeu par son nom. Il ne connaîtra que des **mécanismes** et des **identifiants**.
 
 ---
 
 ## 2. Les sept piliers
 
-| Pilier | Package | Rôle | Stateful |
+Répartition visée des responsabilités :
+
+| Pilier | Package | Rôle visé | Stateful |
 |---|---|---|---|
-| **Domain** | `jdr_engine/domain/` | Entités, value objects, invariants | Définit l'état |
+| **Domain** | `jdr_engine/domain/` | Entités, value objects, invariants | Définira l'état |
 | **Compendium** | `compendium/` + `jdr_engine/compendium/` | Données statiques, loader, presenter | Cache RO |
 | **Rule Engine** | `jdr_engine/rules/` | Validation, résolution, calcul | ❌ |
 | **Game Engine** | `jdr_engine/game/` | Transitions d'état, machines à états | ✅ |
@@ -141,38 +145,40 @@ entry_types:                         # au pluriel, tels que lus par le loader
 dependencies: []                     # Autres rulesets requis (ex: srd-core)
 ```
 
-Valeurs ci-dessus reprises de `compendium/dnd5e/manifest.yaml` (état réel). Les quatre `entry_types` déclarés sont les seuls présents sous `entries/`.
+Exemple de manifest cible (les valeurs évolueront avec le ruleset).
 
 ### 3.4 Séparation moteur / UI (rappel ADR-002)
 
 ```
 RuleEngine.get_entity("race", "elf")
-  → lit UNIQUEMENT definition.yaml
+  → lira UNIQUEMENT definition.yaml
 
 CompendiumPresenter.get_lore("race", "elf", locale="fr")
-  → lit lore.fr.md
+  → lira lore.fr.md
 
 AssetResolver.resolve_path("race", "elf", "portrait.png")   # -> Path | None
 AssetResolver.resolve_portrait("race", "elf")               # -> Path | None
 AssetResolver.reference("race", "elf", "portrait.png")      # -> AssetReference
-  → délègue à CompendiumPresenter.get_asset_path()
+  → déléguera à CompendiumPresenter.get_asset_path()
 ```
 
-Noms réels dans `jdr_engine/core/assets/resolver.py` : le résolveur retourne un `Path` local (ou `None`), pas une URL.
+Le résolveur retournera un `Path` local (ou `None`), pas une URL. État partiel aujourd'hui : [`ARCHITECTURE.md`](ARCHITECTURE.md) §3.
 
 ---
 
 ## 4. Internationalisation (i18n)
 
+Le module `jdr_engine/core/i18n/` n'existe pas encore. La cible prévoit :
+
 ### 4.1 Stratégie : **fichiers par locale**, pas clés dans le YAML
 
-| Donnée | Mécanisme |
+| Donnée | Mécanisme visé |
 |---|---|
 | Noms d'entités (race, classe…) | `definition.yaml → name.fr / name.en` (court) |
 | Descriptions longues | `lore.fr.md`, `lore.en.md` (séparés) |
 | Labels UI Discord | `jdr_engine/core/i18n/ui/` (fichiers `.yaml` par interface) |
 | Messages d'erreur moteur | Codes d'erreur + catalogue i18n |
-| Config système | `config.yaml → abilities[].name.fr / .en` (clé réelle : `abilities`) |
+| Config système | `config.yaml → abilities[].name.fr / .en` |
 
 ### 4.2 Module `jdr_engine/core/i18n/`
 
@@ -188,29 +194,33 @@ core/i18n/
 
 ### 4.3 Règles
 
-- Le **Rule Engine** retourne des **identifiants** + noms localisés si demandé
-- Les **Interfaces** choisissent la locale (pref utilisateur Discord, header HTTP, flag CLI)
+- Le **Rule Engine** retournera des **identifiants** + noms localisés si demandé
+- Les **Interfaces** choisiront la locale (pref utilisateur Discord, header HTTP, flag CLI)
 - Fallback : `default_locale` du manifest → `en`
 - Le contenu compendium **non traduit** → fallback locale + warning validation
 
 ### 4.4 CompendiumSelect (Discord)
 
 ```python
-# Génère automatiquement :
+# Générera automatiquement :
 # ▼ Elfe (Elf)     ← name.fr + name.en en description si multilingue
 options = compendium_service.list_for_select("race", locale=user_locale)
 ```
+
+`CompendiumService` n'existera qu'à la livraison de cette couche.
 
 ---
 
 ## 5. Gestion des assets
 
+`AssetResolver` existe partiellement (`resolver.py` seul). La cible complétera :
+
 ### 5.1 Module `jdr_engine/core/assets/`
 
 ```
 core/assets/
-  ├── resolver.py            # Résout chemin local → URL publique
-  ├── registry.py              # Index assets par entité
+  ├── resolver.py            # Résoudra chemin local → URL publique
+  ├── registry.py              # Indexera assets par entité
   └── protocols.py             # AssetProvider (local, CDN, S3…)
 ```
 
@@ -234,15 +244,15 @@ entries/races/elf/assets/
 
 ### 5.4 Règle
 
-Le moteur **ne charge jamais** les images. Il retourne un `AssetReference { entity_type, entity_id, asset_name }`. L'interface résout l'URL.
+Le moteur **ne chargera jamais** les images. Il retournera un `AssetReference { entity_type, entity_id, asset_name }`. L'interface résoudra l'URL.
 
 ---
 
 ## 6. EventBus
 
-Voir **ADR-003** pour le raisonnement complet.
+L'EventBus n'existe pas. Voir **ADR-003** pour le raisonnement complet.
 
-### 6.1 Placement
+### 6.1 Placement visé
 
 ```
 jdr_engine/core/events/
@@ -258,7 +268,7 @@ jdr_engine/core/events/
       └── auto_save.py
 ```
 
-### 6.2 Interfaces s'abonnent au boot
+### 6.2 Interfaces s'abonneront au boot
 
 ```python
 # interfaces/discord/startup.py (cible)
@@ -266,11 +276,13 @@ event_bus.subscribe(AttackResolved, discord_combat_handler.on_attack)
 event_bus.subscribe(CharacterCreated, discord_character_handler.on_created)
 ```
 
-Aujourd'hui, `startup.py` initialise `RuleEngine`, `SqliteCharacterRepository` et `CharacterService` — voir [`ARCHITECTURE.md`](ARCHITECTURE.md) §5-7.
+État actuel de `startup.py` : [`ARCHITECTURE.md`](ARCHITECTURE.md) §5 et §7.
 
 ---
 
 ## 7. Système de plugins / extensions
+
+Le système de plugins n'existe pas. La cible prévoira :
 
 ### 7.1 Objectif
 
@@ -332,53 +344,44 @@ Trop risqué (code arbitraire). Les plugins v1 sont des **handlers typés** + **
 
 ## 8. Validation avancée du Compendium
 
-### 8.1 Niveaux de validation
+Les niveaux L1-L5 existent partiellement — voir [`ARCHITECTURE.md`](ARCHITECTURE.md) §4. La cible ajoutera :
 
-| Niveau | Quand | Comportement |
+### 8.1 Niveaux de validation (compléments visés)
+
+| Niveau | Quand | Comportement visé |
 |---|---|---|
-| **L1 — Schéma** | Chargement | Champs requis, types, enum |
-| **L2 — Références** | Chargement | `ref: traits/darkvision` existe |
-| **L3 — Cohérence** | Chargement | Pas de cycles, IDs uniques |
-| **L4 — JSON Schema `mechanics`** | Chargement | Valide `mechanics` des races et classes contre `compendium/schemas/*.schema.json` (`validate_entry_mechanics`). Erreur si `schema_strict=True`, sinon warning |
-| **L5 — Lore (warn)** | Chargement | `lore.{locale}.md` manquant pour une locale déclarée au manifest (races) |
+| **L4 — Sémantique** | CI | Level 1 fighter a hit_die valide |
+| **L5 — Assets** | CI (warn) | portrait.png référencé existe |
+| **L6 — i18n** | CI (warn) | lore.fr.md présent si locale déclarée |
 
-Niveaux réels implémentés dans `jdr_engine/compendium/validator.py` (`validate_registry`). Il n'existe pas de niveau L6. Une vérification supplémentaire non numérotée signale en erreur toute caractéristique inconnue référencée par `ability_score_increase` (comparée à `config.abilities`).
+(L1-L3 et une forme de L4/L5 JSON Schema sont déjà livrés — détail dans `ARCHITECTURE.md`.)
 
 ### 8.2 Modes de boot
 
-Il n'existe pas de modes nommés sélectionnés par variable d'environnement. Le comportement se règle par deux paramètres de `RuleEngine.load()` / `RulesetContext.load()` :
-
-| Paramètre | Valeur | Comportement réel |
+| Mode | Env | Comportement visé |
 |---|---|---|
-| `validate=True`, `strict=True` | défaut | Les écarts JSON Schema sont des erreurs ; `RulesetContext.load()` lève `ValueError` si le rapport contient une erreur |
-| `validate=True`, `strict=False` | — | Validation exécutée, écarts JSON Schema dégradés en warnings, chargement poursuivi |
-| `validate=False` | — | Validation ignorée au chargement |
+| `strict` | dev, CI | Échouera si L1-L4 échoue |
+| `warn` | prod | Loggera un warning, exclura entrées invalides |
+| `off` | tests unitaires | Ignorera la validation |
 
-Côté Discord, ce réglage vient de `DiscordSettings.compendium_strict`, passé à `RuleEngine.load()` dans `interfaces/discord/startup.py`.
+Sélection par variable d'environnement.
 
 ### 8.3 Outil CLI
 
-Arguments réellement acceptés par `tools/validate_compendium.py` : un identifiant de ruleset positionnel (optionnel, défaut `dnd5e`) et le flag `--warn`. Il n'y a ni `--level`, ni `--locale`, ni `--all`, ni `--strict` — le mode strict est le comportement par défaut.
-
 ```bash
-python tools/validate_compendium.py                 # dnd5e, mode strict
-python tools/validate_compendium.py dnd5e           # idem, ruleset explicite
-python tools/validate_compendium.py dnd5e --warn    # n'échoue pas sur les erreurs
+python tools/validate_compendium.py dnd5e --level 4 --locale fr
+python tools/validate_compendium.py --all --strict
 ```
+
+CLI actuel (ruleset + `--warn` uniquement) : [`ARCHITECTURE.md`](ARCHITECTURE.md) §4.
 
 ### 8.4 Rapport
 
-Format réellement produit (`validate_compendium.py`) : en-tête `ruleset@version`, compteurs, puis une ligne par écart préfixée `[X]` (erreur) ou `[!]` (warning), et un verdict final.
-
 ```
-Compendium : dnd5e@1.0.0
-  Entrées  : 166
-  Erreurs  : 0
-  Warnings : 0
-[OK] Compendium valide
+✅ dnd5e — 847 entries validated
+⚠️  3 warnings (missing lore.en.md for spells/xxx)
+❌ 1 error (broken ref: classes/fighter → traits/nonexistent)
 ```
-
-En cas d'échec en mode strict, le verdict est `[X] Validation echouee (mode strict)` et le code de sortie vaut 1.
 
 ---
 
@@ -386,22 +389,22 @@ En cas d'échec en mode strict, le verdict est `[X] Validation echouee (mode str
 
 ### 9.1 Trois niveaux de version
 
-| Version | Portée | Exemple |
+| Version | Portée | Exemple visé |
 |---|---|---|
-| **schema_version** | Format `definition.yaml` | `manifest.yaml` déclare `"1.0"` ; les 42 fiches de sorts sont passées à `"2.0"` lors de l'introduction de `effects[]` et `classes[]` |
-| **ruleset version** | Contenu d'un ruleset | `dnd5e@1.0.0` (valeur réelle du manifest) |
-| **engine version** | API moteur Python | `jdr-engine@0.1.0` (`pyproject.toml`) |
+| **schema_version** | Format `definition.yaml` | `"1.0"` → ajout champ `effects` = `"1.1"` |
+| **ruleset version** | Contenu d'un ruleset | `dnd5e@1.2.0` |
+| **engine version** | API moteur Python | `jdr_engine@0.3.0` |
 
 ### 9.2 Personnage lié à un ruleset versionné
 
 ```yaml
-# Personnage persisté
+# Personnage persisté (cible)
 ruleset_id: dnd5e
-ruleset_version: "1.0.0"    # Version au moment de la création
+ruleset_version: "1.2.0"    # Version au moment de la création
 schema_version: "1.0"
 ```
 
-Ces trois champs existent réellement : colonnes `ruleset_id`, `ruleset_version`, `schema_version` de la table `personnages` (`jdr_engine/persistence/database.py`) et attributs de `Character` (`jdr_engine/domain/character/character.py`).
+Champs partiellement livrés aujourd'hui (`ruleset_id`, `ruleset_version`, `schema_version`) : [`ARCHITECTURE.md`](ARCHITECTURE.md) §5.
 
 ### 9.3 Politique de compatibilité
 
@@ -420,7 +423,7 @@ CompendiumRegistry
   └── dnd5e@latest → 1.3.0
 
 RuleEngine.for_character(character)
-  → utilise ruleset_id + ruleset_version du personnage
+  → utilisera ruleset_id + ruleset_version du personnage
 ```
 
 ---
@@ -429,7 +432,7 @@ RuleEngine.for_character(character)
 
 ### 10.1 Scénarios supportés
 
-| Scénario | Support |
+| Scénario | Support visé |
 |---|---|
 | Serveur Discord D&D 5e + serveur Pathfinder | ✅ |
 | Campagne utilisant dnd5e + homebrew pack | ✅ |
@@ -447,7 +450,7 @@ registry.load("homebrew/my-campaign")
 engine = RuleEngine(registry, ruleset_id="dnd5e", version="1.2.0")
 ```
 
-État actuel : un seul ruleset par `CompendiumRegistry`, point d'entrée `RuleEngine.load()` — voir [`ARCHITECTURE.md`](ARCHITECTURE.md) §3.
+État actuel (un seul ruleset, `RuleEngine.load()`) : [`ARCHITECTURE.md`](ARCHITECTURE.md) §3.
 
 ### 10.3 Config par serveur (Discord)
 
@@ -480,7 +483,7 @@ jdr_engine/persistence/
           └── 003_add_ruleset_version.py
 ```
 
-État actuel (SQLite, `database.py`, `v1_to_v2.py`) : voir [`ARCHITECTURE.md`](ARCHITECTURE.md) §5.
+État actuel (SQLite, `database.py`, `v1_to_v2.py`) : [`ARCHITECTURE.md`](ARCHITECTURE.md) §5 — hors périmètre de cette structure cible.
 
 ### 11.2 Contrat migration
 
@@ -537,15 +540,15 @@ $ python tools/rule_studio.py create race
 
 | Outil | Rôle |
 |---|---|
-| `validate_compendium.py` | **Existe** — validation L1-L5 |
-| `import_srd_mechanics.py` | **Existe** — import des mécaniques SRD dans le compendium |
-| `migrate_spells_b2.py` | **Existe** — migration des fiches de sorts vers le schéma v2.0 |
+| `validate_compendium.py` | Validation L1-L6 (cible) — partiellement livré, voir `ARCHITECTURE.md` §4 |
+| `import_srd_mechanics.py` | Import SRD — livré, voir `ARCHITECTURE.md` §9 |
+| `migrate_spells_b2.py` | Migration sorts v2.0 — livré, voir `ARCHITECTURE.md` §9 |
 | `rule_studio.py` | Assistant création générique |
 | `create_race.py` | Raccourci race |
 | `create_spell.py` | Raccourci sort (niveau, école, composantes…) |
 | `create_monster.py` | Raccourci monstre (CR, actions…) |
 | `create_item.py` | Arme, armure, objet magique |
-| `migrate_persistence.py` | **Existe** — lance la migration des données v1 → v2 |
+| `migrate_persistence.py` | Migrations données — livré, voir `ARCHITECTURE.md` §9 |
 | `generate_docs.py` | Documentation auto (§13) |
 | `pack_ruleset.py` | Export zip d'un ruleset (partage) |
 
@@ -642,7 +645,7 @@ discord-jdr-bot/
 ├── fixtures/                            # personnages v2 de référence (seed / tests)
 │
 ├── data/                                # État runtime (gitignored)
-│   ├── bot.db                           # base SQLite — stockage réel des personnages
+│   ├── bot.db
 │   ├── characters/
 │   ├── combats/
 │   └── _meta.json
@@ -662,7 +665,7 @@ discord-jdr-bot/
 └── bot/                                 # LEGACY — migration vers interfaces/discord (Phase 10)
 ```
 
-État actuel de `bot/` : six cogs actifs, chargement obligatoire au boot — voir [`ARCHITECTURE.md`](ARCHITECTURE.md) §8. **Suppression interdite** tant que la migration n'est pas terminée (`AGENTS.md` §6.7).
+Arbre cible. État réel du dépôt (dont `bot/` actif au runtime) : [`ARCHITECTURE.md`](ARCHITECTURE.md) §8 et §11.
 
 ---
 
@@ -688,7 +691,9 @@ domain        →  (RIEN — centre pur)
 
 ## 16. Interfaces publiques (résumé V2)
 
-| Interface | Package | Consommateurs |
+Couche applicative cible. Déjà livré : `RuleEngine`, `CharacterService`, `AssetResolver` — [`ARCHITECTURE.md`](ARCHITECTURE.md) §3 et §6.
+
+| Interface | Package | Consommateurs visés |
 |---|---|---|
 | `RuleEngine` | `jdr_engine/rules/engine.py` | Application services |
 | `CompendiumService` | `jdr_engine/application/` | Interfaces, tools |

@@ -1,9 +1,5 @@
 # Architecture — état actuel du dépôt
 
-> Ce document décrit l'architecture **réellement implémentée**, vérifiée contre le code source. En cas d'écart avec un autre document, **le code prime**.
->
-> Architecture cible (non implémentée ou partielle) : [`ARCHITECTURE_TARGET.md`](ARCHITECTURE_TARGET.md). Stratégie produit : [`VISION.md`](../VISION.md). Plan opérationnel : [`ROADMAP.md`](../ROADMAP.md). Règles agents : [`AGENTS.md`](../AGENTS.md).
-
 | Attribut | Valeur |
 |---|---|
 | **Date** | 2026-07-27 |
@@ -28,22 +24,22 @@ Sens des dépendances : `bot/` → `interfaces/discord/` → `jdr_engine/applica
 
 ---
 
-## 2. Packages `jdr_engine/` — réels vs placeholders
+## 2. Packages moteur — réels vs placeholders
 
 | Package | État | Contenu notable |
 |---|---|---|
-| `domain/character/` | **Réel** | `Character`, `CharacterSheet`, `AbilityScores`, `choices_schema` |
-| `compendium/` | **Réel** | `loader`, `registry`, `validator`, `presenter`, `mechanics_schema` |
-| `rules/` | **Réel** | `engine`, `calculator`, `character_creation/`, `character_progression/`, `class_features/`, `racial/`, `rest/`, `spellcasting/` |
-| `application/` | **Réel** | `CharacterService` (+ DTOs) — seul service applicatif |
-| `persistence/` | **Réel** | SQLite (`database.py`, `sqlite_character_repository.py`), JSON legacy, `migrations/v1_to_v2.py` |
-| `dice/` | **Réel** | `parser`, `roller`, `d20`, `models` |
-| `core/assets/` | **Réel** | `AssetResolver`, `AssetReference` |
-| `core/events/` | Placeholder | `__init__.py` 1 ligne — jamais importé |
-| `core/i18n/` | Placeholder | idem |
-| `core/config/` | Placeholder | idem |
-| `core/plugins/` | Placeholder | idem |
-| `game/` | Placeholder | idem |
+| `jdr_engine/domain/character/` | **Réel** | `Character`, `CharacterSheet`, `AbilityScores`, `choices_schema` |
+| `jdr_engine/compendium/` | **Réel** | `loader`, `registry`, `validator`, `presenter`, `mechanics_schema` |
+| `jdr_engine/rules/` | **Réel** | `engine`, `calculator`, `jdr_engine/rules/character_creation/`, `jdr_engine/rules/character_progression/`, `jdr_engine/rules/class_features/`, `jdr_engine/rules/racial/`, `jdr_engine/rules/rest/`, `jdr_engine/rules/spellcasting/` |
+| `jdr_engine/application/` | **Réel** | `CharacterService` (+ DTOs) — seul service applicatif |
+| `jdr_engine/persistence/` | **Réel** | SQLite (`jdr_engine/persistence/database.py`, `jdr_engine/persistence/sqlite_character_repository.py`), JSON legacy, `jdr_engine/persistence/migrations/v1_to_v2.py` |
+| `jdr_engine/dice/` | **Réel** | `parser`, `roller`, `d20`, `models` |
+| `jdr_engine/core/assets/` | **Réel** | `AssetResolver`, `AssetReference` |
+| `jdr_engine/core/events/` | Placeholder | `jdr_engine/core/events/__init__.py` 1 ligne — jamais importé |
+| `jdr_engine/core/i18n/` | Placeholder | idem |
+| `jdr_engine/core/config/` | Placeholder | idem |
+| `jdr_engine/core/plugins/` | Placeholder | idem |
+| `jdr_engine/game/` | Placeholder | idem |
 
 ---
 
@@ -65,13 +61,13 @@ compendium/
         └── spells/    (42) — schema_version 2.0
 ```
 
-**Total** : 166 fichiers `definition.yaml`.
+**Total** : 166 fichiers definition.yaml (un par entrée sous `compendium/dnd5e/entries/`).
 
 Chargement : `load_ruleset()` → `CompendiumRegistry(manifest, config, entries)` → `RuleEngine.load(ruleset_id)`.
 
 Séparation moteur / UI (ADR-002) :
 
-- `RuleEngine.get_entity()` lit `definition.yaml` uniquement.
+- `RuleEngine.get_entity()` lit uniquement le definition.yaml de l'entrée visée (ex. `compendium/dnd5e/entries/races/elf/definition.yaml`).
 - `CompendiumPresenter.get_lore()` lit `lore.{locale}.md`.
 - `AssetResolver.resolve_path()` / `resolve_portrait()` retournent un `Path` local (ou `None`).
 
@@ -124,7 +120,7 @@ jdr_engine/persistence/
 - v2 : `data/characters/v2/characters.json`
 - Fixtures : `fixtures/characters/*.v2.json`
 
-**Mapping classes v1 → Compendium** (`v1_to_v2.py`) : `Guerrier`→`fighter`, `Magicien`→`wizard`, `Rôdeur`→`ranger`, `Roublard`→`rogue`, `Clerc`→`cleric`.
+**Mapping classes v1 → Compendium** (`jdr_engine/persistence/migrations/v1_to_v2.py`) : `Guerrier`→`fighter`, `Magicien`→`wizard`, `Rôdeur`→`ranger`, `Roublard`→`rogue`, `Clerc`→`cleric`.
 
 **Boot** (`interfaces/discord/startup.py`) : `run_startup_migrations()` → `SqliteCharacterRepository(db_path)` → `CharacterService(repo, engine)`.
 
@@ -141,6 +137,22 @@ jdr_engine/persistence/
 - Outils MJ grimoire
 
 Pas de `CompendiumService`, `CombatService`, `EventBus`, `MigrationRunner`.
+
+### Interfaces publiques exposées
+
+| Interface | Package | État |
+|---|---|---|
+| `RuleEngine` | `jdr_engine/rules/engine.py` | Implémentée |
+| `CharacterService` | `jdr_engine/application/character_service.py` | Implémentée |
+| `AssetResolver` | `jdr_engine/core/assets/resolver.py` | Implémentée |
+| `CompendiumService` | — | Absente |
+| `CombatService` | — | Absente |
+| `EventBus` | — | Absente |
+| `Translator` | — | Absente |
+| `PluginManager` | — | Absente |
+| `MigrationRunner` | — | Absente |
+
+Correspond à l'ancien §16 « Interfaces publiques » — partie implémentée. Le complément cible est dans [`docs/ARCHITECTURE_TARGET.md`](ARCHITECTURE_TARGET.md) §16.
 
 ---
 
@@ -185,10 +197,10 @@ interfaces/discord/
 
 | Script | Rôle |
 |---|---|
-| `validate_compendium.py` | Validation L1-L5 |
-| `migrate_persistence.py` | Migration personnages v1 → v2 (JSON) |
-| `import_srd_mechanics.py` | Import mécaniques SRD → `definition.yaml` |
-| `migrate_spells_b2.py` | Migration sorts v1.0 → v2.0 |
+| `tools/validate_compendium.py` | Validation L1-L5 |
+| `tools/migrate_persistence.py` | Migration personnages v1 → v2 (JSON) |
+| `tools/import_srd_mechanics.py` | Import mécaniques SRD → definition.yaml par entrée |
+| `tools/migrate_spells_b2.py` | Migration sorts v1.0 → v2.0 |
 
 ---
 
@@ -249,8 +261,8 @@ rules               →  compendium (loader, registry), domain
 domain              →  (stdlib + intra-domain uniquement)
 ```
 
-Pas de couche `game/`, pas d'`EventBus`, pas de `core/i18n` ni `core/plugins` dans le graphe réel.
+Pas de couche `jdr_engine/game/`, pas d'`EventBus`, pas de `jdr_engine/core/i18n` ni `jdr_engine/core/plugins` dans le graphe réel.
 
 ---
 
-*Document aligné sur le code au commit courant. Toute modification structurelle cible = [`ARCHITECTURE_TARGET.md`](ARCHITECTURE_TARGET.md) + ADR si décision actée.*
+*Document aligné sur le code au commit courant. Références : [`docs/ARCHITECTURE_TARGET.md`](ARCHITECTURE_TARGET.md) (cible), [`VISION.md`](../VISION.md), [`ROADMAP.md`](../ROADMAP.md), [`AGENTS.md`](../AGENTS.md).*
