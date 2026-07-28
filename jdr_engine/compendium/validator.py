@@ -1,5 +1,9 @@
 # jdr_engine/compendium/validator.py
-"""Validation intégrité Compendium (L1-L3)."""
+"""Validation intégrité Compendium post-load.
+
+Niveaux ici : L2 (broken_ref), L4 (mechanics_schema), L5 (missing_lore) ; plus unknown_ability (non numéroté).
+L1 (schéma Pydantic) et L3 (id/type) relèvent du load, pas de ce module.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
