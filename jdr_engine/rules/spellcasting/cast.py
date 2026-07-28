@@ -28,7 +28,6 @@ from jdr_engine.rules.spellcasting.state import (
     spell_in_spellbook,
     spell_is_known,
 )
-from jdr_engine.rules.spellcasting.state import _find_slot_to_consume
 from jdr_engine.rules.spellcasting.stats import spell_attack_bonus, spell_save_dc
 
 RandInt = Callable[[int, int], int]
@@ -177,33 +176,91 @@ def _is_auto_hit_spell(spell_def: dict[str, Any], effect: dict[str, Any]) -> boo
     return mechanics.get("attack_roll") is False and effect.get("type") == "spell_attack"
 
 
-def _resolve_damage_instance_count(
-    spell_def: dict[str, Any],
-    effect: dict[str, Any],
+@dataclass(frozen=True)
+class SlotScalingIncrements:
+    """Incréments d'upcast dérivés de ``mechanics.slot_scaling``."""
+
+    extra_missiles: int = 0
+    extra_damage_dice: str | None = None
+    extra_healing_dice: str | None = None
+
+
+def _multiply_dice_notation(notation: str, multiplier: int) -> str | None:
+    """Multiplie le nombre de dés (ex. ``1d6`` × 2 → ``2d6``)."""
+    if multiplier <= 0:
+        return None
+    from jdr_engine.dice.parser import parse
+
+    count, faces, modifier, sign = parse(notation)
+    scaled_count = count * multiplier
+    if modifier:
+        mod_str = f"{sign}{abs(modifier)}"
+        return f"{scaled_count}d{faces}{mod_str}"
+    return f"{scaled_count}d{faces}"
+
+
+def resolve_slot_scaling_increments(
+    slot_scaling: dict[str, Any] | None,
     *,
-    spell_level: int,
-    character: Character,
-) -> int:
-    """Nombre d'instances de dégâts (dards, rayons…) en tenant compte de l'upcasting."""
-    base = int(effect.get("attacks", effect.get("instances", 1)))
-    if spell_level <= 0:
-        return base
-    mechanics = spell_def.get("mechanics", {})
-    scaling = mechanics.get("slot_scaling")
-    if not isinstance(scaling, dict):
-        return base
-    increment = scaling.get("per_slot_above_base")
+    spell_base_level: int,
+    slot_consumed_level: int | None,
+) -> SlotScalingIncrements:
+    """
+    Résout les incréments d'upcast à partir des métadonnées ``slot_scaling``.
+
+    Source de vérité : ``mechanics.slot_scaling.per_slot_above_base`` avec les clés
+    ``missiles``, ``damage_dice`` et ``healing_dice``. Métadonnées absentes ou
+    invalides → incréments nuls (aucune erreur).
+
+    Migration future : l'ancien champ ``effect.upcast_damage`` (jamais présent dans
+    le catalogue curated) est retiré ; tout scaling passe par ``slot_scaling``.
+    """
+    if (
+        spell_base_level <= 0
+        or slot_consumed_level is None
+        or slot_consumed_level <= spell_base_level
+    ):
+        return SlotScalingIncrements()
+
+    if not isinstance(slot_scaling, dict):
+        return SlotScalingIncrements()
+
+    increment = slot_scaling.get("per_slot_above_base")
     if not isinstance(increment, dict):
-        return base
-    extra_missiles = increment.get("missiles")
-    if not extra_missiles:
-        return base
-    max_slots = get_max_spell_slots(character.class_id, character.level)
-    used = get_slots_used(character)
-    slot_level = _find_slot_to_consume(spell_level, max_slots, used)
-    if slot_level is None or slot_level <= spell_level:
-        return base
-    return base + int(extra_missiles) * (slot_level - spell_level)
+        return SlotScalingIncrements()
+
+    delta = slot_consumed_level - spell_base_level
+    extra_missiles = 0
+    extra_damage_dice: str | None = None
+    extra_healing_dice: str | None = None
+
+    missiles = increment.get("missiles")
+    if missiles:
+        extra_missiles = int(missiles) * delta
+
+    damage_dice = increment.get("damage_dice")
+    if damage_dice:
+        extra_damage_dice = _multiply_dice_notation(str(damage_dice), delta)
+
+    healing_dice = increment.get("healing_dice")
+    if healing_dice:
+        extra_healing_dice = _multiply_dice_notation(str(healing_dice), delta)
+
+    return SlotScalingIncrements(
+        extra_missiles=extra_missiles,
+        extra_damage_dice=extra_damage_dice,
+        extra_healing_dice=extra_healing_dice,
+    )
+
+
+def _detect_consumed_slot_level(
+    before_used: dict[int, int],
+    after_used: dict[int, int],
+) -> int | None:
+    for level in sorted(after_used.keys()):
+        if after_used.get(level, 0) > before_used.get(level, 0):
+            return level
+    return None
 
 
 def _resolve_damage_notation(
@@ -386,6 +443,19 @@ def cast_spell(
 
     updated = character
 
+    slot_consumed: int | None = None
+    scaling = SlotScalingIncrements()
+    if spell_level > 0:
+        before_used = dict(get_slots_used(updated))
+        updated = consume_spell_slot(updated, spell_level)
+        after_used = get_slots_used(updated)
+        slot_consumed = _detect_consumed_slot_level(before_used, after_used)
+        scaling = resolve_slot_scaling_increments(
+            mechanics.get("slot_scaling"),
+            spell_base_level=spell_level,
+            slot_consumed_level=slot_consumed,
+        )
+
     if effect_type == "spell_attack":
         damage_notation = _resolve_damage_notation(
             spell_def,
@@ -395,12 +465,8 @@ def cast_spell(
         )
         add_mod = bool(effect.get("add_ability_mod", False))
         auto_hit = _is_auto_hit_spell(spell_def, effect)
-        instances = _resolve_damage_instance_count(
-            spell_def,
-            effect,
-            spell_level=spell_level,
-            character=updated,
-        )
+        base_instances = int(effect.get("attacks", effect.get("instances", 1)))
+        instances = base_instances + scaling.extra_missiles
         attack_rolls: list[SpellAttackRoll] = []
         total_damage = 0
         all_damage_rolls: list[int] = []
@@ -408,16 +474,13 @@ def cast_spell(
         for index in range(1, instances + 1):
             if auto_hit:
                 dmg_total, dmg_rolls = _roll_dice(damage_notation, rng=rng)
-                if add_mod:
-                    dmg_total += ability_mod
                 total_damage += dmg_total
                 all_damage_rolls.extend(dmg_rolls)
                 attack_rolls.append(
                     SpellAttackRoll(
                         index=index,
                         damage_total=dmg_total,
-                        damage_notation=damage_notation
-                        + (f"+{ability_mod}" if add_mod else ""),
+                        damage_notation=damage_notation,
                         damage_rolls=dmg_rolls,
                         auto_hit=True,
                     )
@@ -428,8 +491,6 @@ def cast_spell(
                 attack_bonus, ability_mod, proficiency, ability_id, rng=rng
             )
             dmg_total, dmg_rolls = _roll_dice(damage_notation, rng=rng)
-            if add_mod:
-                dmg_total += ability_mod
             total_damage += dmg_total
             all_damage_rolls.extend(dmg_rolls)
             attack_rolls.append(
@@ -438,11 +499,20 @@ def cast_spell(
                     attack_bonus=attack_bonus,
                     d20_result=d20,
                     damage_total=dmg_total,
-                    damage_notation=damage_notation
-                    + (f"+{ability_mod}" if add_mod else ""),
+                    damage_notation=damage_notation,
                     damage_rolls=dmg_rolls,
                 )
             )
+
+        if scaling.extra_damage_dice:
+            extra_total, extra_rolls = _roll_dice(
+                scaling.extra_damage_dice, rng=rng
+            )
+            total_damage += extra_total
+            all_damage_rolls.extend(extra_rolls)
+
+        if add_mod:
+            total_damage += ability_mod
 
         if auto_hit:
             result.attack_bonus = None
@@ -452,9 +522,11 @@ def cast_spell(
         if auto_hit and instances > 1:
             result.damage_notation = f"{instances}×({damage_notation})"
         else:
-            result.damage_notation = damage_notation + (
-                f"+mod {ability_id}" if add_mod else ""
-            )
+            result.damage_notation = damage_notation
+            if scaling.extra_damage_dice:
+                result.damage_notation += f" + {scaling.extra_damage_dice}"
+            if add_mod:
+                result.damage_notation += f"+mod {ability_id}"
         result.damage_total = total_damage
         result.damage_rolls = all_damage_rolls
         if updated.class_id == "sorcerer" and total_damage > 0 and damage_type:
@@ -496,6 +568,13 @@ def cast_spell(
         damage_notation = str(effect.get("damage", ""))
         half_on_save = bool(save_info.get("half_on_save", True))
         dmg_total, dmg_rolls = _roll_dice(damage_notation, rng=rng)
+        if scaling.extra_damage_dice:
+            extra_total, extra_rolls = _roll_dice(
+                scaling.extra_damage_dice, rng=rng
+            )
+            dmg_total += extra_total
+            dmg_rolls.extend(extra_rolls)
+            damage_notation = f"{damage_notation} + {scaling.extra_damage_dice}"
         result.save_dc = save_dc
         result.save_ability = save_ability
         result.damage_total = dmg_total
@@ -522,6 +601,14 @@ def cast_spell(
         heal_notation = str(effect.get("healing", "1d8"))
         add_mod = bool(effect.get("add_ability_mod", True))
         heal_total, heal_rolls = _roll_dice(heal_notation, rng=rng)
+        display_notation = heal_notation
+        if scaling.extra_healing_dice:
+            extra_total, extra_rolls = _roll_dice(
+                scaling.extra_healing_dice, rng=rng
+            )
+            heal_total += extra_total
+            heal_rolls.extend(extra_rolls)
+            display_notation = f"{heal_notation} + {scaling.extra_healing_dice}"
         if add_mod:
             heal_total += ability_mod
         if (
@@ -543,7 +630,9 @@ def cast_spell(
         result.hp_after = hp_after
         result.hp_max = hp_max
         result.healing_capped = capped
-        result.damage_notation = heal_notation + (f"+mod {ability_id}" if add_mod else "")
+        result.damage_notation = display_notation + (
+            f"+mod {ability_id}" if add_mod else ""
+        )
 
     elif effect_type == "buff":
         result.buff_text = _localized(spell_def, "buff_effect", locale)
@@ -555,32 +644,6 @@ def cast_spell(
 
     else:
         raise SpellCastError(f"Type d'effet non pris en charge : {effect_type!r}")
-
-    slot_consumed: int | None = None
-    if spell_level > 0:
-        before_used = dict(get_slots_used(updated))
-        updated = consume_spell_slot(updated, spell_level)
-        after_used = get_slots_used(updated)
-        for level in sorted(after_used.keys()):
-            if after_used.get(level, 0) > before_used.get(level, 0):
-                slot_consumed = level
-                break
-
-        upcast_die = effect.get("upcast_damage")
-        if (
-            slot_consumed
-            and slot_consumed > spell_level
-            and upcast_die
-            and result.damage_total is not None
-        ):
-            extra_levels = slot_consumed - spell_level
-            for _ in range(extra_levels):
-                extra, extra_rolls = _roll_dice(str(upcast_die), rng=rng)
-                result.damage_total += extra
-                result.damage_rolls.extend(extra_rolls)
-            result.damage_notation = (
-                f"{result.damage_notation} + {extra_levels}×{upcast_die} (emplacement niv. {slot_consumed})"
-            )
 
     remaining = get_remaining_slots(
         updated.class_id, updated.level, get_slots_used(updated)

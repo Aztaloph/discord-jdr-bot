@@ -133,7 +133,7 @@ Items hors périmètre des lots fonctionnels — à traiter en passes dédiées,
 | Priorité | Item | Contexte |
 |---|---|---|
 | 🔵 | **Edge cap-20 ASI (base 18 vs 19 + racial)** | Invariant cap effectif ≤ 20 démontré ; cas limite UI/validation à durcir en passe dédiée |
-| 🔵 | **Calcul effectif du `slot_scaling` à l'upcast** (`cast.py`) | Métadonnées + affichage embed OK (Lots B/C) ; calcul réel à l'incantation (ex. +1 rayon `scorching_ray`, +1d8 `spiritual_weapon`) — lot transverse |
+| 🔵 | **Scaling upcast `slot_scaling` — clés B4** (`extra_targets`, `temp_hp`, `cold_damage`) | `missiles` / `damage_dice` / `healing_dice` livrés dans `cast.py` ; reste ouvert : `bless`, `armor_of_agathys` (ciblage, PV temp., dégâts de contact) — **Axe B4**, moteur d'effets |
 | 🔵 | **Tracking de concentration persistant** | `darkness`, `flaming_sphere`, `hex`, `detect_magic` — état `choices.spellcasting.concentration` non posé pour `effect.type: utility` |
 | 🔵 | **Log défensif `_sort_autocomplete`** | Diagnostic autocomplete `/sort` (« Échec des options de chargement ») — traçabilité sans masquer les exceptions |
 | 🔵 | **Élargissement catalogue curated (B3)** | 42 sorts actuels vs quotas SRD niv. 20 — voir `docs/SPELLS_INVENTORY.md` |

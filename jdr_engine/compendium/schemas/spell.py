@@ -82,7 +82,6 @@ class SpellEffect(BaseModel):
     auto_hit: bool | None = None
     add_ability_mod: bool | None = None
     invocation: bool | None = None
-    upcast_damage: str | None = None
     healing: str | None = None
     saving_throw: SavingThrowSpec | None = None
 
