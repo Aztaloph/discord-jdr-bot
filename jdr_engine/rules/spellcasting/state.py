@@ -261,6 +261,19 @@ def reset_spell_slots(character: Character) -> Character:
     return _update_spellcasting(character, slots_used={})
 
 
+def clear_concentration(character: Character) -> Character:
+    """Retire la concentration active (repos, rupture manuelle future, etc.)."""
+    state = get_spellcasting_state(character)
+    if "concentration" not in state:
+        return character
+    state = dict(state)
+    state.pop("concentration", None)
+    choices = dict(character.choices or {})
+    choices["spellcasting"] = state
+    character.choices = choices
+    return character
+
+
 def _update_spellcasting(
     character: Character,
     *,
@@ -304,6 +317,11 @@ def format_spellcasting_detail(character: Character) -> str:
         lines.append(f"Magie de pacte — Emplacements : {slots}")
     else:
         lines.append(f"Emplacements : {slots}")
+    conc = get_spellcasting_state(character).get("concentration")
+    if isinstance(conc, dict):
+        conc_name = conc.get("spell_name") or conc.get("spell_id")
+        if conc_name:
+            lines.append(f"Concentration : **{conc_name}**")
     if cantrips:
         lines.append(f"Tours de magie : {', '.join(cantrips)}")
     if character.class_id == "cleric":

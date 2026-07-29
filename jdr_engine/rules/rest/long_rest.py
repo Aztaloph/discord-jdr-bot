@@ -16,7 +16,11 @@ from jdr_engine.rules.rest.state import (
     sync_hit_dice_total,
 )
 from jdr_engine.rules.racial.features import reset_racial_features_on_long_rest
-from jdr_engine.rules.spellcasting.state import format_slots_display, reset_spell_slots
+from jdr_engine.rules.spellcasting.state import (
+    clear_concentration,
+    format_slots_display,
+    reset_spell_slots,
+)
 
 
 @dataclass(frozen=True)
@@ -134,6 +138,7 @@ def apply_long_rest(
 
     character = reset_racial_features_on_long_rest(character)
     character = reset_spell_slots(character)
+    character = clear_concentration(character)
 
     from jdr_engine.rules.spellcasting.prepared_choice import (
         mark_prepared_rechoice_pending,

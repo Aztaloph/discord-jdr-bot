@@ -36,7 +36,7 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
 
 | Indicateur | Valeur |
 |---|---|
-| Tests unitaires | **645** verts (`python -m unittest discover -s tests -p "test_*.py" -q`) |
+| Tests unitaires | **681** verts (`python -m unittest discover -s tests -p "test_*.py" -q`) |
 | Classes SRD 2014 | 12/12 jouables (création + montée de niveau 1–20 full casters, ASI 5 paliers) |
 | Catalogue sorts curated | **42** sorts (schéma v2.0 ; grimoire mage **18** = quota niv. 7) |
 | Derniers commits | Axe B2–B3-b (schéma sorts v2.0 + catalogue mage niv. 1–4) sur `main` |
@@ -81,7 +81,8 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
   - [ ] **C2 — Initiative** : jets, tri, événements `CombatStarted` / `InitiativeRolled` / `TurnStarted`. *(aucun rendu)*
   - [ ] **C3 — Résolution d'attaque** : jet vs CA + dégâts (Rule Engine), événements `AttackDeclared` / `AttackResolved` / `DamageDealt`. *(aucun rendu)*
   - [ ] **C4 — Économie d'actions** : action / action bonus / réaction / mouvement par tour, validation des dépenses. *(aucun rendu)*
-  - [ ] **C5 — Concentration** : pose/rupture sur dégâts (sauvegarde CON), liaison aux sorts de concentration (rejoint dette **Axe B4**). *(aucun rendu)*
+  - [ ] **C5 — Concentration (combat)** : rupture sur dégâts (sauvegarde CON), expiration durée — rejoint dette **Axe B4**. *(aucun rendu)*  
+    > **Hors combat (Lot 1 ✅)** : pose sur `mechanics.concentration` (13 sorts), remplacement, nettoyage repos long/court, affichage `/perso-afficher`. **Ouvert** : durées/expiration (horloge combat absente), application mécanique des buffs (Axe B4).
   - [ ] **C6 — Conditions en combat** : application/expiration (`ConditionApplied` / `ConditionRemoved`), impact sur les jets. *(aucun rendu)*
   - [ ] **C7 — Service & persistance** : `CombatService` (use cases), auto-save via handler EventBus, log de combat. *(aucun rendu)*
 - [ ] **ÉTAPE 6 : API (REST + WebSocket)** — 🔜 nouveau (VISION.md §9, ordre 3). `interfaces/api/` expose `CharacterService`, `CombatService`, `CompendiumService` et **pousse les événements EventBus** vers les clients. Objectif : contrat unique consommé par le Web.
@@ -109,7 +110,7 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
 - [x] **B3-a** — +6 sorts niv. 3 mage (pool grimoire 14 = quota niv. 5)
 - [x] **B3-b** — +4 sorts niv. 4 mage Option A (pool grimoire 18 = quota niv. 7)
 - [ ] **B3** — Élargissement catalogue (suite niv. 5+, autres classes)
-- [ ] **B4** — Moteur d'effets : dégâts, jets de sauvegarde, concentration. **Alimente l'ÉTAPE 4** (la concentration en combat est le lot **C5**).
+- [ ] **B4** — Moteur d'effets : dégâts, jets de sauvegarde, **application mécanique des buffs et conditions**. **Concentration persistante (Lot 1 ✅)** : pose/remplacement/affichage/repos — voir C5. **Ouvert** : durées, expiration, rupture sur dégâts, bonus mécaniques (`bless`, `hex`, etc.). **Alimente l'ÉTAPE 4** (concentration en combat = lot **C5**).
 
 ---
 
@@ -134,6 +135,6 @@ Items hors périmètre des lots fonctionnels — à traiter en passes dédiées,
 |---|---|---|
 | 🔵 | **Edge cap-20 ASI (base 18 vs 19 + racial)** | Invariant cap effectif ≤ 20 démontré ; cas limite UI/validation à durcir en passe dédiée |
 | 🔵 | **Scaling upcast `slot_scaling` — clés B4** (`extra_targets`, `temp_hp`, `cold_damage`) | `missiles` / `damage_dice` / `healing_dice` livrés dans `cast.py` ; reste ouvert : `bless`, `armor_of_agathys` (ciblage, PV temp., dégâts de contact) — **Axe B4**, moteur d'effets |
-| 🔵 | **Tracking de concentration persistant** | `darkness`, `flaming_sphere`, `hex`, `detect_magic` — état `choices.spellcasting.concentration` non posé pour `effect.type: utility` |
+| 🔵 | **Concentration — durées et effets mécaniques** | Lot 1 ✅ : pose (`mechanics.concentration`, **13** sorts), remplacement, repos, `/perso-afficher`. **Ouvert** : expiration/durées (horloge combat, ÉTAPE 4), rupture sur dégâts (C5), buffs mécaniques (B4) |
 | 🔵 | **Log défensif `_sort_autocomplete`** | Diagnostic autocomplete `/sort` (« Échec des options de chargement ») — traçabilité sans masquer les exceptions |
 | 🔵 | **Élargissement catalogue curated (B3)** | 42 sorts actuels vs quotas SRD niv. 20 — voir `docs/SPELLS_INVENTORY.md` |

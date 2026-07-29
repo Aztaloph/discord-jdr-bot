@@ -141,6 +141,10 @@ def apply_short_rest(
 
         character = reset_spell_slots(character)
 
+    from jdr_engine.rules.spellcasting.state import clear_concentration
+
+    character = clear_concentration(character)
+
     if character.class_id == "wizard":
         from jdr_engine.rules.class_features.wizard import (
             apply_arcane_recovery,

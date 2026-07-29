@@ -75,6 +75,7 @@ class SpellCastResult:
     utility_text: str | None = None
     buff_text: str | None = None
     concentration: bool = False
+    interrupted_concentration: str | None = None
     slot_consumed_level: int | None = None
     slots_max: dict[int, int] = field(default_factory=dict)
     slots_remaining: dict[int, int] = field(default_factory=dict)
@@ -334,13 +335,29 @@ def _apply_healing(
     return character, hp_before, hp_after, hp_max, healing_applied, capped
 
 
-def _set_concentration(character: Character, spell_id: str, spell_name: str) -> Character:
+def _set_concentration(
+    character: Character,
+    spell_id: str,
+    spell_name: str,
+) -> tuple[Character, str | None]:
+    """
+    Pose ou remplace la concentration active.
+
+    Retourne le nom localisé du sort interrompu, ou None si aucun remplacement
+    (pas de concentration antérieure, ou recast du même sort).
+    """
     choices = dict(character.choices or {})
     state = dict(get_spellcasting_state(character))
+    previous = state.get("concentration")
+    interrupted_name: str | None = None
+    if isinstance(previous, dict):
+        previous_id = str(previous.get("spell_id", ""))
+        if previous_id and previous_id != spell_id:
+            interrupted_name = str(previous.get("spell_name") or previous_id)
     state["concentration"] = {"spell_id": spell_id, "spell_name": spell_name}
     choices["spellcasting"] = state
     character.choices = choices
-    return character
+    return character, interrupted_name
 
 
 def cast_spell(
@@ -636,14 +653,16 @@ def cast_spell(
 
     elif effect_type == "buff":
         result.buff_text = _localized(spell_def, "buff_effect", locale)
-        if concentration:
-            updated = _set_concentration(updated, spell_id, spell_name)
 
     elif effect_type == "utility":
         result.utility_text = _localized(spell_def, "utility_effect", locale)
 
     else:
         raise SpellCastError(f"Type d'effet non pris en charge : {effect_type!r}")
+
+    if concentration:
+        updated, interrupted = _set_concentration(updated, spell_id, spell_name)
+        result.interrupted_concentration = interrupted
 
     remaining = get_remaining_slots(
         updated.class_id, updated.level, get_slots_used(updated)
@@ -810,6 +829,11 @@ def build_spell_display_lines(
             for lvl, rem in sorted(result.slots_remaining.items())
         ]
         lines.append(f"Emplacements restants : {', '.join(slot_parts)}")
+
+    if result.interrupted_concentration:
+        lines.append(
+            f"Concentration interrompue : **{result.interrupted_concentration}**"
+        )
 
     return lines
 
