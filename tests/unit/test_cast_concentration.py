@@ -7,6 +7,8 @@ import unittest
 from dataclasses import dataclass
 from pathlib import Path
 
+import yaml
+
 from jdr_engine.domain.character.ability_scores import AbilityScores
 from jdr_engine.domain.character.character import Character
 from jdr_engine.persistence.database import init_database
@@ -40,6 +42,18 @@ CONCENTRATION_SPELL_IDS: frozenset[str] = frozenset(
         "polymorph",
     }
 )
+
+
+def _collect_compendium_concentration_spell_ids() -> frozenset[str]:
+    """Ids des sorts curated déclarant mechanics.concentration: true."""
+    spells_dir = Path("compendium/dnd5e/entries/spells")
+    ids: set[str] = set()
+    for yaml_path in spells_dir.glob("*/definition.yaml"):
+        data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
+        mechanics = (data or {}).get("mechanics") or {}
+        if mechanics.get("concentration") is True:
+            ids.add(yaml_path.parent.name)
+    return frozenset(ids)
 
 
 class SequenceRng:
@@ -156,9 +170,33 @@ class TestConcentrationPose(unittest.TestCase):
             raise unittest.SkipTest("compendium absent")
         cls.engine = RuleEngine.load("dnd5e", validate=True, strict=True)
 
+    def test_concentration_spell_ids_match_compendium(self):
+        catalog_ids = _collect_compendium_concentration_spell_ids()
+        missing_from_constant = catalog_ids - CONCENTRATION_SPELL_IDS
+        extra_in_constant = CONCENTRATION_SPELL_IDS - catalog_ids
+        if missing_from_constant or extra_in_constant:
+            parts: list[str] = []
+            if missing_from_constant:
+                parts.append(
+                    "présent au catalogue (concentration: true) mais absent de "
+                    f"CONCENTRATION_SPELL_IDS : {sorted(missing_from_constant)}"
+                )
+            if extra_in_constant:
+                parts.append(
+                    "présent dans CONCENTRATION_SPELL_IDS mais absent du catalogue "
+                    f"(concentration: true) : {sorted(extra_in_constant)}"
+                )
+            self.fail(" ; ".join(parts))
+        self.assertEqual(CONCENTRATION_SPELL_IDS, catalog_ids)
+
     def test_all_concentration_spells_set_state(self):
         for spell_id in sorted(CONCENTRATION_SPELL_IDS):
             with self.subTest(spell_id=spell_id):
+                self.assertIn(
+                    spell_id,
+                    CONCENTRATION_CAST_SETUP,
+                    f"CONCENTRATION_CAST_SETUP sans entrée pour {spell_id!r}",
+                )
                 setup = CONCENTRATION_CAST_SETUP[spell_id]
                 char = _make_caster(setup)
                 rng = SequenceRng(list(setup.rng)) if setup.rng else None
