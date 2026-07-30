@@ -40,7 +40,8 @@ Une contradiction se **signale dans ton rapport**, elle ne se corrige pas en sil
 - **Aucune règle D&D dans `bot/` ou `interfaces/`.** Les règles vivent dans `jdr_engine/rules/`, les données dans `compendium/`.
 - Placeholders réels (1–2 lignes, aucun code) : `jdr_engine/core/events/`, `jdr_engine/core/i18n/`, `jdr_engine/core/config/`, `jdr_engine/core/plugins/`, `jdr_engine/game/`, `plugins/`, `compendium/_schemas/`.
 - `jdr_engine/core/assets/` **n'est pas** un placeholder (`resolver.py` est réel et testé).
-- `interfaces/api/` et `interfaces/web/` **n'existent pas** — ne pas les créer avant l'ÉTAPE 6 (voir `ROADMAP.md`).
+- `interfaces/api/` **existe** (lot DTO/API, accord mainteneur 2026-07-30) : API FastAPI de banc de test — fiche, sort, repos. Même règle que le reste d'`interfaces/` : aucune règle D&D, couche fine au-dessus du moteur et des DTO (`jdr_engine/application/dto/output_serializers.py`). Lancement local : `docs/API_LOCAL.md`.
+- `interfaces/web/` **n'existe pas** — ne pas le créer avant l'ÉTAPE 6 (voir `ROADMAP.md`).
 - Les JSON Schema réels sont dans `compendium/schemas/` (et non `_schemas/`, qui est vide).
 - Les pools de sorts sont **dérivés du YAML** (`spell_pool_builder.py`) — ne jamais coder une liste de sorts en dur.
 
@@ -89,8 +90,8 @@ Issues des décisions arrêtées de `VISION.md` §10 :
 2. **Le Combat Engine est une API moteur pure** (D3) : fonctions déterministes + événements. **Aucun rendu Discord ni Web**, aucun embed, bouton ou composant.
 3. **Le moteur ne connaît aucune interface** (D4) : publication d'événements, jamais d'appel direct à une UI.
 4. **Ne pas démarrer le Combat Engine (ÉTAPE 4) sans RFC approuvée.**
-5. **Ne pas créer `interfaces/api/` ni `interfaces/web/`** avant l'ÉTAPE 6.
-6. **Ne pas ajouter de dépendance ni d'outil** sans accord explicite.
+5. **Ne pas créer `interfaces/web/`** avant l'ÉTAPE 6. (`interfaces/api/` existe depuis le lot DTO/API, sur accord explicite du mainteneur — 2026-07-30.)
+6. **Ne pas ajouter de dépendance ni d'outil** sans accord explicite. (Accordées à ce jour : `fastapi`, `uvicorn` — extra `api` de `pyproject.toml` — et `httpx` — extra `dev` ; toutes trois aussi dans `requirements.txt` pour la CI.)
 7. **Ne pas supprimer `bot/`** ni le mode `USE_ENGINE_V2`.
 8. Règles issues du **SRD 5.1 2014 uniquement** — le portage 2024 est l'ÉTAPE 5, en toute fin.
 9. **Principe d'intégrité des stats** (`ROADMAP.md`) : PV, emplacements et caractéristiques sont **dérivés**, jamais saisis librement.

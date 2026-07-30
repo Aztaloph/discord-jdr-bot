@@ -2,7 +2,7 @@
 """Repos long — SRD 2014."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from jdr_engine.domain.character.character import Character
 from jdr_engine.rules.class_features.barbarian import end_rage, rage_active
@@ -16,9 +16,14 @@ from jdr_engine.rules.rest.state import (
     sync_hit_dice_total,
 )
 from jdr_engine.rules.racial.features import reset_racial_features_on_long_rest
+from jdr_engine.rules.spellcasting.slots import (
+    get_max_spell_slots,
+    get_remaining_slots,
+)
 from jdr_engine.rules.spellcasting.state import (
     clear_concentration,
     format_slots_display,
+    get_slots_used,
     reset_spell_slots,
 )
 
@@ -33,6 +38,9 @@ class LongRestResult:
     hit_dice_regained: int
     slots_text: str
     prepared_rechoice_pending: bool = False
+    # Équivalent structuré de slots_text (lot DTO/API) — {niveau: nombre}.
+    slots_max: dict[int, int] = field(default_factory=dict)
+    slots_remaining: dict[int, int] = field(default_factory=dict)
 
 
 def apply_long_rest(
@@ -160,6 +168,10 @@ def apply_long_rest(
     character.choices = choices
 
     slots_text = format_slots_display(character)
+    slots_max = get_max_spell_slots(character.class_id, character.level)
+    slots_remaining = get_remaining_slots(
+        character.class_id, character.level, get_slots_used(character)
+    )
     result = LongRestResult(
         character_name=character.name,
         hp_before=hp_before,
@@ -169,5 +181,7 @@ def apply_long_rest(
         hit_dice_regained=dice_after - dice_before,
         slots_text=slots_text,
         prepared_rechoice_pending=rechoice_pending,
+        slots_max=dict(slots_max),
+        slots_remaining=dict(slots_remaining),
     )
     return character, result

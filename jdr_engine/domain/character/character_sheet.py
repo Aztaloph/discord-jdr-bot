@@ -8,6 +8,49 @@ from jdr_engine.domain.character.ability_scores import format_modifier
 
 
 @dataclass(frozen=True)
+class SavingThrowEntry:
+    """Jet de sauvegarde structuré — équivalent données de ``saving_throws`` (texte)."""
+
+    ability_id: str
+    modifier: int
+    proficient: bool
+
+
+@dataclass(frozen=True)
+class ClassFeatureRef:
+    """Aptitude de classe (id + libellé) — sans compteurs de ressources."""
+
+    feature_id: str
+    name: str
+
+
+@dataclass(frozen=True)
+class InnateSpellEntry:
+    """Sort inné racial — équivalent structuré d'``innate_spells_text``."""
+
+    spell_id: str
+    usage: str  # "at_will" | "one_per_long_rest"
+    min_level: int
+
+
+@dataclass(frozen=True)
+class SpellcastingView:
+    """Bloc incantation structuré — équivalent données de ``spellcasting_summary``."""
+
+    ability: str | None = None
+    pact_magic: bool = False
+    slots_max: dict[int, int] = field(default_factory=dict)
+    slots_remaining: dict[int, int] = field(default_factory=dict)
+    concentration_spell_id: str | None = None
+    concentration_spell_name: str | None = None
+    cantrips_known: tuple[str, ...] = ()
+    spells_prepared: tuple[str, ...] = ()
+    spells_known: tuple[str, ...] = ()
+    spellbook: tuple[str, ...] = ()
+    domain_spells: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class CharacterSheet:
     """Fiche personnage dérivée du Compendium + état Character."""
 
@@ -48,6 +91,17 @@ class CharacterSheet:
     class_features_lines: tuple[str, ...] = ()
     xp: int = 0
     image_url: str | None = None
+    # Équivalents structurés des champs d'affichage ci-dessus (lot DTO/API).
+    # Les champs *_text / *_labels / *_lines restent en place pour Discord ;
+    # les DTO n'exposent que les champs structurés.
+    saving_throw_entries: tuple[SavingThrowEntry, ...] = ()
+    proficient_skill_ids: tuple[str, ...] = ()
+    armor_proficiencies: tuple[str, ...] = ()
+    weapon_proficiencies: tuple[str, ...] = ()
+    damage_resistance_ids: tuple[str, ...] = ()
+    innate_spells: tuple[InnateSpellEntry, ...] = ()
+    class_features: tuple[ClassFeatureRef, ...] = ()
+    spellcasting: SpellcastingView | None = None
 
     def format_modifier(self, ability_id: str) -> str:
         mod = self.ability_modifiers.get(ability_id, 0)

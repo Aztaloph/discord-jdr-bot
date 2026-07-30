@@ -36,7 +36,7 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
 
 | Indicateur | Valeur |
 |---|---|
-| Tests unitaires | **681** verts (`python -m unittest discover -s tests -p "test_*.py" -q`) |
+| Tests unitaires | **711** verts (`python -m unittest discover -s tests -p "test_*.py" -q`) |
 | Classes SRD 2014 | 12/12 jouables (création + montée de niveau 1–20 full casters, ASI 5 paliers) |
 | Catalogue sorts curated | **42** sorts (schéma v2.0 ; grimoire mage **18** = quota niv. 7) |
 | Derniers commits | Axe B2–B3-b (schéma sorts v2.0 + catalogue mage niv. 1–4) sur `main` |
@@ -136,5 +136,6 @@ Items hors périmètre des lots fonctionnels — à traiter en passes dédiées,
 | 🔵 | **Edge cap-20 ASI (base 18 vs 19 + racial)** | Invariant cap effectif ≤ 20 démontré ; cas limite UI/validation à durcir en passe dédiée |
 | 🔵 | **Scaling upcast `slot_scaling` — clés B4** (`extra_targets`, `temp_hp`, `cold_damage`) | `missiles` / `damage_dice` / `healing_dice` livrés dans `cast.py` ; reste ouvert : `bless`, `armor_of_agathys` (ciblage, PV temp., dégâts de contact) — **Axe B4**, moteur d'effets |
 | 🔵 | **Concentration — durées et effets mécaniques** | Lot 1 ✅ : pose (`mechanics.concentration`, **13** sorts), remplacement, repos, `/perso-afficher`. **Ouvert** : expiration/durées (horloge combat, ÉTAPE 4), rupture sur dégâts (C5), buffs mécaniques (B4) |
+| 🔵 | **`CharacterSheet.trait_ids` contient des libellés, pas des ids** | `calculator.py` assigne `trait_ids = resolve_race_trait_labels()` (libellés FR) ; les vrais ids sont dans `resolve_race_traits()` (`entry_id`). DTO n'expose que `trait_names`. Corriger `build_character_sheet` + tests. |
 | 🔵 | **Log défensif `_sort_autocomplete`** | Diagnostic autocomplete `/sort` (« Échec des options de chargement ») — traçabilité sans masquer les exceptions |
 | 🔵 | **Élargissement catalogue curated (B3)** | 42 sorts actuels vs quotas SRD niv. 20 — voir `docs/SPELLS_INVENTORY.md` |

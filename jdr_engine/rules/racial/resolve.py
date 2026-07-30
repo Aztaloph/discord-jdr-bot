@@ -6,6 +6,7 @@ from typing import Any
 
 from jdr_engine.compendium.entry import CompendiumEntry
 from jdr_engine.domain.character.character import Character
+from jdr_engine.domain.character.character_sheet import InnateSpellEntry
 from jdr_engine.rules.racial.draconic_ancestry import get_draconic_ancestry
 
 HALF_ELF_FLEXIBLE_ABILITIES: tuple[str, ...] = ("str", "dex", "con", "int", "wis")
@@ -139,6 +140,36 @@ def format_innate_spells_display(
             name = engine.get_display_name("spell", str(spell_id), locale=locale) or spell_id
             parts.append(f"{name} (1/repos long, niv. 5+)")
     return " · ".join(parts)
+
+
+def collect_innate_spell_entries(character: Character) -> tuple[InnateSpellEntry, ...]:
+    """
+    Équivalent structuré de ``format_innate_spells_display`` — mêmes sources,
+    mêmes seuils de niveau (Tieffelin — Legs infernal).
+    """
+    if character.race_id != "tiefling":
+        return ()
+    state = get_innate_spells_state(character)
+    entries: list[InnateSpellEntry] = []
+    for spell_id in state.get("cantrips") or ["thaumaturgy"]:
+        entries.append(
+            InnateSpellEntry(spell_id=str(spell_id), usage="at_will", min_level=1)
+        )
+    if character.level >= 3:
+        for spell_id in state.get("spells_level_3") or ["hellish_rebuke"]:
+            entries.append(
+                InnateSpellEntry(
+                    spell_id=str(spell_id), usage="one_per_long_rest", min_level=3
+                )
+            )
+    if character.level >= 5:
+        for spell_id in state.get("spells_level_5") or ["darkness"]:
+            entries.append(
+                InnateSpellEntry(
+                    spell_id=str(spell_id), usage="one_per_long_rest", min_level=5
+                )
+            )
+    return tuple(entries)
 
 
 def build_tiefling_innate_spells() -> dict[str, Any]:

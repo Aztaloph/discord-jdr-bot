@@ -37,6 +37,14 @@ class SpellCastError(Exception):
     pass
 
 
+@dataclass(frozen=True)
+class MetamagicOption:
+    """Option de métamagie applicable au sort lancé (ensorceleur)."""
+
+    metamagic_id: str
+    cost: int
+
+
 @dataclass
 class SpellAttackRoll:
     index: int
@@ -81,6 +89,7 @@ class SpellCastResult:
     slots_remaining: dict[int, int] = field(default_factory=dict)
     damage_type: str = ""
     half_on_save: bool = True
+    metamagic_options: list[MetamagicOption] = field(default_factory=list)
     display_lines: list[str] = field(default_factory=list)
     updated_character: Character | None = None
 
@@ -684,6 +693,9 @@ def cast_spell(
             targets_single_creature=effect_type == "spell_attack",
         )
         if meta:
+            result.metamagic_options = [
+                MetamagicOption(metamagic_id=m, cost=cost) for m, cost in meta
+            ]
             lines = [
                 f"**{METAMAGIC_LABELS_FR.get(m, m)}** ({cost} pt{'s' if cost > 1 else ''})"
                 for m, cost in meta

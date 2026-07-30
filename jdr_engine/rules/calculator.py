@@ -10,7 +10,12 @@ from jdr_engine.domain.character.ability_scores import (
 )
 from jdr_engine.domain.character.effective_scores import compute_effective_ability_scores
 from jdr_engine.domain.character.character import Character
-from jdr_engine.domain.character.character_sheet import CharacterSheet
+from jdr_engine.domain.character.character_sheet import (
+    CharacterSheet,
+    ClassFeatureRef,
+    SavingThrowEntry,
+    SpellcastingView,
+)
 from jdr_engine.rules.derived_stats import (
     apply_class_hp_bonus,
     build_saving_throws,
@@ -25,6 +30,7 @@ from jdr_engine.rules.derived_stats import (
 )
 from jdr_engine.rules.engine import RuleEngine
 from jdr_engine.rules.racial.resolve import (
+    collect_innate_spell_entries,
     format_innate_spells_display,
     format_resistances_display,
     get_damage_resistances,
@@ -71,6 +77,71 @@ def calculate_hp_max_level_1(hit_die_faces: int, con_modifier: int) -> int:
 def calculate_ac_unarmored(dex_modifier: int) -> int:
     """CA sans armure (fallback) : 10 + mod DEX."""
     return 10 + dex_modifier
+
+
+def _build_spellcasting_view(
+    character: Character,
+    engine: RuleEngine,
+) -> SpellcastingView | None:
+    """
+    Bloc incantation structuré — équivalent données de ``spellcasting_summary``.
+
+    ``None`` pour les non-lanceurs (aucune mécanique de classe, aucun état).
+    """
+    from jdr_engine.rules.spellcasting.slots import (
+        get_max_spell_slots,
+        get_remaining_slots,
+    )
+    from jdr_engine.rules.spellcasting.state import (
+        get_cantrips_known,
+        get_domain_spells,
+        get_slots_used,
+        get_spellbook,
+        get_spellcasting_state,
+        get_spells_known,
+        get_spells_prepared_list,
+    )
+
+    class_entry = engine.get_entity("class", character.class_id)
+    mechanics = dict(class_entry.definition.mechanics or {}) if class_entry else {}
+    pact = mechanics.get("pact_magic")
+    spellcasting = mechanics.get("spellcasting")
+    ability: str | None = None
+    if isinstance(pact, dict):
+        raw = pact.get("ability")
+        ability = str(raw) if raw else None
+    elif isinstance(spellcasting, dict):
+        raw = spellcasting.get("ability")
+        ability = str(raw) if raw else None
+
+    state = get_spellcasting_state(character)
+    slots_max = get_max_spell_slots(character.class_id, character.level)
+    if ability is None and not state and not slots_max:
+        return None
+
+    slots_remaining = get_remaining_slots(
+        character.class_id, character.level, get_slots_used(character)
+    )
+    conc = state.get("concentration")
+    conc_spell_id: str | None = None
+    conc_spell_name: str | None = None
+    if isinstance(conc, dict):
+        conc_spell_id = conc.get("spell_id") or None
+        conc_spell_name = conc.get("spell_name") or None
+
+    return SpellcastingView(
+        ability=ability,
+        pact_magic=isinstance(pact, dict),
+        slots_max=dict(slots_max),
+        slots_remaining=dict(slots_remaining),
+        concentration_spell_id=conc_spell_id,
+        concentration_spell_name=conc_spell_name,
+        cantrips_known=tuple(get_cantrips_known(character)),
+        spells_prepared=tuple(get_spells_prepared_list(character)),
+        spells_known=tuple(get_spells_known(character)),
+        spellbook=tuple(get_spellbook(character)),
+        domain_spells=tuple(get_domain_spells(character)),
+    )
 
 
 def build_character_sheet(
@@ -162,9 +233,24 @@ def build_character_sheet(
         proficiency_bonus=proficiency,
     )
     saving_display = tuple(line.format_display() for line in save_lines)
+    saving_throw_entries = tuple(
+        SavingThrowEntry(
+            ability_id=line.ability_id,
+            modifier=line.modifier,
+            proficient=line.proficient,
+        )
+        for line in save_lines
+    )
 
     skill_ids = collect_proficient_skills(character, engine)
     skill_labels = tuple(skill_label_fr(sid) for sid in skill_ids)
+
+    class_mechanics = dict(class_entry.definition.mechanics or {})
+    armor_ids = [str(a) for a in (class_mechanics.get("armor_proficiencies") or [])]
+    for item in armor_bonus:
+        if item not in armor_ids:
+            armor_ids.append(str(item))
+    weapon_ids = [str(w) for w in (class_mechanics.get("weapon_proficiencies") or [])]
 
     hit_dice_remaining, hit_dice_total = read_hit_dice(character)
 
@@ -179,8 +265,10 @@ def build_character_sheet(
     trait_ids = traits  # labels utilisés pour affichage ; ids détaillés via resolve_race_traits si besoin
     trait_names = traits
 
-    damage_resistances = format_resistances_display(get_damage_resistances(character))
+    resistance_ids = get_damage_resistances(character)
+    damage_resistances = format_resistances_display(resistance_ids)
     innate_spells_text = format_innate_spells_display(character, engine, locale=locale)
+    innate_spell_entries = collect_innate_spell_entries(character)
 
     from jdr_engine.rules.class_features.display import build_class_features_display
 
@@ -188,10 +276,19 @@ def build_character_sheet(
         character, engine, locale=locale
     )
 
-    race_name = race.get_name(locale, engine.registry.manifest.default_locale)
-    class_name = class_entry.get_name(
-        locale, engine.registry.manifest.default_locale
+    default_locale = engine.registry.manifest.default_locale
+    class_feature_refs = tuple(
+        ClassFeatureRef(
+            feature_id=feature.entry_id,
+            name=feature.get_name(locale, default_locale),
+        )
+        for feature in engine.get_class_features(character.class_id, character.level)
     )
+
+    spellcasting_view = _build_spellcasting_view(character, engine)
+
+    race_name = race.get_name(locale, default_locale)
+    class_name = class_entry.get_name(locale, default_locale)
 
     return CharacterSheet(
         character_id=character.id,
@@ -233,4 +330,12 @@ def build_character_sheet(
         class_features_lines=class_features_lines,
         xp=character.xp,
         image_url=character.image_url,
+        saving_throw_entries=saving_throw_entries,
+        proficient_skill_ids=skill_ids,
+        armor_proficiencies=tuple(armor_ids),
+        weapon_proficiencies=tuple(weapon_ids),
+        damage_resistance_ids=tuple(resistance_ids),
+        innate_spells=innate_spell_entries,
+        class_features=class_feature_refs,
+        spellcasting=spellcasting_view,
     )
