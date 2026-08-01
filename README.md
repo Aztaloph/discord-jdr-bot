@@ -1,66 +1,107 @@
-# Discord JDR Bot
+# 🎲 Discord JDR Bot
 
-**Bot Discord de jeu de rôle — Donjons & Dragons 5e (SRD 2014)**
+**Moteur de jeu de rôle D&D 5e (SRD 2014) — auto-hébergeable, data-driven**
 
-Organisez vos parties directement sur Discord : fiches personnages, lancer de sorts, repos, montée de niveau — le moteur applique les règles SRD pour vous.
+Bot Discord **vivant** pour jouer aujourd'hui, moteur **`jdr_engine`** pensé pour demain : client Web, API et combat moteur pur. Les stats ne se trichent pas — PV, emplacements et caractéristiques sont **calculés** par le moteur, jamais saisis à la main.
 
-> Chaque MJ héberge **sa propre instance** du bot. Les données restent locales (SQLite), jamais partagées entre serveurs.
+> 🏠 Chaque MJ héberge **sa propre instance**. Données locales (SQLite), jamais partagées entre serveurs.
 
 <p align="center">
 
-| Tests | Classes | Sorts curated | Python |
-|:-----:|:-------:|:-------------:|:------:|
-| **645** ✅ | **12/12** | **42** | **3.12** |
+| 🧪 Tests | ⚔️ Classes | ✨ Sorts | 🐍 Python |
+|:--------:|:----------:|:-------:|:---------:|
+| **711** ✅ | **12/12** | **42** | **3.12** |
 
+</p>
+
+<p align="center">
+  <a href="VISION.md"><strong>Vision</strong></a> ·
+  <a href="ROADMAP.md"><strong>Roadmap</strong></a> ·
+  <a href="docs/API_LOCAL.md"><strong>API locale</strong></a> ·
+  <a href="docs/ARCHITECTURE.md"><strong>Architecture</strong></a>
 </p>
 
 ---
 
-## Ce que fait le bot aujourd'hui
+## 🧭 Où va le projet
 
-### Commandes joueur
+La **cible** est une plateforme JDR complète : moteur de règles indépendant, **client Web** comme interface de jeu principale, **Discord** réduit au social et aux notifications. Le détail stratégique est dans [`VISION.md`](VISION.md).
+
+| Priorité | Focus |
+|:--------:|-------|
+| 🔧 **Maintenant** | Moteur, API, banc de test HTTP — préparer le client Web |
+| 🛡️ **Discord** | Commandes existantes **maintenues**, pas de nouvelles features joueur |
+| ⚔️ **Ensuite** | Combat Engine (API moteur pure, sans rendu UI) |
+| 🌐 **Puis** | Client Web (fiche, sorts, HUD de combat, écran MJ) |
+
+---
+
+## ✅ Ce que le bot fait aujourd'hui
+
+### 👤 Commandes joueur
 
 | Domaine | Slash commands |
 |---------|----------------|
-| **Dés** | `/roll` — d20, avantage/désavantage, hooks traits raciaux |
-| **Personnages** | `/creer-perso` · `/perso-afficher` · `/perso-liste` · `/perso-choisir` |
-| **Sorts** | `/sort` — lancement avec autocomplete (✨ lançable · 🔒 niveau · 📘 non préparé) |
-| **Préparation** | `/preparer-sorts` — re-choix après repos long (clerc, druide, paladin, **magicien**) |
-| **Racial** | `/souffle` — Souffle draconique (Drakéide) |
+| 🎯 **Dés** | `/roll` — d20, avantage/désavantage, hooks traits raciaux |
+| 📋 **Personnages** | `/creer-perso` · `/perso-afficher` · `/perso-liste` · `/perso-choisir` |
+| ✨ **Sorts** | `/sort` — lancement avec autocomplete (✨ lançable · 🔒 niveau · 📘 non préparé) |
+| 📖 **Préparation** | `/preparer-sorts` — re-choix après repos long (clerc, druide, paladin, magicien) |
+| 🐉 **Racial** | `/souffle` — Souffle draconique (Drakéide) |
 
-### Commandes MJ (rôle `MJ` requis)
+### 🎭 Commandes MJ (rôle `MJ` requis)
 
 | Domaine | Slash commands |
 |---------|----------------|
-| **Repos** | `/repos-long` · `/repos-court` |
-| **Progression** | `/monter-niveau` — niv. 2–20 (PV, emplacements, sorts, ASI aux paliers 4/8/12/16/19) |
-| **Admin** | `/perso-supprimer` · `/reset-grimoire` · `/migrer-grimoires` |
+| 😴 **Repos** | `/repos-long` · `/repos-court` |
+| 📈 **Progression** | `/monter-niveau` — niv. 2–20 (PV, emplacements, sorts, ASI 4/8/12/16/19) |
+| 🔧 **Admin** | `/perso-supprimer` · `/reset-grimoire` · `/migrer-grimoires` |
 
-### Contenu SRD 2014
+### 📚 Contenu SRD 2014
 
 **9 races** — Humain · Elfe · Nain · Halfelin · Drakéide · Gnome des roches · Demi-elfe · Demi-orc · Tieffelin
 
-**12 classes** (niv. 1–20 full casters) — Barbar · Barde · Clerc · Druide · Guerrier · Moine · Occultiste · Paladin · Rôdeur · Roublard · Ensorceleur · **Magicien**
+**12 classes** (niv. 1–20, full casters) — Barbar · Barde · Clerc · Druide · Guerrier · Moine · Occultiste · Paladin · Rôdeur · Roublard · Ensorceleur · **Magicien**
 
-**42 sorts** curated — schéma v2.0 (`effects[]`, pools dérivés du compendium YAML), cantrips à niv. 4 pour le magicien, incantation instantanée avec métadonnées mécaniques.
+**42 sorts** curated — schéma v2.0 (`effects[]`, pools dérivés du compendium YAML), incantation instantanée avec métadonnées mécaniques.
 
-**Magicien (pool curated)** — 4 cantrips · 18 sorts au grimoire (quota SRD niv. 7) : niv. 1–2, puis `fireball`, `lightning_bolt`, `counterspell`, `dispel_magic`, `fly`, `haste`, `polymorph`, `banishment`, `dimension_door`, `ice_storm`.
-
----
-
-## Philosophie
-
-- Les **stats sont sacrées** — le joueur ne modifie jamais ses PV, emplacements ou caractéristiques à la main.
-- Tout calcul passe par le **moteur de règles** (`jdr_engine`), en réaction à une action de jeu.
-- Un joueur peut avoir **plusieurs personnages**, mais **un seul actif** à la fois (`/perso-choisir`).
+**Magicien (pool curated)** — 4 cantrips · 18 sorts au grimoire (quota SRD niv. 7).
 
 ---
 
-## Démarrage rapide (Windows)
+## 🔌 API HTTP — banc de test (nouveau)
+
+Une **API FastAPI** permet d'observer un personnage **hors Discord** : fiche calculée, lancer un sort, repos court/long. Couche de sérialisation **données uniquement** (pas de texte pré-formaté Discord).
+
+```powershell
+venv\Scripts\python.exe -m pip install -r requirements.txt
+venv\Scripts\python.exe -m uvicorn --factory interfaces.api.app:create_app
+```
+
+→ Documentation complète : [`docs/API_LOCAL.md`](docs/API_LOCAL.md) · Swagger : `http://127.0.0.1:8000/docs`
+
+| Méthode | Route | Effet |
+|:-------:|-------|-------|
+| `GET` | `/characters/{id}/sheet` | Fiche calculée (DTO JSON) |
+| `POST` | `/characters/{id}/cast` | Lance un sort, persiste l'état |
+| `POST` | `/characters/{id}/short-rest` | Repos court |
+| `POST` | `/characters/{id}/long-rest` | Repos long |
+
+---
+
+## 💡 Philosophie
+
+- 🔒 **Stats sacrées** — le joueur ne modifie jamais PV, emplacements ou caractéristiques à la main.
+- ⚙️ **Moteur d'abord** — tout calcul passe par `jdr_engine`, en réaction à une action de jeu.
+- 👥 **Un actif à la fois** — plusieurs personnages possibles, un seul actif par défaut (`/perso-choisir`).
+- 📦 **Compendium = source de vérité** — races, classes, sorts en YAML ; pools dérivés, jamais codés en dur.
+
+---
+
+## 🚀 Démarrage rapide (Windows)
 
 ### Prérequis
 
-- [Python 3.12](https://www.python.org/downloads/) recommandé — minimum 3.11 — cocher **Add to PATH**
+- [Python 3.12](https://www.python.org/downloads/) recommandé (minimum 3.11) — cocher **Add to PATH**
 - Un bot sur le [portail Discord Developer](https://discord.com/developers/applications)
 
 ### Installation
@@ -96,64 +137,73 @@ Sortie attendue : `Bot connecté !` + chargement des cogs.
 
 ### Rôle MJ
 
-Créez un rôle Discord nommé **`MJ`**. Les commandes repos, montée de niveau et suppression personnage le requièrent.
+Créez un rôle Discord nommé **`MJ`**. Repos, montée de niveau et suppression personnage le requièrent.
 
 ---
 
-## Tests
+## 🧪 Tests
 
 ```powershell
 .\venv\Scripts\activate
 python -m unittest discover -s tests -p "test_*.py" -q
 ```
 
-**645 tests** unitaires — moteur de règles, sorts, persistance SQLite, handlers Discord.
+**711 tests** — moteur de règles, sorts, concentration, DTO/API, persistance SQLite, handlers Discord.
+
+Validation compendium :
+
+```powershell
+python tools/validate_compendium.py dnd5e
+```
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 ```
 discord-jdr-bot/
-├── main.py                      # Point d'entrée
-├── bot/cogs/                    # Slash commands Discord
-├── interfaces/discord/          # Handlers, embeds, wizards UI
-├── jdr_engine/
-│   ├── application/             # CharacterService (use cases)
-│   ├── domain/                  # Character, CharacterSheet
-│   ├── rules/                   # Rule Engine (stateless, data-driven)
-│   │   └── spellcasting/        # Pools, préparation, cast, spell_pool_builder
-│   ├── persistence/             # SQLite + migrations
-│   └── dice/                    # Parser et roller de dés
-├── compendium/dnd5e/entries/    # Données YAML (races, classes, sorts, traits)
-├── docs/                        # SPELLS_INVENTORY, SPELL_SCHEMA, migration B2
-├── data/bot.db                  # Base locale (ignorée par git)
-├── installer.bat / launcher_bot.bat
-└── tests/unit/                  # Suite unitaire
+├── main.py                          # Point d'entrée bot Discord
+├── bot/cogs/                        # Slash commands (couche fine)
+├── interfaces/
+│   ├── discord/                     # Handlers, embeds, wizards UI
+│   └── api/                         # API FastAPI (banc de test)
+├── jdr_engine/                      # Moteur pur — zéro import Discord
+│   ├── application/                 # CharacterService, DTO de sortie
+│   ├── domain/                      # Character, CharacterSheet
+│   ├── rules/                       # Rule Engine (stateless, data-driven)
+│   │   └── spellcasting/            # Pools, préparation, cast
+│   ├── persistence/                 # SQLite
+│   └── dice/                        # Parser et roller de dés
+├── compendium/dnd5e/entries/        # Données YAML (races, classes, sorts)
+├── docs/                            # Schémas sorts, API locale, architecture
+├── data/bot.db                      # Base locale (ignorée par git)
+└── tests/unit/                      # Suite unitaire
 ```
 
-Le **Rule Engine** charge le Compendium YAML et calcule les stats dérivées — aucune règle D&D codée en dur dans les cogs. Les pools de sorts par classe sont **dérivés** des fiches YAML (`classes[]`, `class_pool_order`), pas dupliqués en dur.
+Le **Rule Engine** charge le Compendium YAML et calcule les stats dérivées — aucune règle D&D dans les cogs ni dans `interfaces/`.
 
 ---
 
-## Où on en est
+## 📍 Où on en est
 
 | Axe | Statut | Détail |
-|-----|--------|--------|
-| **Passe 2 sorts** | ✅ | Préparés / grimoire / autocomplete mage, outils MJ migration grimoire |
-| **Lot Level-up 4+** | ✅ | Cap niv. 20, ASI 4/8/12/16/19, tables full casters 1–20 |
-| **Axe B — Schéma sorts v2.0** | ✅ | `effects[]`, migration 28→42 sorts, pools dérivés YAML |
-| **B3-a / B3-b mage** | ✅ | +6 sorts niv. 3, +4 sorts niv. 4 (grimoire 18 = quota niv. 7) |
-| **B4 — Moteur d'effets** | 🔜 | Upcast, concentration persistante, réactions (`counterspell`)… |
-| **Étape 4 — Combat** | 🔜 | Initiative, tour par tour, XP |
+|-----|:------:|--------|
+| **Passe 2 sorts** | ✅ | Préparés / grimoire / autocomplete mage, outils MJ migration |
+| **Level-up 4+ (ASI)** | ✅ | Cap niv. 20, ASI 5 paliers, full casters 1–20 |
+| **Axe B — Schéma v2.0** | ✅ | 42 sorts curated, pools dérivés YAML |
+| **Concentration (hors combat)** | ✅ | Pose, remplacement, repos, affichage fiche (13 sorts) |
+| **DTO + API HTTP** | ✅ | `output_serializers`, 4 endpoints, 29 tests dédiés |
+| **B4 — Moteur d'effets** | 🔜 | Buffs mécaniques, durées, rupture sur dégâts |
+| **Étape 4 — Combat** | 🔜 | API moteur pure (initiative, tours, dégâts) |
+| **Client Web** | 🔜 | Interface de jeu principale (après combat moteur) |
 
 Documentation sorts → [`docs/SPELLS_INVENTORY.md`](docs/SPELLS_INVENTORY.md) · [`docs/SPELL_SCHEMA.md`](docs/SPELL_SCHEMA.md)
 
-Détail complet → [ROADMAP.md](ROADMAP.md)
+Feuille de route complète → [`ROADMAP.md`](ROADMAP.md)
 
 ---
 
-## Sécurité
+## 🔐 Sécurité
 
 Ne **jamais** committer :
 
@@ -165,6 +215,6 @@ Token exposé → régénérer immédiatement sur le portail Discord.
 
 ---
 
-## Licence contenu
+## 📜 Licence contenu
 
 Règles et textes dérivés du **SRD 5.1 (2014)** — Open Gaming License.
