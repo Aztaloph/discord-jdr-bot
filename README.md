@@ -1,8 +1,8 @@
-# 🎲 Discord JDR Bot
+# 🎲 JDR Engine
 
 **Moteur de jeu de rôle D&D 5e (SRD 2014) — auto-hébergeable, data-driven**
 
-Bot Discord **vivant** pour jouer aujourd'hui, moteur **`jdr_engine`** pensé pour demain : client Web, API et combat moteur pur. Les stats ne se trichent pas — PV, emplacements et caractéristiques sont **calculés** par le moteur, jamais saisis à la main.
+**JDR Engine** avec client Discord **vivant** pour jouer aujourd'hui, moteur **`jdr_engine`** pensé pour demain : client Web, API et combat moteur pur. Les stats ne se trichent pas — PV, emplacements et caractéristiques sont **calculés** par le moteur, jamais saisis à la main.
 
 > 🏠 Chaque MJ héberge **sa propre instance**. Données locales (SQLite), jamais partagées entre serveurs.
 

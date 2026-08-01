@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JDR Engine — client de test</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>JDR Engine — client de test</h1>
+    <p>Fiche personnage et actions via l'API locale (même origine, sans CORS).</p>
+  </header>
+
+  <main>
+    <div id="status-banner" role="alert" aria-live="polite"></div>
+
+    <section class="panel" aria-labelledby="load-heading">
+      <h2 id="load-heading">Charger un personnage</h2>
+      <div class="row">
+        <label>
+          Identifiant personnage
+          <input type="text" id="character-id" placeholder="ex. abc123" autocomplete="off">
+        </label>
+        <button type="button" id="btn-load">Charger la fiche</button>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="actions-heading">
+      <h2 id="actions-heading">Actions</h2>
+      <p id="actions-hint" class="hidden" style="color:#71717a;font-size:0.875rem;margin:0 0 0.75rem;">
+        Chargez d'abord un personnage pour activer les actions.
+      </p>
+      <div class="row">
+        <label>
+          Sort (spell_id)
+          <input type="text" id="spell-id" placeholder="ex. hex" autocomplete="off">
+        </label>
+        <button type="button" id="btn-cast" disabled>Lancer le sort</button>
+      </div>
+      <div class="row" style="margin-top:0.75rem;">
+        <label>
+          Dés de vie (repos court)
+          <input type="number" id="dice-to-spend" min="0" value="1">
+        </label>
+        <button type="button" id="btn-short-rest" disabled>Repos court</button>
+        <button type="button" id="btn-long-rest" disabled>Repos long</button>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="result-heading">
+      <h2 id="result-heading">Dernier résultat d'action</h2>
+      <pre id="action-result" class="empty">Aucune action exécutée.</pre>
+    </section>
+
+    <section class="panel" aria-labelledby="sheet-heading">
+      <h2 id="sheet-heading">Fiche personnage</h2>
+      <p id="sheet-empty">Aucune fiche chargée.</p>
+      <div id="sheet-content" class="hidden"></div>
+    </section>
+  </main>
+
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

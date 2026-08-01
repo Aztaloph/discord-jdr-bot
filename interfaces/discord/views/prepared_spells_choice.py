@@ -17,7 +17,7 @@ from jdr_engine.rules.spellcasting.prepared_choice import PreparedChoiceContext
 from interfaces.discord.formatters.character_embed import COULEUR_ERREUR, COULEUR_SUCCES
 
 logger = logging.getLogger(__name__)
-FOOTER = "JDR Bot — D&D 5e SRD 2014"
+FOOTER = "JDR Engine — D&D 5e SRD 2014"
 
 
 def _spell_label(engine: RuleEngine, spell_id: str) -> str:

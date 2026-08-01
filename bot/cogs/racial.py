@@ -64,7 +64,7 @@ class RacialCog(commands.Cog):
                     title="❌ Souffle impossible",
                     description=str(exc),
                     color=COLOR_ERROR,
-                ).set_footer(text="JDR Bot — D&D 5e SRD 2014"),
+                ).set_footer(text="JDR Engine — D&D 5e SRD 2014"),
                 ephemeral=True,
             )
             return

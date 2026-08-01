@@ -17,7 +17,7 @@ from interfaces.discord.formatters.character_embed import (
 from interfaces.discord.handlers.mj_delete import guild_character_autocomplete
 from interfaces.discord.permissions.mj import require_mj_role
 
-FOOTER = "JDR Bot — D&D 5e SRD 2014"
+FOOTER = "JDR Engine — D&D 5e SRD 2014"
 
 
 def build_long_rest_embed(result) -> discord.Embed:

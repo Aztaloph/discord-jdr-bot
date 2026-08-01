@@ -4,7 +4,7 @@ cogs/character.py
 Cog Discord pour la gestion des fiches de personnages D&D 5e.
 Commandes en français avec assistants modals style jeu vidéo.
 
-Auteur : Bot JDR
+Auteur : JDR Engine
 Version : 1.0.0
 """
 

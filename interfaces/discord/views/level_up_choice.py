@@ -21,7 +21,7 @@ from interfaces.discord.components.asi_distribution import (
 from interfaces.discord.formatters.character_embed import COULEUR_ERREUR, COULEUR_SUCCES
 
 logger = logging.getLogger(__name__)
-FOOTER = "JDR Bot — D&D 5e SRD 2014"
+FOOTER = "JDR Engine — D&D 5e SRD 2014"
 
 
 def build_level_up_embed(result) -> "discord.Embed":

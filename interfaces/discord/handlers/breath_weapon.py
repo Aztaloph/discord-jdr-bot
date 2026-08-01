@@ -11,7 +11,7 @@ from jdr_engine.rules.racial.breath_weapon import BreathWeaponError, use_breath_
 from interfaces.discord.container import DiscordJdrContext
 from interfaces.discord.formatters.character_embed import COULEUR_ERREUR
 
-FOOTER = "JDR Bot — D&D 5e SRD 2014"
+FOOTER = "JDR Engine — D&D 5e SRD 2014"
 COLOR_BREATH = discord.Color(0xE67E22)
 
 

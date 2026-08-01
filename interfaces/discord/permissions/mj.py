@@ -17,7 +17,7 @@ def build_mj_denied_embed() -> discord.Embed:
             "Demandez à votre MJ si vous pensez avoir besoin de cette commande."
         ),
         color=COLOR_MJ_DENIED,
-    ).set_footer(text="JDR Bot — D&D 5e SRD 2014")
+    ).set_footer(text="JDR Engine — D&D 5e SRD 2014")
 
 
 def user_has_mj_role(member: discord.Member | None) -> bool:

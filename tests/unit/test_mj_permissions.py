@@ -29,7 +29,7 @@ class TestMjPermissions(unittest.TestCase):
 
     def test_denied_embed_footer(self):
         embed = build_mj_denied_embed()
-        self.assertIn("JDR Bot", embed.footer.text)
+        self.assertIn("JDR Engine", embed.footer.text)
 
 
 if __name__ == "__main__":

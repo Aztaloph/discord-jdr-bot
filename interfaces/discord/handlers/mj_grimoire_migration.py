@@ -20,7 +20,7 @@ from interfaces.discord.formatters.character_embed import (
 )
 from interfaces.discord.permissions.mj import require_mj_role, user_has_mj_role
 
-FOOTER = "JDR Bot — D&D 5e SRD 2014"
+FOOTER = "JDR Engine — D&D 5e SRD 2014"
 PAGE_SIZE = 8
 
 

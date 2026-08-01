@@ -1,4 +1,4 @@
-# main.py — Point d'entrée du bot Discord JDR D&D 5e.
+# main.py — Point d'entrée client Discord — JDR Engine (D&D 5e).
 # Étape 1 : socle propre + lancer de dés (dice.py)
 # Étapes à venir : fiches perso, combat Pokémon, générateur de PNJ.
 import json
@@ -105,7 +105,7 @@ def main():
     bot = commands.Bot(
         command_prefix="!",
         intents=intents,
-        description="Bot JDR D&D 5e — Lanceur de dés et boîte à outils JDR",
+        description="JDR Engine — D&D 5e. Client Discord : lancer de dés et outils JDR",
     )
 
     # ── setup_hook : appelé UNE fois avant la connexion ─────────────────────

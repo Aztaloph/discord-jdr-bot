@@ -1,6 +1,6 @@
 # AGENTS.md — instructions pour les agents IA
 
-Projet : **Discord JDR Bot** — moteur de jeu de rôle D&D 5e (SRD 5.1 **2014 uniquement**).
+Projet : **JDR Engine** — moteur de jeu de rôle D&D 5e (SRD 5.1 **2014 uniquement**).
 Langue de travail : **français** (code, commentaires, docstrings, commits, documentation).
 
 Tu démarres sans mémoire des sessions précédentes. Ce fichier et les documents canoniques sont ta seule source de contexte. **Ne déduis rien d'un historique de chat.**

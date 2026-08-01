@@ -15,7 +15,7 @@ from interfaces.discord.formatters.character_embed import (
 from interfaces.discord.permissions.mj import require_mj_role
 from interfaces.discord.views.level_up_choice import _handle_level_up_pending
 
-FOOTER = "JDR Bot — D&D 5e SRD 2014"
+FOOTER = "JDR Engine — D&D 5e SRD 2014"
 
 
 def build_level_up_embed(result) -> discord.Embed:

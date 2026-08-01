@@ -17,7 +17,7 @@ from interfaces.discord.views.prepared_spells_choice import (
     build_prepared_spells_embed,
 )
 
-FOOTER = "JDR Bot — D&D 5e SRD 2014"
+FOOTER = "JDR Engine — D&D 5e SRD 2014"
 
 
 async def player_preparer_sorts(

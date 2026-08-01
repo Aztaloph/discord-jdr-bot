@@ -127,7 +127,7 @@ L'état du jeu = replay de tous les événements depuis le début.
 |---|---|
 | Audit trail parfait | Complexité extrême |
 | Time travel | Rebuild d'état coûteux |
-| | Overkill pour un bot Discord JDR |
+| | Overkill pour le client Discord de JDR Engine |
 
 **Rejetée pour l'instant** — le bus publish/subscribe suffit ; certains événements peuvent être **persistés** sélectivement (log de combat) sans event sourcing global.
 

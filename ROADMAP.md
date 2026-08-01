@@ -1,4 +1,4 @@
-# Feuille de route — Discord JDR Bot (D&D 5e SRD 2014)
+# Feuille de route — JDR Engine (D&D 5e SRD 2014)
 
 > **ROADMAP.md** est la **source de vérité opérationnelle** (quoi livrer, dans quel ordre, où on en est). La **source de vérité stratégique** (le « pourquoi », l'architecture cible, le modèle) est [`VISION.md`](VISION.md). Ce document ne duplique pas la vision : il s'y réfère.
 

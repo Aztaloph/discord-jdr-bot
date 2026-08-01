@@ -26,7 +26,7 @@ from interfaces.discord.formatters.character_embed import (
     COULEUR_PRINCIPALE,
 )
 
-FOOTER = "JDR Bot — D&D 5e SRD 2014"
+FOOTER = "JDR Engine — D&D 5e SRD 2014"
 _ACTION_ROW = 4
 
 

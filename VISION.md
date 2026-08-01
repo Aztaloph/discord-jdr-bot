@@ -1,4 +1,4 @@
-# Vision produit — Discord JDR Bot
+# Vision produit — JDR Engine
 
 > Document fondateur du projet. Il définit la **cible à plusieurs années**, les décisions structurantes arrêtées et la manière dont elles s'articulent avec l'état réel du code.
 >
@@ -12,7 +12,7 @@
 
 Faire tourner une table de jeu de rôle Donjons & Dragons 5e demande aujourd'hui de jongler entre un logiciel de fiche, un lanceur de dés, une VTT payante et un salon vocal. Les outils existants sont soit **fermés et payants**, soit **auto-hébergeables mais austères**, soit **enfermés dans Discord** avec des fiches illisibles.
 
-**Discord JDR Bot** part d'un principe simple, déjà inscrit dans le code : **le joueur ne triche jamais avec ses chiffres**. Les PV, emplacements de sorts et caractéristiques sont **dérivés** par un moteur de règles ; ils ne sont jamais saisis à la main (voir *Principe d'intégrité des stats*, `ROADMAP.md`). Autour de ce moteur, on construit un outil de jeu complet, **libre, auto-hébergeable et jouable de bout en bout gratuitement**.
+**JDR Engine** part d'un principe simple, déjà inscrit dans le code : **le joueur ne triche jamais avec ses chiffres**. Les PV, emplacements de sorts et caractéristiques sont **dérivés** par un moteur de règles ; ils ne sont jamais saisis à la main (voir *Principe d'intégrité des stats*, `ROADMAP.md`). Autour de ce moteur, on construit un outil de jeu complet, **libre, auto-hébergeable et jouable de bout en bout gratuitement**.
 
 ### La cible
 

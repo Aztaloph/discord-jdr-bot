@@ -59,7 +59,7 @@ from interfaces.discord.formatters.character_embed import (
 
 logger = logging.getLogger(__name__)
 
-FOOTER = "JDR Bot — D&D 5e SRD 2014"
+FOOTER = "JDR Engine — D&D 5e SRD 2014"
 CREATION_SRD_CLASSES_HINT = (
     "Les **12 classes SRD** sont disponibles. "
     "Les sorts se lancent via `/sort`."

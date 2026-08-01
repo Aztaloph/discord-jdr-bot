@@ -87,7 +87,7 @@ def _build_embed(result: RollDisplay) -> discord.Embed:
             detail += f" {result.modifier_label} = {result.total}"
         embed.add_field(name="Détail", value=detail, inline=False)
 
-    footer = "JDR Bot — D&D 5e"
+    footer = "JDR Engine — D&D 5e"
     if hints:
         footer = f"{hints[0]} · {footer}"
     embed.set_footer(text=footer)

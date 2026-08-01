@@ -21,7 +21,7 @@ from interfaces.discord.formatters.character_embed import (
     list_entry_line,
 )
 
-FOOTER = "JDR Bot — D&D 5e SRD 2014"
+FOOTER = "JDR Engine — D&D 5e SRD 2014"
 
 
 def _guild_id(interaction: discord.Interaction) -> str | None:

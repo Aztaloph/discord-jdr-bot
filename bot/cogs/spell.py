@@ -41,7 +41,7 @@ def _build_spell_embed(display: SpellDisplay) -> discord.Embed:
             value="\n".join(f"• {line}" for line in display.display_lines),
             inline=False,
         )
-    embed.set_footer(text="JDR Bot — D&D 5e SRD 2014 · Lanceur de sorts")
+    embed.set_footer(text="JDR Engine — D&D 5e SRD 2014 · Lanceur de sorts")
     return embed
 
 

@@ -30,7 +30,7 @@ class CreationCog(commands.Cog):
                     title="❌ Moteur v2 requis",
                     description="La création de personnage nécessite le moteur v2.",
                     color=0xF44336,
-                ).set_footer(text="JDR Bot — D&D 5e SRD 2014"),
+                ).set_footer(text="JDR Engine — D&D 5e SRD 2014"),
                 ephemeral=True,
             )
             return

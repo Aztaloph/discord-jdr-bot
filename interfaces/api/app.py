@@ -27,12 +27,15 @@ le dernier écrivain gagne (``save`` fait un upsert complet, sans verrou ni
 version). Deux écritures concurrentes sur le même personnage se recouvrent.
 
 Lancement local : voir ``docs/API_LOCAL.md`` (fabrique ``create_app`` + uvicorn).
+Client web statique : ``GET /`` (HTML) · assets ``/static/*`` (même origine, pas de CORS).
 """
 from __future__ import annotations
 
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from jdr_engine.application.dto.output_serializers import (
@@ -50,6 +53,8 @@ from jdr_engine.rules.calculator import build_character_sheet
 from jdr_engine.rules.engine import RuleEngine
 from jdr_engine.rules.rest import RestError, apply_long_rest, apply_short_rest
 from jdr_engine.rules.spellcasting.cast import SpellCastError, cast_spell
+
+STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 
 class CastSpellRequest(BaseModel):
@@ -79,7 +84,7 @@ def create_app(
 
     app = FastAPI(
         title="JDR Engine API",
-        description="Banc de test HTTP — lecture de fiche et actions de jeu.",
+        description="JDR Engine — banc de test HTTP (fiche, sorts, repos).",
         version="0.1.0",
     )
 
@@ -136,5 +141,18 @@ def create_app(
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         repository.save(updated)
         return long_rest_result_to_dict(result)
+
+    @app.get("/")
+    def serve_client() -> FileResponse:
+        """Page d'accueil — client web statique (HTML/CSS/JS vanilla)."""
+        index = STATIC_DIR / "index.html"
+        if not index.is_file():
+            raise HTTPException(
+                status_code=500,
+                detail="Client web introuvable (interfaces/api/static/index.html).",
+            )
+        return FileResponse(index)
+
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     return app

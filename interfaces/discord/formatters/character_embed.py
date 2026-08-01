@@ -23,7 +23,7 @@ COULEUR_SUCCES = 0x228B22
 COULEUR_ERREUR = 0xDC143C
 COULEUR_INFO = 0x4169E1
 
-FOOTER = "JDR Bot — D&D 5e SRD 2014"
+FOOTER = "JDR Engine — D&D 5e SRD 2014"
 
 ABILITY_ORDER = ("str", "dex", "con", "int", "wis", "cha")
 ABILITY_ABBREV = {
