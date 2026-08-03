@@ -125,6 +125,7 @@ def _row_to_record(row) -> CombatRecord:
     combat_id = int(row["id"])
     state = CombatState.from_dict(
         data,
+        sql_status=str(row["status"]),
         combat_id=str(combat_id),
         guild_id=str(row["guild_id"]),
         channel_id=str(row["channel_id"]),

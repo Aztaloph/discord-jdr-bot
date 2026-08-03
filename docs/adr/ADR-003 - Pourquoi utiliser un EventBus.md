@@ -71,6 +71,8 @@ class EventBus(Protocol):
 7. **Correspondance de type exacte** : un abonné enregistré pour `T` reçoit uniquement les événements dont `type(event) is T` — pas de remontée d'héritage (voir § Clôture lot C0)
 8. **Événements plats** : chaque événement métier est une sous-classe **directe** de `DomainEvent`, sans classe intermédiaire porteuse de sémantique (ex. pas de `CombatEvent` parent) — lots C1–C7
 
+> **Note technique (lot C0)** : les sous-classes frozen de `DomainEvent` portant des champs obligatoires requièrent `@dataclass(frozen=True, kw_only=True)` — contrainte des dataclasses héritées en Python lorsque la base définit des champs avec valeurs par défaut.
+
 ### Exemple de flux
 
 ```

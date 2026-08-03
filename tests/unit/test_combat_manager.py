@@ -182,6 +182,39 @@ class TestCombatManager(unittest.TestCase):
         with self.assertRaises(CombatStateVersionError):
             self.combat_repo.get_by_id(record.combat_id)
 
+    def test_blob_does_not_contain_status(self) -> None:
+        state = self.manager.create_combat("guild1", "channel1", [self.alice.id])
+        import sqlite3
+
+        conn = sqlite3.connect(self.db_path)
+        row = conn.execute(
+            "SELECT state_json FROM combats WHERE id = ?",
+            (int(state.combat_id),),
+        ).fetchone()
+        conn.close()
+        data = json.loads(row[0])
+        self.assertNotIn("status", data)
+
+    def test_legacy_blob_status_ignored_uses_sql_column(self) -> None:
+        import sqlite3
+
+        state = self.manager.create_combat("guild1", "channel1", [self.alice.id])
+        conn = sqlite3.connect(self.db_path)
+        row = conn.execute(
+            "SELECT state_json FROM combats WHERE id = ?",
+            (int(state.combat_id),),
+        ).fetchone()
+        data = json.loads(row[0])
+        data["status"] = "ended"
+        conn.execute(
+            "UPDATE combats SET state_json = ? WHERE id = ?",
+            (json.dumps(data), int(state.combat_id)),
+        )
+        conn.commit()
+        conn.close()
+        loaded = self.manager.load_combat(int(state.combat_id))
+        self.assertEqual(loaded.status, "active")
+
     def test_empty_character_list_rejected(self) -> None:
         with self.assertRaises(ValueError):
             self.manager.create_combat("guild1", "channel1", [])

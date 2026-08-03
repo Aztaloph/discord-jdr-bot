@@ -218,12 +218,22 @@ Centraliser `personnages` et `combats` dans **`data/bot.db`** évite deux fichie
 | **Clé primaire** | `id INTEGER PRIMARY KEY AUTOINCREMENT` ; `combat_id` métier = `str(id)` |
 | **Rattachement** | Colonnes `guild_id`, `channel_id` |
 | **Unicité** | **Un combat actif par salon** (`channel_id`), pas par serveur — index unique partiel SQLite `idx_combats_active_channel WHERE status = 'active'` + colonne SQL `status` (`active` \| `ended`) |
+| **Statut** | **Colonne SQL seule** — absent du blob JSON (correctif C1a) ; `CombatState.status` reconstruit à la lecture depuis la colonne |
 | **Version blob** | Champ entier `schema_version` dans le JSON (`COMBAT_STATE_VERSION = 1`), distinct du schéma SQL (`DB_SCHEMA_VERSION = 2`) ; lecture échoue explicitement si version inconnue — **pas de migration blob en C1** |
 | **Combats terminés** | Restent en base (`status = ended`) ; n'empêchent pas un nouveau combat actif sur le même salon |
+| **Blob legacy C1** | Un champ `status` surnuméraire dans un blob v1 existant est **ignoré** à la lecture (pas d'erreur) |
 
 **Justification blob unique** : l'état est toujours lu/écrit en intégralité ; pas de requête analytique cross-combat sur le contenu — cohérent ADR-004.
 
-**Justification index partiel** : SQLite supporte `CREATE UNIQUE INDEX … WHERE status = 'active'` ; la colonne `status` SQL duplique l'information du blob pour la contrainte sans parser le JSON à l'insertion.
+**Justification statut SQL uniquement** : la colonne est requise par l'index unique partiel ; la dupliquer dans le blob créait deux sources synchronisées à la main — une divergence aurait corrompu silencieusement la contrainte d'unicité (correctif C1a).
+
+**Justification index partiel** : SQLite supporte `CREATE UNIQUE INDEX … WHERE status = 'active'` ; le statut est lu depuis la colonne SQL sans parser le JSON.
+
+### Décision 6ter — Clôture idempotente (lot C1a, 2026-08-03)
+
+`close_combat` sur un combat déjà `ended` **retourne l'état** sans republier `CombatEnded`.
+
+**Justification** : une republication ferait rejouer les effets de fin de combat aux abonnés — risque aggravé en **C6** lorsque les effets en cascade existeront.
 
 ---
 

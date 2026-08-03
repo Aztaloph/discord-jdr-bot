@@ -11,6 +11,7 @@ from jdr_engine.core.events.combat_events import CombatEnded, CombatStarted
 from jdr_engine.domain.combat.combat_state import (
     COMBAT_STATE_VERSION,
     CombatState,
+    sql_status_from_combat,
     utc_now_iso,
 )
 from jdr_engine.domain.combat.combatant import Combatant
@@ -137,9 +138,7 @@ class CombatManager:
         record = self._combats.get_by_id(combat_id)
         if record is None:
             raise CombatNotFoundError(f"Combat introuvable : id={combat_id}.")
-        sql_status = "active" if state.status == "active" else "ended"
-        if state.status not in ("active", "ended"):
-            sql_status = record.sql_status
+        sql_status = sql_status_from_combat(state.status)
         self._combats.save(
             CombatRecord(
                 combat_id=combat_id,

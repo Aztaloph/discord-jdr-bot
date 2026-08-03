@@ -2,7 +2,7 @@
 """État d'une rencontre — sérialisé en JSON (blob SQLite, lot C1)."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Literal
 
@@ -12,9 +12,26 @@ COMBAT_STATE_VERSION = 1
 
 CombatStatus = Literal["preparing", "active", "ended"]
 
+# Valeurs persistées en colonne SQL (index partiel lot C1).
+SqlCombatStatus = Literal["active", "ended"]
+
 
 class CombatStateVersionError(Exception):
     """Version de blob JSON non supportée."""
+
+
+def combat_status_from_sql(sql_status: str) -> CombatStatus:
+    """Reconstruit le statut métier depuis la colonne SQL (source de vérité)."""
+    if sql_status == "ended":
+        return "ended"
+    return "active"
+
+
+def sql_status_from_combat(status: CombatStatus) -> SqlCombatStatus:
+    """Projette le statut métier vers la colonne SQL."""
+    if status == "ended":
+        return "ended"
+    return "active"
 
 
 @dataclass
@@ -23,6 +40,7 @@ class CombatState:
     Snapshot complet d'une rencontre.
 
     ``schema_version`` est la version du **modèle JSON** (distincte du schéma SQL).
+    ``status`` vit en colonne SQL uniquement — absent du blob JSON (correctif C1a).
     """
 
     schema_version: int
@@ -49,7 +67,6 @@ class CombatState:
                 cid: combatant.to_dict()
                 for cid, combatant in self.combatants.items()
             },
-            "status": self.status,
             "started_at": self.started_at,
             "ended_at": self.ended_at,
         }
@@ -59,10 +76,17 @@ class CombatState:
         cls,
         data: dict[str, Any],
         *,
+        sql_status: str,
         combat_id: str | None = None,
         guild_id: str | None = None,
         channel_id: str | None = None,
     ) -> CombatState:
+        """
+        Désérialise le blob JSON.
+
+        ``sql_status`` provient de la colonne SQL — seule source de vérité pour
+        ``status``. Un champ ``status`` présent dans un blob legacy (C1) est ignoré.
+        """
         version = int(data.get("schema_version", 0))
         if version != COMBAT_STATE_VERSION:
             raise CombatStateVersionError(
@@ -82,7 +106,7 @@ class CombatState:
             turn_index=int(data.get("turn_index", 0)),
             initiative_order=tuple(str(x) for x in initiative),
             combatants=combatants,
-            status=data.get("status", "active"),
+            status=combat_status_from_sql(sql_status),
             started_at=data.get("started_at"),
             ended_at=data.get("ended_at"),
             combat_id=combat_id,
