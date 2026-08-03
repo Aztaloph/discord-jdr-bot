@@ -205,9 +205,25 @@ Centraliser `personnages` et `combats` dans **`data/bot.db`** évite deux fichie
 
 ### Conséquences
 
-- C7 : `combat_repository.py` + migration schéma dans `database.py` (version incrémentée).
-- Handler EventBus `CombatAutoSaveHandler` écrit dans `combats`.
+- **Lot C1 (implémenté)** : `combat_repository.py` + table `combats` dans `database.py` (schéma SQL v2).
+- Handler EventBus `CombatAutoSaveHandler` — **lot C7** (non implémenté).
 - `ARCHITECTURE_TARGET.md` (snapshots fichiers) est **supplanté** par cette décision pour l'implémentation.
+
+### Décision 6bis — Granularité et schéma SQL (lot C1, 2026-08-03)
+
+| Élément | Choix |
+|---|---|
+| **Stockage** | Un seul blob JSON (`state_json`) — pas de tables liées participants |
+| **Fichier** | `data/bot.db`, table `combats` |
+| **Clé primaire** | `id INTEGER PRIMARY KEY AUTOINCREMENT` ; `combat_id` métier = `str(id)` |
+| **Rattachement** | Colonnes `guild_id`, `channel_id` |
+| **Unicité** | **Un combat actif par salon** (`channel_id`), pas par serveur — index unique partiel SQLite `idx_combats_active_channel WHERE status = 'active'` + colonne SQL `status` (`active` \| `ended`) |
+| **Version blob** | Champ entier `schema_version` dans le JSON (`COMBAT_STATE_VERSION = 1`), distinct du schéma SQL (`DB_SCHEMA_VERSION = 2`) ; lecture échoue explicitement si version inconnue — **pas de migration blob en C1** |
+| **Combats terminés** | Restent en base (`status = ended`) ; n'empêchent pas un nouveau combat actif sur le même salon |
+
+**Justification blob unique** : l'état est toujours lu/écrit en intégralité ; pas de requête analytique cross-combat sur le contenu — cohérent ADR-004.
+
+**Justification index partiel** : SQLite supporte `CREATE UNIQUE INDEX … WHERE status = 'active'` ; la colonne `status` SQL duplique l'information du blob pour la contrainte sans parser le JSON à l'insertion.
 
 ---
 

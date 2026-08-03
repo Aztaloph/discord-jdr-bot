@@ -1,1 +1,5 @@
-# Game Engine — transitions d'état, machines à états (Phase 7+).
+# Game Engine — orchestration combat (lot C1+).
+from jdr_engine.game.combat_manager import CombatManager
+
+__all__ = ["CombatManager"]
+

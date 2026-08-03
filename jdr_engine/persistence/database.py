@@ -23,7 +23,7 @@ from jdr_engine.persistence.character_repository import (
 
 logger = logging.getLogger(__name__)
 
-DB_SCHEMA_VERSION = 1
+DB_SCHEMA_VERSION = 2
 DEFAULT_DB_PATH = get_project_root() / "data" / "bot.db"
 
 # Marqueurs one-shot — SQLite est la source de vérité après le premier import.
@@ -83,6 +83,23 @@ CREATE TABLE IF NOT EXISTS perso_actif (
 );
 """
 
+_CREATE_COMBATS = """
+CREATE TABLE IF NOT EXISTS combats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    channel_id TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('active', 'ended')),
+    state_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+"""
+
+_CREATE_COMBATS_ACTIVE_INDEX = """
+CREATE UNIQUE INDEX IF NOT EXISTS idx_combats_active_channel
+    ON combats (guild_id, channel_id)
+    WHERE status = 'active';
+"""
+
 
 def get_db_path() -> Path:
     return DEFAULT_DB_PATH
@@ -131,6 +148,14 @@ def mark_one_shot_import_done(conn: sqlite3.Connection, key: str) -> None:
     set_schema_meta(conn, key, "1")
 
 
+def ensure_combats_schema(db_path: Path | None = None) -> None:
+    """Crée la table ``combats`` et l'index d'unicité partiel si absents."""
+    path = db_path or get_db_path()
+    with get_connection(path) as conn:
+        conn.executescript(_CREATE_COMBATS)
+        conn.executescript(_CREATE_COMBATS_ACTIVE_INDEX)
+
+
 def init_database(db_path: Path | None = None) -> Path:
     """Crée le schéma si absent. Retourne le chemin de la base."""
     path = db_path or get_db_path()
@@ -139,6 +164,8 @@ def init_database(db_path: Path | None = None) -> Path:
         conn.executescript(_CREATE_PERSONNAGES)
         conn.executescript(_CREATE_INDEX)
         conn.executescript(_CREATE_PERSO_ACTIF)
+        conn.executescript(_CREATE_COMBATS)
+        conn.executescript(_CREATE_COMBATS_ACTIVE_INDEX)
         conn.execute(
             "INSERT OR REPLACE INTO schema_meta (key, value) VALUES (?, ?)",
             ("schema_version", str(DB_SCHEMA_VERSION)),
