@@ -23,7 +23,7 @@ from jdr_engine.persistence.character_repository import (
 
 logger = logging.getLogger(__name__)
 
-DB_SCHEMA_VERSION = 2
+DB_SCHEMA_VERSION = 3
 DEFAULT_DB_PATH = get_project_root() / "data" / "bot.db"
 
 # Marqueurs one-shot — SQLite est la source de vérité après le premier import.
@@ -88,16 +88,16 @@ CREATE TABLE IF NOT EXISTS combats (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guild_id TEXT NOT NULL,
     channel_id TEXT NOT NULL,
-    status TEXT NOT NULL CHECK (status IN ('active', 'ended')),
+    status TEXT NOT NULL CHECK (status IN ('preparing', 'active', 'ended')),
     state_json TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
 """
 
-_CREATE_COMBATS_ACTIVE_INDEX = """
-CREATE UNIQUE INDEX IF NOT EXISTS idx_combats_active_channel
+_CREATE_COMBATS_OPEN_INDEX = """
+CREATE UNIQUE INDEX IF NOT EXISTS idx_combats_open_channel
     ON combats (guild_id, channel_id)
-    WHERE status = 'active';
+    WHERE status IN ('preparing', 'active');
 """
 
 
@@ -148,12 +148,58 @@ def mark_one_shot_import_done(conn: sqlite3.Connection, key: str) -> None:
     set_schema_meta(conn, key, "1")
 
 
+def _combats_table_has_preparing(conn: sqlite3.Connection) -> bool:
+    row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'combats'"
+    ).fetchone()
+    if row is None or row["sql"] is None:
+        return False
+    return "'preparing'" in str(row["sql"])
+
+
+def migrate_combats_schema_v3(conn: sqlite3.Connection) -> None:
+    """
+    Schéma SQL v3 — statut ``preparing`` + index partiel preparing/active.
+
+    Recrée la table ``combats`` si la contrainte CHECK v2 est encore en place.
+    Les lignes ``active`` / ``ended`` existantes sont conservées telles quelles.
+    """
+    if _combats_table_has_preparing(conn):
+        conn.executescript(_CREATE_COMBATS_OPEN_INDEX)
+        return
+
+    conn.execute("DROP INDEX IF EXISTS idx_combats_active_channel")
+    conn.executescript(
+        """
+        CREATE TABLE combats_v3 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id TEXT NOT NULL,
+            channel_id TEXT NOT NULL,
+            status TEXT NOT NULL CHECK (status IN ('preparing', 'active', 'ended')),
+            state_json TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        INSERT INTO combats_v3 (id, guild_id, channel_id, status, state_json, updated_at)
+        SELECT id, guild_id, channel_id, status, state_json, updated_at FROM combats;
+        DROP TABLE combats;
+        ALTER TABLE combats_v3 RENAME TO combats;
+        """
+    )
+    conn.executescript(_CREATE_COMBATS_OPEN_INDEX)
+    logger.info("Migration combats SQL v2 → v3 (preparing + index partiel étendu)")
+
+
 def ensure_combats_schema(db_path: Path | None = None) -> None:
-    """Crée la table ``combats`` et l'index d'unicité partiel si absents."""
+    """Crée la table ``combats``, migre si besoin, et assure l'index d'unicité."""
     path = db_path or get_db_path()
     with get_connection(path) as conn:
+        conn.executescript(_CREATE_META)
         conn.executescript(_CREATE_COMBATS)
-        conn.executescript(_CREATE_COMBATS_ACTIVE_INDEX)
+        migrate_combats_schema_v3(conn)
+        conn.executescript(_CREATE_COMBATS_OPEN_INDEX)
+        current = get_schema_meta(conn, "schema_version")
+        if current is None or int(current) < DB_SCHEMA_VERSION:
+            set_schema_meta(conn, "schema_version", str(DB_SCHEMA_VERSION))
 
 
 def init_database(db_path: Path | None = None) -> Path:
@@ -165,7 +211,8 @@ def init_database(db_path: Path | None = None) -> Path:
         conn.executescript(_CREATE_INDEX)
         conn.executescript(_CREATE_PERSO_ACTIF)
         conn.executescript(_CREATE_COMBATS)
-        conn.executescript(_CREATE_COMBATS_ACTIVE_INDEX)
+        migrate_combats_schema_v3(conn)
+        conn.executescript(_CREATE_COMBATS_OPEN_INDEX)
         conn.execute(
             "INSERT OR REPLACE INTO schema_meta (key, value) VALUES (?, ?)",
             ("schema_version", str(DB_SCHEMA_VERSION)),

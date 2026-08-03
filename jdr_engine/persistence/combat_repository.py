@@ -8,7 +8,7 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
-from jdr_engine.domain.combat.combat_state import CombatState
+from jdr_engine.domain.combat.combat_state import CombatState, sql_status_from_combat
 from jdr_engine.persistence.database import (
     ensure_combats_schema,
     get_connection,
@@ -18,8 +18,12 @@ from jdr_engine.persistence.database import (
 logger = logging.getLogger(__name__)
 
 
-class ActiveCombatExistsError(Exception):
-    """Un combat actif existe déjà pour ce salon."""
+class OpenCombatExistsError(Exception):
+    """Un combat en préparation ou actif existe déjà pour ce salon."""
+
+
+# Alias rétrocompatibilité tests C1.
+ActiveCombatExistsError = OpenCombatExistsError
 
 
 class CombatNotFoundError(Exception):
@@ -44,38 +48,45 @@ class SqliteCombatRepository:
         self.db_path = db_path or get_db_path()
         ensure_combats_schema(self.db_path)
 
-    def insert_active(
-        self,
-        guild_id: str,
-        channel_id: str,
-        state: CombatState,
-    ) -> int:
-        if self.get_active_by_channel(guild_id, channel_id) is not None:
-            raise ActiveCombatExistsError(
-                f"Combat actif déjà présent pour guild={guild_id!r} channel={channel_id!r}."
+    def insert(self, guild_id: str, channel_id: str, state: CombatState) -> int:
+        """Insère un combat ; le statut SQL provient de ``state.status``."""
+        if self.get_open_by_channel(guild_id, channel_id) is not None:
+            raise OpenCombatExistsError(
+                f"Combat ouvert déjà présent pour guild={guild_id!r} channel={channel_id!r}."
             )
+        sql_status = sql_status_from_combat(state.status)
         payload = json.dumps(state.to_dict(), ensure_ascii=False)
         with get_connection(self.db_path) as conn:
             try:
                 cursor = conn.execute(
                     """
                     INSERT INTO combats (guild_id, channel_id, status, state_json, updated_at)
-                    VALUES (?, ?, 'active', ?, datetime('now'))
+                    VALUES (?, ?, ?, ?, datetime('now'))
                     """,
-                    (str(guild_id), str(channel_id), payload),
+                    (str(guild_id), str(channel_id), sql_status, payload),
                 )
             except sqlite3.IntegrityError as exc:
-                raise ActiveCombatExistsError(
-                    f"Combat actif déjà présent pour guild={guild_id!r} channel={channel_id!r}."
+                raise OpenCombatExistsError(
+                    f"Combat ouvert déjà présent pour guild={guild_id!r} channel={channel_id!r}."
                 ) from exc
             combat_id = int(cursor.lastrowid)
         logger.info(
-            "Combat créé : id=%s guild=%s channel=%s",
+            "Combat créé : id=%s guild=%s channel=%s status=%s",
             combat_id,
             guild_id,
             channel_id,
+            sql_status,
         )
         return combat_id
+
+    def insert_active(
+        self,
+        guild_id: str,
+        channel_id: str,
+        state: CombatState,
+    ) -> int:
+        """Alias C1 — délègue à ``insert``."""
+        return self.insert(guild_id, channel_id, state)
 
     def get_by_id(self, combat_id: int) -> CombatRecord | None:
         with get_connection(self.db_path) as conn:
@@ -86,16 +97,18 @@ class SqliteCombatRepository:
             return None
         return _row_to_record(row)
 
-    def get_active_by_channel(
+    def get_open_by_channel(
         self,
         guild_id: str,
         channel_id: str,
     ) -> CombatRecord | None:
+        """Combat en ``preparing`` ou ``active`` pour le salon, ou ``None``."""
         with get_connection(self.db_path) as conn:
             row = conn.execute(
                 """
                 SELECT * FROM combats
-                WHERE guild_id = ? AND channel_id = ? AND status = 'active'
+                WHERE guild_id = ? AND channel_id = ?
+                  AND status IN ('preparing', 'active')
                 LIMIT 1
                 """,
                 (str(guild_id), str(channel_id)),
@@ -103,6 +116,14 @@ class SqliteCombatRepository:
         if row is None:
             return None
         return _row_to_record(row)
+
+    def get_active_by_channel(
+        self,
+        guild_id: str,
+        channel_id: str,
+    ) -> CombatRecord | None:
+        """Alias C1 — retourne un combat ouvert (preparing ou active)."""
+        return self.get_open_by_channel(guild_id, channel_id)
 
     def save(self, record: CombatRecord) -> None:
         payload = json.dumps(record.state.to_dict(), ensure_ascii=False)

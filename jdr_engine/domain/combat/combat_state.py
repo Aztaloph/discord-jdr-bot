@@ -12,8 +12,8 @@ COMBAT_STATE_VERSION = 1
 
 CombatStatus = Literal["preparing", "active", "ended"]
 
-# Valeurs persistées en colonne SQL (index partiel lot C1).
-SqlCombatStatus = Literal["active", "ended"]
+# Valeurs persistées en colonne SQL (index partiel lot C1 / C2).
+SqlCombatStatus = Literal["preparing", "active", "ended"]
 
 
 class CombatStateVersionError(Exception):
@@ -22,16 +22,14 @@ class CombatStateVersionError(Exception):
 
 def combat_status_from_sql(sql_status: str) -> CombatStatus:
     """Reconstruit le statut métier depuis la colonne SQL (source de vérité)."""
-    if sql_status == "ended":
-        return "ended"
-    return "active"
+    if sql_status in ("preparing", "active", "ended"):
+        return sql_status  # type: ignore[return-value]
+    raise ValueError(f"Statut SQL combat inconnu : {sql_status!r}.")
 
 
 def sql_status_from_combat(status: CombatStatus) -> SqlCombatStatus:
     """Projette le statut métier vers la colonne SQL."""
-    if status == "ended":
-        return "ended"
-    return "active"
+    return status
 
 
 @dataclass

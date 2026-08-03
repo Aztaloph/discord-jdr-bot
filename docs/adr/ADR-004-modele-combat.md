@@ -217,9 +217,9 @@ Centraliser `personnages` et `combats` dans **`data/bot.db`** évite deux fichie
 | **Fichier** | `data/bot.db`, table `combats` |
 | **Clé primaire** | `id INTEGER PRIMARY KEY AUTOINCREMENT` ; `combat_id` métier = `str(id)` |
 | **Rattachement** | Colonnes `guild_id`, `channel_id` |
-| **Unicité** | **Un combat actif par salon** (`channel_id`), pas par serveur — index unique partiel SQLite `idx_combats_active_channel WHERE status = 'active'` + colonne SQL `status` (`active` \| `ended`) |
+| **Unicité** | **Un combat ouvert par salon** (`preparing` ou `active`) — index unique partiel SQLite `idx_combats_open_channel WHERE status IN ('preparing', 'active')` + colonne SQL `status` (`preparing` \| `active` \| `ended`) |
 | **Statut** | **Colonne SQL seule** — absent du blob JSON (correctif C1a) ; `CombatState.status` reconstruit à la lecture depuis la colonne |
-| **Version blob** | Champ entier `schema_version` dans le JSON (`COMBAT_STATE_VERSION = 1`), distinct du schéma SQL (`DB_SCHEMA_VERSION = 2`) ; lecture échoue explicitement si version inconnue — **pas de migration blob en C1** |
+| **Version blob** | Champ entier `schema_version` dans le JSON (`COMBAT_STATE_VERSION = 1`), distinct du schéma SQL (`DB_SCHEMA_VERSION = 3` depuis C2) ; lecture échoue explicitement si version inconnue |
 | **Combats terminés** | Restent en base (`status = ended`) ; n'empêchent pas un nouveau combat actif sur le même salon |
 | **Blob legacy C1** | Un champ `status` surnuméraire dans un blob v1 existant est **ignoré** à la lecture (pas d'erreur) |
 
@@ -227,13 +227,64 @@ Centraliser `personnages` et `combats` dans **`data/bot.db`** évite deux fichie
 
 **Justification statut SQL uniquement** : la colonne est requise par l'index unique partiel ; la dupliquer dans le blob créait deux sources synchronisées à la main — une divergence aurait corrompu silencieusement la contrainte d'unicité (correctif C1a).
 
-**Justification index partiel** : SQLite supporte `CREATE UNIQUE INDEX … WHERE status = 'active'` ; le statut est lu depuis la colonne SQL sans parser le JSON.
+**Justification index partiel** : SQLite supporte `CREATE UNIQUE INDEX … WHERE status IN ('preparing', 'active')` ; un salon ne peut pas héberger deux combats ouverts simultanément (deux en préparation, ou préparation + actif).
+
+**Migration SQL v2 → v3 (lot C2)** : recréation de la table `combats` pour étendre la contrainte `CHECK` à `preparing` ; remplacement de `idx_combats_active_channel` par `idx_combats_open_channel`. Les lignes `active` / `ended` existantes sont copiées telles quelles. Déclenchée par `ensure_combats_schema()` si la table ne contient pas encore `preparing` dans sa définition.
 
 ### Décision 6ter — Clôture idempotente (lot C1a, 2026-08-03)
 
 `close_combat` sur un combat déjà `ended` **retourne l'état** sans republier `CombatEnded`.
 
 **Justification** : une republication ferait rejouer les effets de fin de combat aux abonnés — risque aggravé en **C6** lorsque les effets en cascade existeront.
+
+---
+
+## Décision 8 — Initiative et cycle de tours (lot C2, 2026-08-03)
+
+### Statut `preparing`
+
+Un combat est **créé en `preparing`** : les combattants peuvent être ajoutés, l'initiative n'est pas établie, aucun tour n'existe (`round_number = 0`, `initiative_order` vide). Le passage en **`active`** est explicite (`activate_combat`) et déclenche le calcul de l'initiative. La validation d'un combat jouable — **au moins deux combattants actifs** — s'applique à l'activation, pas à la création.
+
+### Ordre d'initiative figé
+
+L'ordre est calculé **une fois** à l'activation et stocké dans le blob comme séquence ordonnée d'identifiants de combattants (`initiative_order`). Il **n'est pas recalculé** à chaque round. Les totaux de jet sont persistés sur chaque `Combatant.initiative_total`.
+
+### Départage des égalités
+
+À initiative totale égale, départage **déterministe** :
+
+1. total décroissant ;
+2. à égalité, `combatant_id` **croissant** (ordre lexicographique).
+
+Implémenté dans `jdr_engine/rules/combat/initiative.py` (`sort_initiative_order`).
+
+### Position courante
+
+Le tour courant est un **`turn_index`** dans `initiative_order`, accompagné d'un **`round_number`**. L'avancement incrémente l'index ; le passage au round suivant se produit lorsque l'index atteint la fin de la séquence (retour à 0, `round_number += 1`).
+
+### Retrait d'un combattant
+
+Un combattant retiré est marqué **`is_active = False`** ; il **reste** dans `initiative_order` et son tour est **ignoré** à l'avancement.
+
+### Événements publiés (C2)
+
+| Événement | Moment |
+|---|---|
+| `CombatStarted` | Création (`preparing`) |
+| `InitiativeRolled` | Activation |
+| `TurnStarted` | Activation (premier tour) et chaque `advance_turn` |
+| `TurnEnded` | Avant chaque avancement de tour |
+| `RoundStarted` | Lorsque `round_number` s'incrémente |
+
+Tous héritent directement de `DomainEvent` avec `kw_only=True` si champs obligatoires (ADR-003).
+
+### Ambiguïtés laissées ouvertes (C2)
+
+| Point | Traitement |
+|---|---|
+| **Fin de combat automatique** lorsqu'il ne reste qu'un ou zéro combattant actif | **Non tranché** — `advance_turn` lève `NoActiveCombatantsError` ; clôture explicite via `close_combat` |
+| **Réactivation d'un combattant retiré** | **Non tranché** — hors périmètre C2 |
+| **Initiative avec avantage/désavantage ou jets groupés** | **Non tranché** — jet simple 1d20 + mod DEX (SRD par défaut) |
 
 ---
 
