@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JDR Engine — flux d'événements</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 1rem 2rem; background: #1a1a2e; color: #eee; }
+    h1 { font-size: 1.25rem; margin-bottom: 0.25rem; }
+    p.meta { color: #aaa; font-size: 0.9rem; margin-top: 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.85rem; }
+    th, td { border: 1px solid #444; padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+    th { background: #16213e; }
+    tr:nth-child(even) { background: #0f3460; }
+    code { font-size: 0.8rem; white-space: pre-wrap; word-break: break-all; }
+    .empty { color: #888; margin-top: 1rem; }
+    a { color: #7eb8ff; }
+  </style>
+</head>
+<body>
+  <h1>Flux d'événements (diagnostic)</h1>
+  <p class="meta">Rafraîchissement automatique toutes les 2 s · tampon mémoire · <a href="/">client fiche</a></p>
+  <div id="content"><p class="empty">Chargement…</p></div>
+  <script>
+    async function refresh() {
+      const root = document.getElementById("content");
+      try {
+        const res = await fetch("/debug/events");
+        if (!res.ok) throw new Error(res.status + " " + res.statusText);
+        const events = await res.json();
+        if (!events.length) {
+          root.innerHTML = "<p class=\"empty\">Aucun événement publié depuis le démarrage.</p>";
+          return;
+        }
+        const rows = events.map(function (ev) {
+          return "<tr><td>" + escapeHtml(ev.timestamp) + "</td>"
+            + "<td>" + escapeHtml(ev.type) + "</td>"
+            + "<td><code>" + escapeHtml(JSON.stringify(ev.payload, null, 2)) + "</code></td></tr>";
+        }).join("");
+        root.innerHTML = "<table><thead><tr><th>Horodatage</th><th>Type</th><th>Charge utile</th></tr></thead><tbody>"
+          + rows + "</tbody></table>";
+      } catch (err) {
+        root.innerHTML = "<p class=\"empty\">Erreur : " + escapeHtml(String(err)) + "</p>";
+      }
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+    refresh();
+    setInterval(refresh, 2000);
+  </script>
+</body>
+</html>

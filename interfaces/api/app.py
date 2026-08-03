@@ -28,15 +28,20 @@ version). Deux écritures concurrentes sur le même personnage se recouvrent.
 
 Lancement local : voir ``docs/API_LOCAL.md`` (fabrique ``create_app`` + uvicorn).
 Client web statique : ``GET /`` (HTML) · assets ``/static/*`` (même origine, pas de CORS).
+Diagnostic événements (dev) : ``GET /debug/events`` (JSON) · ``GET /debug/events/view`` (HTML).
 """
 from __future__ import annotations
 
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+
+from interfaces.api.diagnostic.event_buffer import EventRingBuffer
+from interfaces.api.diagnostic.recording_bus import RecordingEventBus
+from jdr_engine.core.events.bus import EventBus
 
 from jdr_engine.application.dto.output_serializers import (
     character_sheet_to_dict,
@@ -70,23 +75,36 @@ def create_app(
     engine: RuleEngine | None = None,
     db_path: Path | None = None,
     locale: str = "fr",
+    event_bus: EventBus | None = None,
+    event_buffer: EventRingBuffer | None = None,
 ) -> FastAPI:
     """
     Fabrique de l'application FastAPI.
 
     ``engine`` et ``db_path`` sont injectables pour les tests ; par défaut,
     charge le ruleset ``dnd5e`` et utilise la base SQLite du bot (``data/bot.db``).
+
+    ``event_bus`` / ``event_buffer`` : injectables pour les tests ; par défaut,
+    un ``RecordingEventBus`` (diagnostic dev, isolé du bus nu).
     """
     if engine is None:
         engine = RuleEngine.load("dnd5e", validate=True, strict=True)
     resolved_db_path = init_database(db_path)
     repository = SqliteCharacterRepository(resolved_db_path)
 
+    if event_bus is None:
+        inner = EventBus()
+        buffer = event_buffer if event_buffer is not None else EventRingBuffer()
+        event_bus = RecordingEventBus(inner, buffer)
+    elif event_buffer is not None:
+        raise ValueError("event_buffer sans RecordingEventBus est incohérent")
+
     app = FastAPI(
         title="JDR Engine API",
         description="JDR Engine — banc de test HTTP (fiche, sorts, repos).",
         version="0.1.0",
     )
+    app.state.event_bus = event_bus
 
     def _load_character(character_id: str) -> Character:
         character = repository.get_by_id(character_id)
@@ -152,6 +170,27 @@ def create_app(
                 detail="Client web introuvable (interfaces/api/static/index.html).",
             )
         return FileResponse(index)
+
+    @app.get("/debug/events")
+    def list_debug_events() -> JSONResponse:
+        """Événements publiés depuis le démarrage (tampon mémoire, plus récent en premier)."""
+        bus = app.state.event_bus
+        if isinstance(bus, RecordingEventBus):
+            entries = bus.buffer.list_newest_first()
+        else:
+            entries = []
+        return JSONResponse(entries)
+
+    @app.get("/debug/events/view")
+    def debug_events_page() -> FileResponse:
+        """Page HTML de diagnostic — flux d'événements (rafraîchissement périodique)."""
+        page = STATIC_DIR / "events.html"
+        if not page.is_file():
+            raise HTTPException(
+                status_code=500,
+                detail="Page diagnostic introuvable (interfaces/api/static/events.html).",
+            )
+        return FileResponse(page)
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
