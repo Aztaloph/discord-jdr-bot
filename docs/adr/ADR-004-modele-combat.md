@@ -283,7 +283,7 @@ Ce qui débloque **C5** (concentration save) et **B4** (effets de sorts) n'est p
 
 Le lot **B4** (moteur d'effets de sorts — application mécanique des buffs) **n'est pas** sur le chemin critique du **MVP combat**. Démarrer une rencontre, jouer des tours et infliger des dégâts **ne dépend pas** des effets de sorts structurés.
 
-B4 intervient **après** une boucle combat fonctionnelle (C0–C3b minimum, ideally C5), comme **première validation** du registre d'effets en amont de **C6** (conditions + effets actifs).
+B4 intervient **après C4** (boucle de tour jouable), comme **première validation** du registre d'effets en amont de **C6** (conditions + effets actifs).
 
 ### Ordre des sorts B4
 
