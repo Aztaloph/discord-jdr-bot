@@ -485,6 +485,8 @@ jdr_engine/persistence/
 
 État actuel (SQLite, `database.py`, `v1_to_v2.py`) : [`ARCHITECTURE.md`](ARCHITECTURE.md) §5 — hors périmètre de cette structure cible.
 
+> **Persistance combat** : [ADR-004](adr/ADR-004-modele-combat.md) fait autorité (table `combats` dans `data/bot.db` — pas de répertoire `data/combats/`).
+
 ### 11.2 Contrat migration
 
 ```python
@@ -647,7 +649,7 @@ discord-jdr-bot/
 ├── data/                                # État runtime (gitignored)
 │   ├── bot.db
 │   ├── characters/
-│   ├── combats/
+│   ├── combats/                         # cible historique — persistance actée : voir [ADR-004](adr/ADR-004-modele-combat.md)
 │   └── _meta.json
 │
 ├── tests/
