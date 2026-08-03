@@ -1,20 +1,24 @@
 # jdr_engine/game/combat_manager.py
-"""Orchestration de rencontre — lots C1 (cycle de vie) et C2 (initiative, tours)."""
+"""Orchestration de rencontre — lots C1–C2 (cycle de vie) et C3a (attaque)."""
 from __future__ import annotations
 
 import logging
 import uuid
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable
 
 from jdr_engine.core.events.bus import EventBus
 from jdr_engine.core.events.combat_events import (
+    AttackRollResolved,
     CombatEnded,
     CombatStarted,
+    DamageDealt,
     InitiativeRolled,
     RoundStarted,
     TurnEnded,
     TurnStarted,
 )
+from jdr_engine.dice.d20 import D20RollRequest, D20RollResult, RandInt
 from jdr_engine.domain.combat.combat_state import (
     COMBAT_STATE_VERSION,
     CombatState,
@@ -32,6 +36,13 @@ from jdr_engine.persistence.sqlite_character_repository import (
     SqliteCharacterRepository,
 )
 from jdr_engine.rules.calculator import build_character_sheet
+from jdr_engine.rules.combat.attack_roll import AttackHitOutcome, resolve_attack_hit
+from jdr_engine.rules.combat.damage import (
+    DamageApplicationResult,
+    DamageRollResult,
+    apply_damage_to_hp,
+    roll_damage,
+)
 from jdr_engine.rules.combat.initiative import (
     InitiativeRollResult,
     next_active_turn_index,
@@ -39,6 +50,7 @@ from jdr_engine.rules.combat.initiative import (
     sort_initiative_order,
 )
 from jdr_engine.rules.engine import RuleEngine
+from jdr_engine.rules.roll_effects import roll_d20_for_character
 
 if TYPE_CHECKING:
     pass
@@ -65,9 +77,29 @@ class NoActiveCombatantsError(Exception):
     """Aucun combattant actif dans la séquence d'initiative."""
 
 
+class CombatantNotFoundError(Exception):
+    """Combattant introuvable dans la rencontre."""
+
+
+@dataclass(frozen=True)
+class AttackRollResolution:
+    """Résultat complet d'un jet d'attaque (sans application des dégâts)."""
+
+    d20: D20RollResult
+    outcome: AttackHitOutcome
+
+
+@dataclass(frozen=True)
+class DamageResolution:
+    """Résultat d'un jet et d'une application de dégâts."""
+
+    roll: DamageRollResult
+    application: DamageApplicationResult
+
+
 class CombatManager:
     """
-    Machine de cycle de vie combat — création, initiative, tours (C2).
+    Machine de cycle de vie combat — création, initiative, tours, attaque (C3a).
 
     Publie les événements de cycle sur l'EventBus injecté.
     """
@@ -172,6 +204,9 @@ class CombatManager:
                 display_name=old.display_name,
                 kind=old.kind,
                 character_id=old.character_id,
+                hp_current=old.hp_current,
+                hp_max=old.hp_max,
+                ac=old.ac,
                 is_active=old.is_active,
                 initiative_total=roll.total,
             )
@@ -255,11 +290,113 @@ class CombatManager:
             display_name=old.display_name,
             kind=old.kind,
             character_id=old.character_id,
+            hp_current=old.hp_current,
+            hp_max=old.hp_max,
+            ac=old.ac,
             is_active=False,
             initiative_total=old.initiative_total,
         )
         self._persist(state)
         return state
+
+    def resolve_attack_roll(
+        self,
+        combat_id: int,
+        attacker_id: str,
+        target_id: str,
+        request: D20RollRequest,
+        *,
+        rng: RandInt | None = None,
+    ) -> AttackRollResolution:
+        """
+        Résout un jet d'attaque vs la CA cible — sans modifier les PV.
+
+        Délègue le d20 à ``roll_d20_for_character`` (moteur de jets existant).
+        Publie ``AttackRollResolved``.
+        """
+        state = self._require_state(combat_id)
+        if state.status != "active":
+            raise CombatStatusError(
+                "Les attaques ne sont possibles qu'en combat actif."
+            )
+        attacker = self._require_combatant(state, attacker_id)
+        target = self._require_combatant(state, target_id)
+        character = self._characters.get_by_id(attacker.character_id)
+        if character is None:
+            raise CombatCharacterNotFoundError(
+                f"Personnage introuvable : {attacker.character_id!r}."
+            )
+
+        if request.roll_type != "attack":
+            raise ValueError("roll_type doit être 'attack' pour un jet d'attaque.")
+
+        d20 = roll_d20_for_character(request, character, self._engine, rng=rng)
+        outcome = resolve_attack_hit(d20, target.ac)
+
+        self._bus.publish(
+            AttackRollResolved(
+                ruleset_id=state.ruleset_id,
+                combat_id=state.combat_id or str(combat_id),
+                guild_id=state.guild_id or "",
+                channel_id=state.channel_id or "",
+                attacker_id=attacker_id,
+                target_id=target_id,
+                target_ac=target.ac,
+                hit=outcome.hit,
+                critical=outcome.critical,
+                automatic_miss=outcome.automatic_miss,
+                attack_total=d20.total,
+                kept_d20=d20.kept_value,
+            )
+        )
+        return AttackRollResolution(d20=d20, outcome=outcome)
+
+    def apply_damage(
+        self,
+        combat_id: int,
+        target_id: str,
+        damage_notation: str,
+        *,
+        critical: bool = False,
+        source_id: str | None = None,
+        rng: RandInt | None = None,
+    ) -> tuple[CombatState, DamageResolution]:
+        """
+        Lance les dés de dégâts et les applique aux PV du combattant (overlay).
+
+        Publie ``DamageDealt``. Persiste l'état combat.
+        """
+        state = self._require_state(combat_id)
+        if state.status != "active":
+            raise CombatStatusError(
+                "Les dégâts ne s'appliquent qu'en combat actif."
+            )
+        target = self._require_combatant(state, target_id)
+        if source_id is not None:
+            self._require_combatant(state, source_id)
+
+        damage_roll = roll_damage(damage_notation, critical=critical, rng=rng)
+        application = apply_damage_to_hp(target.hp_current, damage_roll.total)
+
+        state.combatants[target_id] = target.with_hp(application.hp_after)
+        self._persist(state)
+
+        self._bus.publish(
+            DamageDealt(
+                ruleset_id=state.ruleset_id,
+                combat_id=state.combat_id or str(combat_id),
+                guild_id=state.guild_id or "",
+                channel_id=state.channel_id or "",
+                source_id=source_id,
+                target_id=target_id,
+                damage=application.damage_dealt,
+                hp_before=application.hp_before,
+                hp_after=application.hp_after,
+                critical=critical,
+                dice_notation=damage_roll.dice_notation,
+            )
+        )
+        return state, DamageResolution(roll=damage_roll, application=application)
 
     def load_combat(self, combat_id: int) -> CombatState:
         """Charge un combat par identifiant SQL."""
@@ -352,7 +489,18 @@ class CombatManager:
             display_name=sheet.name,
             kind="player_character",
             character_id=character_id,
+            hp_current=sheet.hp_current,
+            hp_max=sheet.hp_max,
+            ac=sheet.ac,
         )
+
+    def _require_combatant(self, state: CombatState, combatant_id: str) -> Combatant:
+        combatant = state.combatants.get(combatant_id)
+        if combatant is None:
+            raise CombatantNotFoundError(
+                f"Combattant introuvable dans la rencontre : {combatant_id!r}."
+            )
+        return combatant
 
     def _roll_initiative_for_combatants(
         self,

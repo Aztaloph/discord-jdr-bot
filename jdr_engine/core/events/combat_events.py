@@ -58,3 +58,32 @@ class RoundStarted(DomainEvent):
     guild_id: str
     channel_id: str
     round_number: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class AttackRollResolved(DomainEvent):
+    combat_id: str
+    guild_id: str
+    channel_id: str
+    attacker_id: str
+    target_id: str
+    target_ac: int
+    hit: bool
+    critical: bool
+    automatic_miss: bool
+    attack_total: int
+    kept_d20: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class DamageDealt(DomainEvent):
+    combat_id: str
+    guild_id: str
+    channel_id: str
+    source_id: str | None
+    target_id: str
+    damage: int
+    hp_before: int
+    hp_after: int
+    critical: bool
+    dice_notation: str

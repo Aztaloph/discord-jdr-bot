@@ -288,6 +288,48 @@ Tous héritent directement de `DomainEvent` avec `kw_only=True` si champs obliga
 
 ---
 
+## Décision 9 — Attaque et dégâts (lot C3a, 2026-08-03)
+
+### PV en overlay combat
+
+Les PV (`hp_current`, `hp_max`) et la **CA** (`ac`) vivent sur **`Combatant`** dans le blob JSON — **pas** sur `Character` pendant la rencontre. Initialisés depuis `build_character_sheet()` à l'ajout du combattant ; seuls les PV courants mutent lors des dégâts.
+
+**Complète la décision 1** pour la durée d'une rencontre : la mutation directe de `Character.hp_current` reste le contrat hors combat (sorts, repos, API). La **synchronisation fiche ← overlay** en fin de combat est une décision **distincte** — non implémentée en C3a.
+
+### Séparation jet d'attaque / application des dégâts
+
+| Étape | Méthode | Événement |
+|---|---|---|
+| Jet vs CA | `resolve_attack_roll` | `AttackRollResolved` |
+| Dégâts | `apply_damage` | `DamageDealt` |
+
+Le toucher ne modifie pas les PV ; les dégâts sont réutilisables hors chemin d'attaque (sorts, chutes — lots ultérieurs).
+
+### Moteur de jets existant
+
+Le jet d'attaque consomme **`roll_d20_for_character`** → **`roll_d20`** (`jdr_engine/dice/d20.py`), y compris avantage/désavantage via `D20RollRequest.base_mode` et effets Compendium. **Aucune** réimplémentation du d20 dans le module combat.
+
+### Critique et échec automatique
+
+- **Nat 1** : échec automatique (`automatic_miss`), sans comparer à la CA.
+- **Nat 20** : toucher automatique (`critical`), sans comparer à la CA.
+- **Critique dégâts** : double le **nombre de dés** de la notation, **pas** le modificateur fixe (`1d8+3` → `2d8+3`). Implémenté dans `rules/combat/damage.py` (`roll_damage`).
+
+### Économie d'actions
+
+**Hors périmètre C3a** — aucune limite d'attaques par tour ; lot **C4**.
+
+### Ambiguïtés laissées ouvertes (C3a)
+
+| Point | Traitement |
+|---|---|
+| **Construction automatique du `D20RollRequest`** (arme, portée, maîtrise) | **Non tranché** — l'appelant fournit la requête ; pas de sélecteur d'arme |
+| **Dégâts sans toucher préalable** | **Autorisé** — `apply_damage` est indépendant ; la cohérence métier est responsabilité de l'appelant |
+| **Mort à 0 PV** (état inconscient / retrait auto) | **Non tranché** — seul le plancher à 0 PV est appliqué |
+| **Résistances / immunités** | **Non tranché** — lot C3a ultérieur ou extension `apply_damage` |
+
+---
+
 ## Décision 7 — ADR dédié au modèle de combat
 
 ### Décision
