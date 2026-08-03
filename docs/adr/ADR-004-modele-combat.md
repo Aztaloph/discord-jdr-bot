@@ -234,6 +234,7 @@ Une décision architecturale par ADR. ADR-003 pose le contrat pub/sub in-process
 - ADR-003 reste la référence pour `EventBus`, `DomainEvent`, handlers.
 - ADR-004 est la référence obligatoire avant tout commit C0–C7.
 - Les événements combat listés dans ADR-003 (`DamageDealt`, `ConcentrationBroken`, etc.) sont **publiés** conformément à ADR-003, avec payloads définis par le modèle ADR-004.
+- **Hiérarchie d'événements** (ADR-003 § Clôture lot C0) : chaque événement combat est une sous-classe **directe** de `DomainEvent` — pas de `CombatEvent` intermédiaire ; champs `combat_id` etc. sur les sous-classes concernées.
 
 ---
 
@@ -317,7 +318,7 @@ B4 intervient **après C4** (boucle de tour jouable), comme **première validati
 | **`ActiveEffect`** | Vue dérivée + effets sorts/conditions ; pas source concentration |
 | **Persistance** | `personnages` + table `combats` JSON dans `data/bot.db` |
 | **Tests** | C3a isolé ; PJ-only ; events ADR-003 |
-| **Documentation** | `COMBAT_PREP_MODELE.md` = inventaire ; **ADR-004** = décisions actées |
+| **Documentation** | `COMBAT_PREP_MODELE.md` = inventaire ; **ADR-004** = décisions actées ; **ADR-003 § Clôture C0** = contrat EventBus et forme des événements |
 
 ---
 
