@@ -2,7 +2,7 @@
 """Participant à une rencontre — lot C1 : PJ uniquement (ADR-004)."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 
 
@@ -12,6 +12,7 @@ class Combatant:
     PJ rattaché à un ``character_id`` persisté.
 
     PV et CA sont un overlay de rencontre (lot C3a) — distincts de la fiche SQLite.
+    Concentration et buffs de sort (C3b) vivent aussi dans l'overlay combat.
     """
 
     combatant_id: str
@@ -23,6 +24,10 @@ class Combatant:
     ac: int
     is_active: bool = True
     initiative_total: int | None = None
+    concentration_spell_id: str | None = None
+    concentration_spell_name: str | None = None
+    hunters_mark_caster_id: str | None = None
+    blessed: bool = False
 
     def to_dict(self) -> dict:
         payload = {
@@ -37,11 +42,20 @@ class Combatant:
         }
         if self.initiative_total is not None:
             payload["initiative_total"] = self.initiative_total
+        if self.concentration_spell_id is not None:
+            payload["concentration_spell_id"] = self.concentration_spell_id
+            payload["concentration_spell_name"] = self.concentration_spell_name
+        if self.hunters_mark_caster_id is not None:
+            payload["hunters_mark_caster_id"] = self.hunters_mark_caster_id
+        if self.blessed:
+            payload["blessed"] = True
         return payload
 
     @classmethod
     def from_dict(cls, data: dict) -> Combatant:
         raw_init = data.get("initiative_total")
+        conc_id = data.get("concentration_spell_id")
+        conc_name = data.get("concentration_spell_name")
         return cls(
             combatant_id=str(data["combatant_id"]),
             display_name=str(data["display_name"]),
@@ -52,18 +66,32 @@ class Combatant:
             ac=int(data.get("ac", 10)),
             is_active=bool(data.get("is_active", True)),
             initiative_total=int(raw_init) if raw_init is not None else None,
+            concentration_spell_id=str(conc_id) if conc_id is not None else None,
+            concentration_spell_name=str(conc_name) if conc_name is not None else None,
+            hunters_mark_caster_id=(
+                str(data["hunters_mark_caster_id"])
+                if data.get("hunters_mark_caster_id")
+                else None
+            ),
+            blessed=bool(data.get("blessed", False)),
         )
 
     def with_hp(self, hp_current: int) -> Combatant:
-        """Retourne une copie avec les PV courants mis à jour."""
-        return Combatant(
-            combatant_id=self.combatant_id,
-            display_name=self.display_name,
-            kind=self.kind,
-            character_id=self.character_id,
-            hp_current=hp_current,
-            hp_max=self.hp_max,
-            ac=self.ac,
-            is_active=self.is_active,
-            initiative_total=self.initiative_total,
+        return replace(self, hp_current=hp_current)
+
+    def with_concentration(
+        self,
+        spell_id: str,
+        spell_name: str,
+    ) -> Combatant:
+        return replace(
+            self,
+            concentration_spell_id=spell_id,
+            concentration_spell_name=spell_name,
         )
+
+    def with_hunters_mark(self, caster_id: str) -> Combatant:
+        return replace(self, hunters_mark_caster_id=caster_id)
+
+    def with_blessed(self, blessed: bool = True) -> Combatant:
+        return replace(self, blessed=blessed)

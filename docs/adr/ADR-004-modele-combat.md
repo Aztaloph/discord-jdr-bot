@@ -323,10 +323,77 @@ Le jet d'attaque consomme **`roll_d20_for_character`** → **`roll_d20`** (`jdr_
 
 | Point | Traitement |
 |---|---|
-| **Construction automatique du `D20RollRequest`** (arme, portée, maîtrise) | **Non tranché** — l'appelant fournit la requête ; pas de sélecteur d'arme |
-| **Dégâts sans toucher préalable** | **Autorisé** — `apply_damage` est indépendant ; la cohérence métier est responsabilité de l'appelant |
-| **Mort à 0 PV** (état inconscient / retrait auto) | **Non tranché** — seul le plancher à 0 PV est appliqué |
-| **Résistances / immunités** | **Non tranché** — lot C3a ultérieur ou extension `apply_damage` |
+| **Construction automatique du `D20RollRequest`** (arme, portée, maîtrise) | **Non tranché** — l'appelant fournit la requête pour les attaques d'arme ; les attaques de sort construisent la requête via `build_spell_attack_request` (C3b) |
+| **Résistances / immunités** | **Non tranché** — extension future de `apply_damage` |
+
+### Décision acquise — dégâts sans toucher préalable (C3b, 2026-08-03)
+
+`apply_damage` **peut être appelé sans jet d'attaque préalable** — cohérence métier à la charge de l'appelant. Cas d'usage : sorts à sauvegarde (dégâts calculés puis appliqués via `damage_amount`), effets futurs hors attaque.
+
+### Dette groupée — fin de combat (ensemble à traiter d'un bloc)
+
+Les points suivants **ne sont pas tranchés individuellement** ; ils seront résolus **ensemble** dans un lot dédié :
+
+| Point | Origine |
+|---|---|
+| **`advance_turn` avec ≤1 combattant actif** | Ambiguïté C2 |
+| **Mort à 0 PV** (inconscient, retrait auto) | Ambiguïté C3a |
+| **Synchronisation overlay combat → fiche `Character`** | ADR décision 1 / C3a |
+
+---
+
+## Décision 10 — Sorts en combat (lot C3b, 2026-08-03)
+
+### Réutilisation C3a
+
+| Mécanique | Chemin |
+|---|---|
+| Attaque de sort vs CA | `build_spell_attack_request` → `roll_d20_for_character` → **`resolve_attack_hit`** (C3a) |
+| Dégâts | **`roll_damage`** + **`apply_damage`** / `damage_amount` (C3a) |
+| Moitié sur save | **`damage_after_save`** sur le **total** des dés — pas sur chaque dé individuellement |
+
+### DD de sauvegarde
+
+Calculé via **`get_spellcasting_stats`** / `spell_save_dc` — **8 + maîtrise + mod incantation**. Non fourni par l'appelant.
+
+### Concentration
+
+Sorts à concentration (`hunters_mark`, `bless`) : **`_set_concentration`** de `cast.py` + overlay sur le combattant lanceur (`concentration_spell_id`). Pas de refactor vers `concentration.py` en C3b (point ouvert ADR-004 §2).
+
+### Sorts implémentés (C3b)
+
+| Sort | Type | Overlay combat |
+|---|---|---|
+| `fire_bolt` | Attaque de sort | — |
+| `burning_hands` | Sauvegarde DEX | — |
+| `hunters_mark` | Buff + concentration | `hunters_mark_caster_id` sur cible |
+| `bless` | Buff + concentration | `blessed=True` sur cibles (max 3) |
+
+Le **+1d4 mécanique** de `bless` et le **+1d6** de `hunters_mark` sur les attaques relèvent de **B4** — seul l'état de buff est posé en C3b.
+
+### Événements (C3b)
+
+| Événement | Moment |
+|---|---|
+| `SpellCast` | Lancement (tous types) |
+| `AttackRollResolved` | Attaque de sort (réutilisé C3a) |
+| `SavingThrowResolved` | Jet de sauvegarde cible |
+| `DamageDealt` | Application des dégâts (réutilisé C3a) |
+
+### Hors périmètre C3b
+
+- Économie d'actions (**C4**)
+- Emplacements de sorts (resync ROADMAP post-C4)
+- Rupture de concentration sur dégâts (**C5**)
+- Application mécanique des buffs (**B4** / **C6**)
+
+### Ambiguïtés laissées ouvertes (C3b)
+
+| Point | Traitement |
+|---|---|
+| **AoE multi-cibles** (`burning_hands` cône) | C3b : une cible par appel ; zone complète non modélisée |
+| **Double source concentration** (overlay + fiche) | Overlay combat + `_set_concentration` sur fiche ; resync non tranchée |
+| **Remplacement de marque** (`hunters_mark` sur nouvelle cible) | Non tranché |
 
 ---
 

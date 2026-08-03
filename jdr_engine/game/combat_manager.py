@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Callable
 
 from jdr_engine.core.events.bus import EventBus
@@ -15,10 +15,12 @@ from jdr_engine.core.events.combat_events import (
     DamageDealt,
     InitiativeRolled,
     RoundStarted,
+    SavingThrowResolved,
+    SpellCast,
     TurnEnded,
     TurnStarted,
 )
-from jdr_engine.dice.d20 import D20RollRequest, D20RollResult, RandInt
+from jdr_engine.dice.d20 import D20Mode, D20RollRequest, D20RollResult, RandInt
 from jdr_engine.domain.combat.combat_state import (
     COMBAT_STATE_VERSION,
     CombatState,
@@ -50,7 +52,22 @@ from jdr_engine.rules.combat.initiative import (
     sort_initiative_order,
 )
 from jdr_engine.rules.engine import RuleEngine
+from jdr_engine.rules.combat.saving_throw import (
+    damage_after_save,
+    save_succeeded,
+)
+from jdr_engine.rules.combat.spell_resolution import (
+    CombatSpellEffect,
+    build_save_request,
+    build_spell_attack_request,
+    compute_spell_save_dc,
+    half_on_save_for_spell,
+    load_combat_spell,
+    resolve_spell_damage_notation,
+    save_ability_for_spell,
+)
 from jdr_engine.rules.roll_effects import roll_d20_for_character
+from jdr_engine.rules.spellcasting.cast import SpellCastError, _set_concentration
 
 if TYPE_CHECKING:
     pass
@@ -93,8 +110,29 @@ class AttackRollResolution:
 class DamageResolution:
     """Résultat d'un jet et d'une application de dégâts."""
 
-    roll: DamageRollResult
+    roll: DamageRollResult | None
     application: DamageApplicationResult
+
+
+@dataclass(frozen=True)
+class SpellAttackOutcome:
+    """Attaque de sort — jet et dégâts éventuels."""
+
+    spell: CombatSpellEffect
+    attack: AttackRollResolution
+    damage: DamageResolution | None = None
+
+
+@dataclass(frozen=True)
+class SpellSaveOutcome:
+    """Sort à sauvegarde — jet DD, dégâts ajustés."""
+
+    spell: CombatSpellEffect
+    save_dc: int
+    save_total: int
+    succeeded: bool
+    damage_roll: DamageRollResult
+    damage: DamageResolution
 
 
 class CombatManager:
@@ -199,16 +237,8 @@ class CombatManager:
         updated_combatants = dict(state.combatants)
         for combatant_id, roll in roll_by_id.items():
             old = updated_combatants[combatant_id]
-            updated_combatants[combatant_id] = Combatant(
-                combatant_id=old.combatant_id,
-                display_name=old.display_name,
-                kind=old.kind,
-                character_id=old.character_id,
-                hp_current=old.hp_current,
-                hp_max=old.hp_max,
-                ac=old.ac,
-                is_active=old.is_active,
-                initiative_total=roll.total,
+            updated_combatants[combatant_id] = replace(
+                old, initiative_total=roll.total
             )
 
         state.combatants = updated_combatants
@@ -285,17 +315,7 @@ class CombatManager:
         if combatant_id not in state.combatants:
             raise ValueError(f"Combattant introuvable : {combatant_id!r}.")
         old = state.combatants[combatant_id]
-        state.combatants[combatant_id] = Combatant(
-            combatant_id=old.combatant_id,
-            display_name=old.display_name,
-            kind=old.kind,
-            character_id=old.character_id,
-            hp_current=old.hp_current,
-            hp_max=old.hp_max,
-            ac=old.ac,
-            is_active=False,
-            initiative_total=old.initiative_total,
-        )
+        state.combatants[combatant_id] = replace(old, is_active=False)
         self._persist(state)
         return state
 
@@ -355,15 +375,18 @@ class CombatManager:
         self,
         combat_id: int,
         target_id: str,
-        damage_notation: str,
+        damage_notation: str = "",
         *,
+        damage_amount: int | None = None,
         critical: bool = False,
         source_id: str | None = None,
         rng: RandInt | None = None,
+        dice_notation_label: str | None = None,
     ) -> tuple[CombatState, DamageResolution]:
         """
-        Lance les dés de dégâts et les applique aux PV du combattant (overlay).
+        Applique des dégâts aux PV du combattant (overlay).
 
+        Soit ``damage_notation`` (jet de dés), soit ``damage_amount`` (montant fixe).
         Publie ``DamageDealt``. Persiste l'état combat.
         """
         state = self._require_state(combat_id)
@@ -375,8 +398,22 @@ class CombatManager:
         if source_id is not None:
             self._require_combatant(state, source_id)
 
-        damage_roll = roll_damage(damage_notation, critical=critical, rng=rng)
-        application = apply_damage_to_hp(target.hp_current, damage_roll.total)
+        if damage_amount is not None:
+            if damage_amount < 0:
+                raise ValueError("Les dégâts ne peuvent pas être négatifs.")
+            damage_roll = None
+            amount = damage_amount
+            notation = dice_notation_label or str(damage_amount)
+        else:
+            if not damage_notation:
+                raise ValueError(
+                    "damage_notation ou damage_amount requis pour apply_damage."
+                )
+            damage_roll = roll_damage(damage_notation, critical=critical, rng=rng)
+            amount = damage_roll.total
+            notation = damage_roll.dice_notation
+
+        application = apply_damage_to_hp(target.hp_current, amount)
 
         state.combatants[target_id] = target.with_hp(application.hp_after)
         self._persist(state)
@@ -393,10 +430,217 @@ class CombatManager:
                 hp_before=application.hp_before,
                 hp_after=application.hp_after,
                 critical=critical,
-                dice_notation=damage_roll.dice_notation,
+                dice_notation=notation,
             )
         )
         return state, DamageResolution(roll=damage_roll, application=application)
+
+    def cast_spell_attack(
+        self,
+        combat_id: int,
+        caster_id: str,
+        target_id: str,
+        spell_id: str,
+        *,
+        base_mode: D20Mode = "normal",
+        rng: RandInt | None = None,
+        locale: str = "fr",
+    ) -> tuple[CombatState, SpellAttackOutcome]:
+        """Attaque de sort — réutilise ``resolve_attack_hit`` et ``apply_damage``."""
+        state = self._require_state(combat_id)
+        if state.status != "active":
+            raise CombatStatusError("Les sorts ne sont lançables qu'en combat actif.")
+
+        caster = self._require_combatant(state, caster_id)
+        self._require_combatant(state, target_id)
+        caster_char = self._require_character(caster.character_id)
+
+        spell = load_combat_spell(self._engine, spell_id, locale=locale)
+        if spell.effect_type != "spell_attack":
+            raise SpellCastError(f"{spell_id!r} n'est pas une attaque de sort.")
+
+        self._publish_spell_cast(state, caster_id, spell, (target_id,))
+
+        request = build_spell_attack_request(
+            caster_char, self._engine, base_mode=base_mode
+        )
+        attack = self.resolve_attack_roll(
+            combat_id, caster_id, target_id, request, rng=rng
+        )
+
+        damage_resolution = None
+        state = self._require_state(combat_id)
+        if attack.outcome.hit:
+            notation = resolve_spell_damage_notation(spell, caster_char)
+            state, damage_resolution = self.apply_damage(
+                combat_id,
+                target_id,
+                notation,
+                critical=attack.outcome.critical,
+                source_id=caster_id,
+                rng=rng,
+            )
+
+        return state, SpellAttackOutcome(
+            spell=spell,
+            attack=attack,
+            damage=damage_resolution,
+        )
+
+    def cast_spell_save(
+        self,
+        combat_id: int,
+        caster_id: str,
+        target_id: str,
+        spell_id: str,
+        *,
+        rng: RandInt | None = None,
+        locale: str = "fr",
+    ) -> tuple[CombatState, SpellSaveOutcome]:
+        """Sort à sauvegarde — DD calculé, moitié des dégâts si réussite."""
+        state = self._require_state(combat_id)
+        if state.status != "active":
+            raise CombatStatusError("Les sorts ne sont lançables qu'en combat actif.")
+
+        caster = self._require_combatant(state, caster_id)
+        target = self._require_combatant(state, target_id)
+        caster_char = self._require_character(caster.character_id)
+        target_char = self._require_character(target.character_id)
+
+        spell = load_combat_spell(self._engine, spell_id, locale=locale)
+        if spell.effect_type != "saving_throw":
+            raise SpellCastError(f"{spell_id!r} n'est pas un sort à sauvegarde.")
+
+        self._publish_spell_cast(state, caster_id, spell, (target_id,))
+
+        notation = resolve_spell_damage_notation(spell, caster_char)
+        damage_roll = roll_damage(notation, rng=rng)
+        save_dc = compute_spell_save_dc(caster_char, self._engine)
+        save_ability = save_ability_for_spell(spell)
+        save_request = build_save_request(
+            target_char, self._engine, save_ability
+        )
+        d20 = roll_d20_for_character(
+            save_request, target_char, self._engine, rng=rng
+        )
+        succeeded = save_succeeded(d20.total, save_dc)
+        half = half_on_save_for_spell(spell)
+        final_damage = damage_after_save(
+            damage_roll.total,
+            save_succeeded_flag=succeeded,
+            half_on_save=half,
+        )
+
+        state = self._require_state(combat_id)
+        self._bus.publish(
+            SavingThrowResolved(
+                ruleset_id=state.ruleset_id,
+                combat_id=state.combat_id or str(combat_id),
+                guild_id=state.guild_id or "",
+                channel_id=state.channel_id or "",
+                caster_id=caster_id,
+                target_id=target_id,
+                spell_id=spell_id,
+                save_ability=save_ability,
+                save_dc=save_dc,
+                save_total=d20.total,
+                succeeded=succeeded,
+                damage_before_save=damage_roll.total,
+                damage_applied=final_damage,
+            )
+        )
+
+        state, damage_resolution = self.apply_damage(
+            combat_id,
+            target_id,
+            damage_amount=final_damage,
+            source_id=caster_id,
+            dice_notation_label=f"{notation} → {final_damage}",
+        )
+
+        return state, SpellSaveOutcome(
+            spell=spell,
+            save_dc=save_dc,
+            save_total=d20.total,
+            succeeded=succeeded,
+            damage_roll=damage_roll,
+            damage=damage_resolution,
+        )
+
+    def cast_hunters_mark(
+        self,
+        combat_id: int,
+        caster_id: str,
+        target_id: str,
+        *,
+        locale: str = "fr",
+    ) -> CombatState:
+        """Pose la concentration et marque la cible (overlay combat)."""
+        state = self._require_state(combat_id)
+        if state.status != "active":
+            raise CombatStatusError("Les sorts ne sont lançables qu'en combat actif.")
+
+        caster = self._require_combatant(state, caster_id)
+        self._require_combatant(state, target_id)
+        caster_char = self._require_character(caster.character_id)
+
+        spell = load_combat_spell(self._engine, "hunters_mark", locale=locale)
+        self._publish_spell_cast(state, caster_id, spell, (target_id,))
+
+        updated_char, _interrupted = _set_concentration(
+            caster_char, spell.spell_id, spell.spell_name
+        )
+        self._characters.save(updated_char)
+
+        state.combatants[caster_id] = caster.with_concentration(
+            spell.spell_id, spell.spell_name
+        )
+        state.combatants[target_id] = state.combatants[target_id].with_hunters_mark(
+            caster_id
+        )
+        self._persist(state)
+        return state
+
+    def cast_bless(
+        self,
+        combat_id: int,
+        caster_id: str,
+        target_ids: list[str],
+        *,
+        locale: str = "fr",
+    ) -> CombatState:
+        """Bénédiction — concentration + buff overlay sur jusqu'à 3 cibles."""
+        if len(target_ids) > 3:
+            raise ValueError("Bénédiction : maximum 3 cibles (SRD 2014).")
+
+        state = self._require_state(combat_id)
+        if state.status != "active":
+            raise CombatStatusError("Les sorts ne sont lançables qu'en combat actif.")
+
+        caster = self._require_combatant(state, caster_id)
+        for target_id in target_ids:
+            self._require_combatant(state, target_id)
+        caster_char = self._require_character(caster.character_id)
+
+        spell = load_combat_spell(self._engine, "bless", locale=locale)
+        self._publish_spell_cast(
+            state, caster_id, spell, tuple(target_ids)
+        )
+
+        updated_char, _interrupted = _set_concentration(
+            caster_char, spell.spell_id, spell.spell_name
+        )
+        self._characters.save(updated_char)
+
+        state.combatants[caster_id] = caster.with_concentration(
+            spell.spell_id, spell.spell_name
+        )
+        for target_id in target_ids:
+            state.combatants[target_id] = state.combatants[target_id].with_blessed(
+                True
+            )
+        self._persist(state)
+        return state
 
     def load_combat(self, combat_id: int) -> CombatState:
         """Charge un combat par identifiant SQL."""
@@ -492,6 +736,35 @@ class CombatManager:
             hp_current=sheet.hp_current,
             hp_max=sheet.hp_max,
             ac=sheet.ac,
+        )
+
+    def _require_character(self, character_id: str):
+        character = self._characters.get_by_id(character_id)
+        if character is None:
+            raise CombatCharacterNotFoundError(
+                f"Personnage introuvable : {character_id!r}."
+            )
+        return character
+
+    def _publish_spell_cast(
+        self,
+        state: CombatState,
+        caster_id: str,
+        spell: CombatSpellEffect,
+        target_ids: tuple[str, ...],
+    ) -> None:
+        self._bus.publish(
+            SpellCast(
+                ruleset_id=state.ruleset_id,
+                combat_id=state.combat_id or "",
+                guild_id=state.guild_id or "",
+                channel_id=state.channel_id or "",
+                caster_id=caster_id,
+                spell_id=spell.spell_id,
+                spell_name=spell.spell_name,
+                effect_type=spell.effect_type,
+                target_ids=target_ids,
+            )
         )
 
     def _require_combatant(self, state: CombatState, combatant_id: str) -> Combatant:

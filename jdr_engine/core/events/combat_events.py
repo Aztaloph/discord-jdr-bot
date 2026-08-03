@@ -87,3 +87,31 @@ class DamageDealt(DomainEvent):
     hp_after: int
     critical: bool
     dice_notation: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class SpellCast(DomainEvent):
+    combat_id: str
+    guild_id: str
+    channel_id: str
+    caster_id: str
+    spell_id: str
+    spell_name: str
+    effect_type: str
+    target_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, kw_only=True)
+class SavingThrowResolved(DomainEvent):
+    combat_id: str
+    guild_id: str
+    channel_id: str
+    caster_id: str
+    target_id: str
+    spell_id: str
+    save_ability: str
+    save_dc: int
+    save_total: int
+    succeeded: bool
+    damage_before_save: int
+    damage_applied: int
