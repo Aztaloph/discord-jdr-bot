@@ -18,6 +18,7 @@ Chaque ADR documente :
 | [ADR-001](ADR-001%20-%20Pourquoi%20un%20Rule%20Engine.md) | Pourquoi un Rule Engine | Accepté |
 | [ADR-002](ADR-002%20-%20Pourquoi%20les%20règles%20sont%20externalisées.md) | Pourquoi les règles sont externalisées | Accepté |
 | [ADR-003](ADR-003%20-%20Pourquoi%20utiliser%20un%20EventBus.md) | Pourquoi utiliser un EventBus | Accepté |
+| [ADR-004](ADR-004-modele-combat.md) | Modèle de combat | Accepté |
 
 ## Documents associés
 
@@ -30,8 +31,8 @@ Chaque ADR documente :
 
 ### ADRs futurs prévus
 
-- ADR-004 — Structure du Compendium (dossier par entité)
-- ADR-005 — Stratégie i18n (fichiers par locale)
-- ADR-006 — Validation Compendium (strict vs warn)
-- ADR-007 — Versionnement des rulesets
-- ADR-008 — Système de plugins (sandbox)
+- ADR-005 — Structure du Compendium (dossier par entité)
+- ADR-006 — Stratégie i18n (fichiers par locale)
+- ADR-007 — Validation Compendium (strict vs warn)
+- ADR-008 — Versionnement des rulesets
+- ADR-009 — Système de plugins (sandbox)
