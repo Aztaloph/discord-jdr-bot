@@ -261,19 +261,6 @@ def reset_spell_slots(character: Character) -> Character:
     return _update_spellcasting(character, slots_used={})
 
 
-def clear_concentration(character: Character) -> Character:
-    """Retire la concentration active (repos, rupture manuelle future, etc.)."""
-    state = get_spellcasting_state(character)
-    if "concentration" not in state:
-        return character
-    state = dict(state)
-    state.pop("concentration", None)
-    choices = dict(character.choices or {})
-    choices["spellcasting"] = state
-    character.choices = choices
-    return character
-
-
 def _update_spellcasting(
     character: Character,
     *,

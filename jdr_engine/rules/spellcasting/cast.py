@@ -17,6 +17,7 @@ from jdr_engine.rules.spellcasting.mechanics_display import (
     build_spell_mechanics_reference_lines,
     resolve_cantrip_scaling_tier,
 )
+from jdr_engine.rules.spellcasting.concentration import set_concentration
 from jdr_engine.rules.spellcasting.slots import get_max_spell_slots, get_remaining_slots
 from jdr_engine.rules.spellcasting.spells_catalog import SUPPORTED_SPELLCASTING_CLASSES
 from jdr_engine.rules.spellcasting.state import (
@@ -344,31 +345,6 @@ def _apply_healing(
     return character, hp_before, hp_after, hp_max, healing_applied, capped
 
 
-def _set_concentration(
-    character: Character,
-    spell_id: str,
-    spell_name: str,
-) -> tuple[Character, str | None]:
-    """
-    Pose ou remplace la concentration active.
-
-    Retourne le nom localisé du sort interrompu, ou None si aucun remplacement
-    (pas de concentration antérieure, ou recast du même sort).
-    """
-    choices = dict(character.choices or {})
-    state = dict(get_spellcasting_state(character))
-    previous = state.get("concentration")
-    interrupted_name: str | None = None
-    if isinstance(previous, dict):
-        previous_id = str(previous.get("spell_id", ""))
-        if previous_id and previous_id != spell_id:
-            interrupted_name = str(previous.get("spell_name") or previous_id)
-    state["concentration"] = {"spell_id": spell_id, "spell_name": spell_name}
-    choices["spellcasting"] = state
-    character.choices = choices
-    return character, interrupted_name
-
-
 def cast_spell(
     character: Character,
     spell_id: str,
@@ -670,7 +646,7 @@ def cast_spell(
         raise SpellCastError(f"Type d'effet non pris en charge : {effect_type!r}")
 
     if concentration:
-        updated, interrupted = _set_concentration(updated, spell_id, spell_name)
+        updated, interrupted = set_concentration(updated, spell_id, spell_name)
         result.interrupted_concentration = interrupted
 
     remaining = get_remaining_slots(

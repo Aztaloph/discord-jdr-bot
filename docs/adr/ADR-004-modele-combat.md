@@ -363,7 +363,7 @@ Calculé via **`get_spellcasting_stats`** / `spell_save_dc` — **8 + maîtrise 
 
 ### Concentration
 
-Sorts à concentration (`hunters_mark`, `bless`) : **`_set_concentration`** de `cast.py` + overlay sur le combattant lanceur (`concentration_spell_id`). Pas de refactor vers `concentration.py` en C3b (point ouvert ADR-004 §2).
+Sorts à concentration (`hunters_mark`, `bless`) : **`set_concentration`** (module `concentration.py` depuis C5) + overlay sur le combattant lanceur (`concentration_spell_id`).
 
 ### Sorts implémentés (C3b)
 
@@ -389,7 +389,7 @@ Le **+1d4 mécanique** de `bless` et le **+1d6** de `hunters_mark` sur les attaq
 ### Hors périmètre C3b
 
 - Emplacements de sorts (resync ROADMAP post-C4)
-- Rupture de concentration sur dégâts (**C5**)
+- Rupture de concentration sur dégâts (**C5** ✅ décision 12)
 - Application mécanique des buffs (**B4** / **C6**)
 
 ### Ambiguïtés laissées ouvertes (C3b)
@@ -447,13 +447,67 @@ Au **`TurnStarted`** du combattant concerné uniquement, budget remis à **`fres
 - Attaques multiples (Extra Attack), actions gratuites, interactions d'objet
 - Privation d'action par conditions (**C6**)
 
+### Dette explicite — déplacement (C4)
+
+Le composant **`movement`** de `ActionBudget` pose un **état inerte** en C4 — le budget est réinitialisé à `TurnStarted` et exposé via l'API (`consume_movement`), mais **aucune action de combat ne l'invoque**. Une consommation mécanique exigerait un modèle de déplacement (distance, vitesse, cases) absent du MVP combat actuel. **Aucun lot de rattachement identifié** à ce stade — même pattern que les buffs inertes C3b (§ dette explicite buffs), sans cible B4.
+
 ### Ambiguïtés laissées ouvertes (C4)
 
 | Point | Traitement |
 |---|---|
-| **Consommation du déplacement** | Budget suivi ; aucune action ne le consomme en C4 |
 | **Réaction sur son propre tour** (certaines features) | Non tranché — refus par défaut |
 | **Action bonus / action interchangeables** (certaines features) | Non tranché |
+
+---
+
+## Décision 12 — Concentration en combat (lot C5, 2026-08-04)
+
+### Module unique
+
+`set_concentration` / `clear_concentration` / `get_active_concentration` vivent dans **`jdr_engine/rules/spellcasting/concentration.py`**. `cast.py`, les repos et le moteur de combat y délèguent — refactor reporté depuis C3b (§ décision 2).
+
+### Rupture sur dégâts
+
+Après **`apply_damage`**, si la cible concentre un sort et que les dégâts effectivement appliqués sont **> 0** :
+
+1. DD = **`max(10, dégâts ÷ 2)`** (division entière) ;
+2. jet de sauvegarde **CON** de la cible ;
+3. échec → **`clear_concentration()`** sur la fiche + nettoyage overlay lanceur + événement **`ConcentrationBroken`**.
+
+Le hook s'exécute **après** la publication de **`DamageDealt`**.
+
+### Détection de concentration
+
+Overlay **`concentration_spell_id`** prioritaire ; repli sur **`choices.spellcasting.concentration`** si l'overlay est absent (double source non unifiée — dette fin de combat).
+
+### Nettoyage local
+
+C5 efface overlay et fiche **à la rupture uniquement** — pas de résolution du groupe « fin de combat » (sync globale overlay ↔ fiche).
+
+### Événement
+
+| Événement | Moment |
+|---|---|
+| `ConcentrationBroken` | Échec du save CON après dégâts |
+
+Aucun événement publié si le save réussit ou si la cible ne concentre pas.
+
+### Hors périmètre C5
+
+| Point | Traitement |
+|---|---|
+| **Expiration de durée** | **Hors C5** — horloge combat absente (dette B4). La ROADMAP mentionnait l'expiration en C5 ; **ADR-004 prime** : poser une durée sans décompte reproduirait le piège du budget de déplacement (état jamais consommé). |
+| **Rupture volontaire** | Non actée — hors C5 |
+| **Remplacement par un autre sort concentré** | Déjà couvert par `set_concentration` (Lot 1 / C3b) |
+| **Conditions SRD brisant la concentration** | **C6** — hook à trancher là |
+| **Unification double source overlay ↔ fiche** | Groupe **fin de combat** |
+
+### Ambiguïtés laissées ouvertes (C5)
+
+| Point | Traitement |
+|---|---|
+| **Nettoyage des buffs overlay** (`blessed`, `hunters_mark_caster_id`) à la rupture | Non tranché — effets inertes jusqu'à B4 ; expiration mécanique des buffs = B4 |
+| **Save CON avec avantage/désavantage** (conditions futures) | Non tranché — C6 |
 
 ---
 
@@ -586,6 +640,7 @@ B4 intervient **après C4** (boucle de tour jouable), comme **première validati
 - [ADR-001](ADR-001%20-%20Pourquoi%20un%20Rule%20Engine.md) — Rule Engine
 - [ADR-003](ADR-003%20-%20Pourquoi%20utiliser%20un%20EventBus.md) — EventBus
 - `jdr_engine/domain/character/character.py` — Entité persistée
-- `jdr_engine/rules/spellcasting/cast.py` — `_apply_healing`, `_set_concentration`
-- `jdr_engine/rules/spellcasting/concentration.py` — `set_concentration`, `clear_concentration` (module cible)
+- `jdr_engine/rules/spellcasting/cast.py` — `_apply_healing`, délégation `set_concentration`
+- `jdr_engine/rules/spellcasting/concentration.py` — `set_concentration`, `clear_concentration`, `get_active_concentration`
+- `jdr_engine/rules/combat/concentration_save.py` — `concentration_save_dc`
 - `jdr_engine/rules/spellcasting/state.py` — état spellcasting (emplacements, grimoire)

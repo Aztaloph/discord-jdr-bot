@@ -13,6 +13,7 @@ from jdr_engine.core.events.combat_events import (
     AttackRollResolved,
     CombatEnded,
     CombatStarted,
+    ConcentrationBroken,
     DamageDealt,
     InitiativeRolled,
     RoundStarted,
@@ -45,6 +46,7 @@ from jdr_engine.persistence.sqlite_character_repository import (
 )
 from jdr_engine.rules.calculator import build_character_sheet
 from jdr_engine.rules.combat.attack_roll import AttackHitOutcome, resolve_attack_hit
+from jdr_engine.rules.combat.concentration_save import concentration_save_dc
 from jdr_engine.rules.combat.damage import (
     DamageApplicationResult,
     DamageRollResult,
@@ -73,7 +75,12 @@ from jdr_engine.rules.combat.spell_resolution import (
     save_ability_for_spell,
 )
 from jdr_engine.rules.roll_effects import roll_d20_for_character
-from jdr_engine.rules.spellcasting.cast import SpellCastError, _set_concentration
+from jdr_engine.rules.spellcasting.cast import SpellCastError
+from jdr_engine.rules.spellcasting.concentration import (
+    clear_concentration,
+    get_active_concentration,
+    set_concentration,
+)
 
 if TYPE_CHECKING:
     pass
@@ -442,6 +449,13 @@ class CombatManager:
                 dice_notation=notation,
             )
         )
+        state = self._resolve_concentration_after_damage(
+            state,
+            combat_id,
+            target_id,
+            application.damage_dealt,
+            rng=rng,
+        )
         return state, DamageResolution(roll=damage_roll, application=application)
 
     def cast_spell_attack(
@@ -603,7 +617,7 @@ class CombatManager:
         caster = self._require_combatant(state, caster_id)
         self._publish_spell_cast(state, caster_id, spell, (target_id,))
 
-        updated_char, _interrupted = _set_concentration(
+        updated_char, _interrupted = set_concentration(
             caster_char, spell.spell_id, spell.spell_name
         )
         self._characters.save(updated_char)
@@ -647,7 +661,7 @@ class CombatManager:
             state, caster_id, spell, tuple(target_ids)
         )
 
-        updated_char, _interrupted = _set_concentration(
+        updated_char, _interrupted = set_concentration(
             caster_char, spell.spell_id, spell.spell_name
         )
         self._characters.save(updated_char)
@@ -753,6 +767,66 @@ class CombatManager:
                 guild_id=record.guild_id,
                 channel_id=record.channel_id,
                 reason=reason,
+            )
+        )
+        return state
+
+    def _resolve_concentration_after_damage(
+        self,
+        state: CombatState,
+        combat_id: int,
+        target_id: str,
+        damage_dealt: int,
+        *,
+        rng: RandInt | None = None,
+    ) -> CombatState:
+        """Save CON après dégâts si la cible concentre un sort (lot C5)."""
+        if damage_dealt <= 0:
+            return state
+
+        target = state.combatants[target_id]
+        character = self._require_character(target.character_id)
+        persisted = get_active_concentration(character)
+        overlay_id = target.concentration_spell_id
+
+        if overlay_id is None and persisted is None:
+            return state
+
+        if overlay_id is not None:
+            spell_id = overlay_id
+            spell_name = target.concentration_spell_name or overlay_id
+        else:
+            assert persisted is not None
+            spell_id = persisted["spell_id"]
+            spell_name = persisted["spell_name"]
+
+        save_dc = concentration_save_dc(damage_dealt)
+        save_request = build_save_request(character, self._engine, "con")
+        d20 = roll_d20_for_character(
+            save_request, character, self._engine, rng=rng
+        )
+        if save_succeeded(d20.total, save_dc):
+            return state
+
+        updated_char = clear_concentration(character)
+        self._characters.save(updated_char)
+
+        state.combatants[target_id] = target.without_concentration()
+        self._persist(state)
+
+        self._bus.publish(
+            ConcentrationBroken(
+                ruleset_id=state.ruleset_id,
+                combat_id=state.combat_id or str(combat_id),
+                guild_id=state.guild_id or "",
+                channel_id=state.channel_id or "",
+                combatant_id=target_id,
+                character_id=target.character_id,
+                spell_id=spell_id,
+                spell_name=spell_name,
+                damage_taken=damage_dealt,
+                save_dc=save_dc,
+                save_total=d20.total,
             )
         )
         return state

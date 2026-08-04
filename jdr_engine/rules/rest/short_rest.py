@@ -141,7 +141,7 @@ def apply_short_rest(
 
         character = reset_spell_slots(character)
 
-    from jdr_engine.rules.spellcasting.state import clear_concentration
+    from jdr_engine.rules.spellcasting.concentration import clear_concentration
 
     character = clear_concentration(character)
 

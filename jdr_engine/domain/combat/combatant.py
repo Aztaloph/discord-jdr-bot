@@ -98,6 +98,13 @@ class Combatant:
             concentration_spell_name=spell_name,
         )
 
+    def without_concentration(self) -> Combatant:
+        return replace(
+            self,
+            concentration_spell_id=None,
+            concentration_spell_name=None,
+        )
+
     def with_hunters_mark(self, caster_id: str) -> Combatant:
         return replace(self, hunters_mark_caster_id=caster_id)
 

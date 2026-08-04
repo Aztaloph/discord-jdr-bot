@@ -20,8 +20,8 @@ from jdr_engine.rules.spellcasting.slots import (
     get_max_spell_slots,
     get_remaining_slots,
 )
+from jdr_engine.rules.spellcasting.concentration import clear_concentration
 from jdr_engine.rules.spellcasting.state import (
-    clear_concentration,
     format_slots_display,
     get_slots_used,
     reset_spell_slots,

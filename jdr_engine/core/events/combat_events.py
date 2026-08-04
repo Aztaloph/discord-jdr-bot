@@ -118,6 +118,20 @@ class SavingThrowResolved(DomainEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
+class ConcentrationBroken(DomainEvent):
+    combat_id: str
+    guild_id: str
+    channel_id: str
+    combatant_id: str
+    character_id: str
+    spell_id: str
+    spell_name: str
+    damage_taken: int
+    save_dc: int
+    save_total: int
+
+
+@dataclass(frozen=True, kw_only=True)
 class ActionConsumed(DomainEvent):
     combat_id: str
     guild_id: str
