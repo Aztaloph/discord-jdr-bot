@@ -23,7 +23,7 @@ from jdr_engine.persistence.character_repository import (
 
 logger = logging.getLogger(__name__)
 
-DB_SCHEMA_VERSION = 3
+DB_SCHEMA_VERSION = 4
 DEFAULT_DB_PATH = get_project_root() / "data" / "bot.db"
 
 # Marqueurs one-shot — SQLite est la source de vérité après le premier import.
@@ -98,6 +98,21 @@ _CREATE_COMBATS_OPEN_INDEX = """
 CREATE UNIQUE INDEX IF NOT EXISTS idx_combats_open_channel
     ON combats (guild_id, channel_id)
     WHERE status IN ('preparing', 'active');
+"""
+
+_CREATE_COMBAT_EVENT_LOG = """
+CREATE TABLE IF NOT EXISTS combat_event_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    combat_id INTEGER NOT NULL,
+    event_type TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+"""
+
+_CREATE_COMBAT_EVENT_LOG_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_combat_event_log_combat_id
+    ON combat_event_log (combat_id);
 """
 
 
@@ -189,6 +204,17 @@ def migrate_combats_schema_v3(conn: sqlite3.Connection) -> None:
     logger.info("Migration combats SQL v2 → v3 (preparing + index partiel étendu)")
 
 
+def ensure_combat_log_schema(db_path: Path | None = None) -> None:
+    """Crée la table ``combat_event_log`` (schéma SQL v4, lot C7)."""
+    path = db_path or get_db_path()
+    with get_connection(path) as conn:
+        conn.executescript(_CREATE_COMBAT_EVENT_LOG)
+        conn.executescript(_CREATE_COMBAT_EVENT_LOG_INDEX)
+        current = get_schema_meta(conn, "schema_version")
+        if current is None or int(current) < DB_SCHEMA_VERSION:
+            set_schema_meta(conn, "schema_version", str(DB_SCHEMA_VERSION))
+
+
 def ensure_combats_schema(db_path: Path | None = None) -> None:
     """Crée la table ``combats``, migre si besoin, et assure l'index d'unicité."""
     path = db_path or get_db_path()
@@ -197,6 +223,8 @@ def ensure_combats_schema(db_path: Path | None = None) -> None:
         conn.executescript(_CREATE_COMBATS)
         migrate_combats_schema_v3(conn)
         conn.executescript(_CREATE_COMBATS_OPEN_INDEX)
+        conn.executescript(_CREATE_COMBAT_EVENT_LOG)
+        conn.executescript(_CREATE_COMBAT_EVENT_LOG_INDEX)
         current = get_schema_meta(conn, "schema_version")
         if current is None or int(current) < DB_SCHEMA_VERSION:
             set_schema_meta(conn, "schema_version", str(DB_SCHEMA_VERSION))
@@ -213,6 +241,8 @@ def init_database(db_path: Path | None = None) -> Path:
         conn.executescript(_CREATE_COMBATS)
         migrate_combats_schema_v3(conn)
         conn.executescript(_CREATE_COMBATS_OPEN_INDEX)
+        conn.executescript(_CREATE_COMBAT_EVENT_LOG)
+        conn.executescript(_CREATE_COMBAT_EVENT_LOG_INDEX)
         conn.execute(
             "INSERT OR REPLACE INTO schema_meta (key, value) VALUES (?, ?)",
             ("schema_version", str(DB_SCHEMA_VERSION)),

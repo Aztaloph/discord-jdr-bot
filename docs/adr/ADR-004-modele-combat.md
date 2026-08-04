@@ -206,7 +206,7 @@ Centraliser `personnages` et `combats` dans **`data/bot.db`** évite deux fichie
 ### Conséquences
 
 - **Lot C1 (implémenté)** : `combat_repository.py` + table `combats` dans `database.py` (schéma SQL v2).
-- Handler EventBus `CombatAutoSaveHandler` — **lot C7** (non implémenté).
+- Handler EventBus `CombatAutoSaveHandler` — **lot C7** ✅ journal append-only ; `_persist()` synchrone conservé.
 - `ARCHITECTURE_TARGET.md` (snapshots fichiers) est **supplanté** par cette décision pour l'implémentation.
 
 ### Décision 6bis — Granularité et schéma SQL (lot C1, 2026-08-03)
@@ -559,6 +559,53 @@ Module catalogue : **`jdr_engine/rules/combat/conditions/catalog.py`**.
 
 ---
 
+## Décision 14 — Service et journal (lot C7, 2026-08-04)
+
+### Contexte — persistance déjà livrée (C1)
+
+La persistance combat **n'est pas créée en C7** : `SqliteCombatRepository`, blob JSON `CombatState`, `_persist()` synchrone après chaque mutation (C1–C6). C7 **formalise** la couche applicative et le journal événementiel.
+
+### CombatService
+
+| Élément | Choix |
+|---|---|
+| **Emplacement** | `jdr_engine/application/combat_service.py` |
+| **Rôle** | Point d'entrée use cases ; construit et possède `CombatManager` |
+| **Délégation** | Logique métier **intégralement** dans `CombatManager` — pas d'extension du manager |
+| **Fabrique** | `CombatService.from_db_path()` pour tests et intégration |
+
+### CombatAutoSaveHandler
+
+| Élément | Choix |
+|---|---|
+| **Emplacement** | `jdr_engine/core/events/handlers/combat_auto_save.py` |
+| **Rôle** | Append des `DomainEvent` combat publiés **après** `_persist()` |
+| **Non-objectif C7** | Ne remplace **pas** `_persist()` synchrone — refactor handler-only = **dette post-C7** |
+
+### Journal de combat
+
+| Élément | Choix |
+|---|---|
+| **Stockage** | Table SQLite `combat_event_log` (schéma SQL v4) |
+| **Format** | Ligne append-only par événement : `event_type` + `payload_json` sérialisé |
+| **Repository** | `jdr_engine/persistence/combat_log_repository.py` |
+
+### Dettes ouvertes post-C7
+
+**Groupe fin de combat** (5 points, §333) — **non résolus** ; C7 persiste l'état tel quel :
+
+| Catégorie | Points |
+|---|---|
+| **Sémantique de transition non tranchée** | PV à 0 sans flag mort ; sync PV overlay↔fiche ; double source concentration ; sync conditions overlay↔fiche ; `advance_turn` mid-crash |
+| **Défaut latent rendu durable** (priorité **B4**) | Buffs overlay (`blessed`, `hunters_mark_caster_id`) persistés en **état faux** si concentration brisée sans nettoyage |
+
+### Conséquences
+
+- ÉTAPE 6 (`interfaces/api/`) consommera `CombatService`, pas `CombatManager` directement.
+- Schéma SQL `combats` stabilisé (décision 6bis) ; nouvel artefact C7 = `combat_event_log` uniquement.
+
+---
+
 ## Décision 7 — ADR dédié au modèle de combat
 
 ### Décision
@@ -674,7 +721,7 @@ B4 intervient **après C4** (boucle de tour jouable), comme **première validati
 
 | Point | Traitement |
 |---|---|
-| **Schéma SQL de la table `combats`** | **Renvoi au lot C7** — les colonnes seront définies lorsque le contenu de `CombatState` sera stabilisé. Un ADR figeant un schéma prématurément produirait une spécification rapidement fausse. |
+| **Schéma SQL de la table `combats`** | **Stabilisé** (décision 6bis) — table `combat_event_log` ajoutée en C7 (SQL v4) |
 | **Nom du module conditions phase 1** | Ouvert — principe « module unique dédié » acté (décision 4) ; identifiant de fichier fixé au lot C6. |
 | **Mise à jour des documents canoniques** (`ARCHITECTURE.md`, `AGENTS.md`) | Ouvert — hors périmètre de cet ADR ; renvoi ponctuel dans `ARCHITECTURE_TARGET.md` pour la persistance combat. |
 
@@ -694,4 +741,7 @@ B4 intervient **après C4** (boucle de tour jouable), comme **première validati
 - `jdr_engine/rules/combat/conditions/catalog.py` — enum phase 1 (`frightened`, `poisoned`)
 - `jdr_engine/rules/combat/conditions/collect.py` — collecteur unidirectionnel → `effects[]`
 - `jdr_engine/rules/roll_effects.py` — `roll_d20_for_combatant` (fusion traits + conditions)
+- `jdr_engine/application/combat_service.py` — use cases combat (lot C7)
+- `jdr_engine/core/events/handlers/combat_auto_save.py` — journal événementiel
+- `jdr_engine/persistence/combat_log_repository.py` — table `combat_event_log`
 - `jdr_engine/rules/spellcasting/state.py` — état spellcasting (emplacements, grimoire)
