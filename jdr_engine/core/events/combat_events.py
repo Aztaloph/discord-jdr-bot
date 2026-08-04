@@ -118,6 +118,24 @@ class SavingThrowResolved(DomainEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
+class ConditionApplied(DomainEvent):
+    combat_id: str
+    guild_id: str
+    channel_id: str
+    combatant_id: str
+    condition_id: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class ConditionRemoved(DomainEvent):
+    combat_id: str
+    guild_id: str
+    channel_id: str
+    combatant_id: str
+    condition_id: str
+
+
+@dataclass(frozen=True, kw_only=True)
 class ConcentrationBroken(DomainEvent):
     combat_id: str
     guild_id: str

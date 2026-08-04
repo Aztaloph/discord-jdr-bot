@@ -6,6 +6,7 @@ from dataclasses import replace
 from typing import Any
 
 from jdr_engine.domain.character.character import Character
+from jdr_engine.domain.combat.combatant import Combatant
 from jdr_engine.rules.class_features.barbarian import rage_active, reckless_active
 from jdr_engine.rules.engine import RuleEngine
 
@@ -87,5 +88,27 @@ def roll_d20_for_character(request, character, engine, *, rng=None):
     from jdr_engine.dice.d20 import D20RollContext, roll_d20
 
     effects = collect_roll_effects(character, engine)
+    enriched = enrich_roll_request(request, character)
+    return roll_d20(D20RollContext(request=enriched, effects=effects), rng=rng)
+
+
+def roll_d20_for_combatant(
+    request,
+    character: Character,
+    combatant: Combatant,
+    engine: RuleEngine,
+    *,
+    rng=None,
+):
+    """
+    Jet d20 combat — traits compendium + conditions overlay du combattant.
+
+    Les conditions ne sont jamais écrites sur la fiche ``Character``.
+    """
+    from jdr_engine.dice.d20 import D20RollContext, roll_d20
+    from jdr_engine.rules.combat.conditions.collect import collect_condition_roll_effects
+
+    effects = collect_roll_effects(character, engine)
+    effects.extend(collect_condition_roll_effects(combatant))
     enriched = enrich_roll_request(request, character)
     return roll_d20(D20RollContext(request=enriched, effects=effects), rng=rng)

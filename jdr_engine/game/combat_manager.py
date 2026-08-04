@@ -14,6 +14,8 @@ from jdr_engine.core.events.combat_events import (
     CombatEnded,
     CombatStarted,
     ConcentrationBroken,
+    ConditionApplied,
+    ConditionRemoved,
     DamageDealt,
     InitiativeRolled,
     RoundStarted,
@@ -46,6 +48,7 @@ from jdr_engine.persistence.sqlite_character_repository import (
 )
 from jdr_engine.rules.calculator import build_character_sheet
 from jdr_engine.rules.combat.attack_roll import AttackHitOutcome, resolve_attack_hit
+from jdr_engine.rules.combat.conditions.catalog import validate_phase1_condition
 from jdr_engine.rules.combat.concentration_save import concentration_save_dc
 from jdr_engine.rules.combat.damage import (
     DamageApplicationResult,
@@ -74,7 +77,7 @@ from jdr_engine.rules.combat.spell_resolution import (
     resolve_spell_damage_notation,
     save_ability_for_spell,
 )
-from jdr_engine.rules.roll_effects import roll_d20_for_character
+from jdr_engine.rules.roll_effects import roll_d20_for_combatant
 from jdr_engine.rules.spellcasting.cast import SpellCastError
 from jdr_engine.rules.spellcasting.concentration import (
     clear_concentration,
@@ -336,6 +339,70 @@ class CombatManager:
         self._persist(state)
         return state
 
+    def apply_condition(
+        self,
+        combat_id: int,
+        combatant_id: str,
+        condition_id: str,
+    ) -> CombatState:
+        """Applique une condition phase 1 sur l'overlay du combattant."""
+        state = self._require_state(combat_id)
+        if state.status != "active":
+            raise CombatStatusError(
+                "Les conditions ne s'appliquent qu'en combat actif."
+            )
+        normalized = validate_phase1_condition(condition_id)
+        combatant = self._require_combatant(state, combatant_id)
+        if normalized in combatant.conditions:
+            return state
+
+        state.combatants[combatant_id] = combatant.with_condition(normalized)
+        self._persist(state)
+        self._bus.publish(
+            ConditionApplied(
+                ruleset_id=state.ruleset_id,
+                combat_id=state.combat_id or str(combat_id),
+                guild_id=state.guild_id or "",
+                channel_id=state.channel_id or "",
+                combatant_id=combatant_id,
+                condition_id=normalized,
+            )
+        )
+        return state
+
+    def remove_condition(
+        self,
+        combat_id: int,
+        combatant_id: str,
+        condition_id: str,
+    ) -> CombatState:
+        """Retire une condition de l'overlay (seul chemin de sortie en phase 1)."""
+        state = self._require_state(combat_id)
+        if state.status != "active":
+            raise CombatStatusError(
+                "Les conditions ne se retirent qu'en combat actif."
+            )
+        normalized = validate_phase1_condition(condition_id)
+        combatant = self._require_combatant(state, combatant_id)
+        if normalized not in combatant.conditions:
+            raise ValueError(
+                f"Le combattant {combatant_id!r} n'a pas la condition {normalized!r}."
+            )
+
+        state.combatants[combatant_id] = combatant.without_condition(normalized)
+        self._persist(state)
+        self._bus.publish(
+            ConditionRemoved(
+                ruleset_id=state.ruleset_id,
+                combat_id=state.combat_id or str(combat_id),
+                guild_id=state.guild_id or "",
+                channel_id=state.channel_id or "",
+                combatant_id=combatant_id,
+                condition_id=normalized,
+            )
+        )
+        return state
+
     def resolve_attack_roll(
         self,
         combat_id: int,
@@ -366,7 +433,9 @@ class CombatManager:
         target = self._require_combatant(state, target_id)
         character = self._require_character(attacker.character_id)
 
-        d20 = roll_d20_for_character(request, character, self._engine, rng=rng)
+        d20 = roll_d20_for_combatant(
+            request, character, attacker, self._engine, rng=rng
+        )
         outcome = resolve_attack_hit(d20, target.ac)
 
         self._bus.publish(
@@ -546,8 +615,8 @@ class CombatManager:
         save_request = build_save_request(
             target_char, self._engine, save_ability
         )
-        d20 = roll_d20_for_character(
-            save_request, target_char, self._engine, rng=rng
+        d20 = roll_d20_for_combatant(
+            save_request, target_char, target, self._engine, rng=rng
         )
         succeeded = save_succeeded(d20.total, save_dc)
         half = half_on_save_for_spell(spell)
@@ -802,8 +871,8 @@ class CombatManager:
 
         save_dc = concentration_save_dc(damage_dealt)
         save_request = build_save_request(character, self._engine, "con")
-        d20 = roll_d20_for_character(
-            save_request, character, self._engine, rng=rng
+        d20 = roll_d20_for_combatant(
+            save_request, character, target, self._engine, rng=rng
         )
         if save_succeeded(d20.total, save_dc):
             return state

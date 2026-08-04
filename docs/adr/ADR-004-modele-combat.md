@@ -143,7 +143,7 @@ Trois conditions ne justifient pas l'infrastructure compendium (manifest, valida
 
 ### Conséquences
 
-- C6 implémente apply/remove + hooks jets pour 2–3 conditions depuis le module dédié.
+- C6 implémente apply/remove + hooks jets pour **`frightened`** et **`poisoned`** depuis le module dédié (lot C6, 2026-08-04).
 - Aucun travail compendium conditions avant C6.
 - La documentation ARCHITECTURE devra mentionner la dette jusqu'à migration.
 
@@ -177,7 +177,7 @@ Deux refactors simultanés (combat + unification effets classe) multiplient le r
 ### Conséquences
 
 - `collect_roll_effects()` et `enrich_roll_request()` restent le chemin rage/reckless/expertise en combat.
-- `ActiveEffect` phase 1 sert surtout aux **effets de sorts** (B4) et **conditions** (C6), pas aux features de classe.
+- `ActiveEffect` phase 1 sert surtout aux **effets de sorts** (B4) — voir **écart C6** ci-dessous pour les conditions.
 - Un futur ADR ou RFC pourra trancher la migration classe par classe.
 
 ---
@@ -340,6 +340,7 @@ Les points suivants **ne sont pas tranchés individuellement** ; ils seront rés
 | **Mort à 0 PV** (inconscient, retrait auto) | Ambiguïté C3a |
 | **Synchronisation overlay combat → fiche `Character`** | ADR décision 1 / C3a |
 | **Double source concentration** (overlay + fiche) | Ambiguïté C3b |
+| **Conditions overlay → fiche `Character`** (persistance post-rencontre) | Lot C6 |
 
 ### Dette explicite — buffs inertes (C3b → B4)
 
@@ -499,7 +500,7 @@ Aucun événement publié si le save réussit ou si la cible ne concentre pas.
 | **Expiration de durée** | **Hors C5** — horloge combat absente (dette B4). La ROADMAP mentionnait l'expiration en C5 ; **ADR-004 prime** : poser une durée sans décompte reproduirait le piège du budget de déplacement (état jamais consommé). |
 | **Rupture volontaire** | Non actée — hors C5 |
 | **Remplacement par un autre sort concentré** | Déjà couvert par `set_concentration` (Lot 1 / C3b) |
-| **Conditions SRD brisant la concentration** | **C6** — hook à trancher là |
+| **Conditions SRD brisant la concentration** | **Hors C6 phase 1** — sous-ensemble sans privatives ; hook reporté si privatives ajoutées |
 | **Unification double source overlay ↔ fiche** | Groupe **fin de combat** |
 
 ### Ambiguïtés laissées ouvertes (C5)
@@ -507,7 +508,54 @@ Aucun événement publié si le save réussit ou si la cible ne concentre pas.
 | Point | Traitement |
 |---|---|
 | **Nettoyage des buffs overlay** (`blessed`, `hunters_mark_caster_id`) à la rupture | Non tranché — effets inertes jusqu'à B4 ; expiration mécanique des buffs = B4 |
-| **Save CON avec avantage/désavantage** (conditions futures) | Non tranché — C6 |
+| **Save CON avec avantage/désavantage** (conditions futures) | **Hors C6 phase 1** — `frightened` / `poisoned` n'affectent pas les saves SRD |
+
+---
+
+## Décision 13 — Conditions de combat (lot C6, 2026-08-04)
+
+### Sous-ensemble phase 1
+
+| Condition | Effet MVP |
+|---|---|
+| **`frightened`** | Désavantage attaques + tests de caractéristique (**simplification** — voir ambiguïtés) |
+| **`poisoned`** | Désavantage attaques + tests de caractéristique |
+
+**Hors C6** : `prone` (**C6b** — collecteur bidirectionnel, portée, relèvement/movement), privatives (`incapacitated` et dérivées), hook condition → concentration, auto-échec/auto-crit.
+
+### Stockage
+
+Conditions dans l'**overlay `Combatant`** (`conditions: tuple[str, …]`), **sans durée**, retrait par **`remove_condition`** uniquement. **Jamais** écrites sur la fiche `Character`.
+
+### Écart ADR — ActiveEffect écarté pour les conditions (décision 5)
+
+L'ADR actait `ActiveEffect` pour les conditions (décision 5 §180), rédigé **avant** constat de l'absence d'horloge combat. Créer `ActiveEffect` sans durée fixerait la sémantique sur le cas dégénéré ; **B4** (durées de sorts) doit définir la structure. **Même logique** que l'écart ROADMAP expiration / C5.
+
+**Question ouverte (non tranchée)** : migration conditions overlay → `ActiveEffect` post-B4.
+
+### Agrégation
+
+Collecteur combat unidirectionnel (`rules/combat/conditions/collect.py`) → `effects[]` → **`_resolve_mode`** dans `d20.py`. Extension C6 : `type: "disadvantage"` pour contextes **`attack`** et **`ability_check`** uniquement — pas `saving_throw`.
+
+Fusion sur les chemins combat via **`roll_d20_for_combatant`** : `collect_roll_effects(character)` + effets conditions overlay.
+
+### API et événements
+
+| Opération | Événement |
+|---|---|
+| `apply_condition` | `ConditionApplied` |
+| `remove_condition` | `ConditionRemoved` |
+
+Module catalogue : **`jdr_engine/rules/combat/conditions/catalog.py`**.
+
+### Ambiguïtés laissées ouvertes (C6)
+
+| Point | Traitement |
+|---|---|
+| **`frightened` SRD complet** | MVP : désavantage inconditionnel ; pas de ligne de vue ; pas d'interdiction d'approche (movement inerte) — **simplification explicite** |
+| **`prone`** | Lot **C6b** (après ou avec branchement movement) |
+| **Hook concentration** | Hors phase 1 — pas de privatives |
+| **Sync conditions fin de combat** | **5e point** du groupe fin de combat (§333) |
 
 ---
 
@@ -643,4 +691,7 @@ B4 intervient **après C4** (boucle de tour jouable), comme **première validati
 - `jdr_engine/rules/spellcasting/cast.py` — `_apply_healing`, délégation `set_concentration`
 - `jdr_engine/rules/spellcasting/concentration.py` — `set_concentration`, `clear_concentration`, `get_active_concentration`
 - `jdr_engine/rules/combat/concentration_save.py` — `concentration_save_dc`
+- `jdr_engine/rules/combat/conditions/catalog.py` — enum phase 1 (`frightened`, `poisoned`)
+- `jdr_engine/rules/combat/conditions/collect.py` — collecteur unidirectionnel → `effects[]`
+- `jdr_engine/rules/roll_effects.py` — `roll_d20_for_combatant` (fusion traits + conditions)
 - `jdr_engine/rules/spellcasting/state.py` — état spellcasting (emplacements, grimoire)

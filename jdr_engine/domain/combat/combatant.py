@@ -29,6 +29,7 @@ class Combatant:
     hunters_mark_caster_id: str | None = None
     blessed: bool = False
     action_budget: ActionBudget | None = None
+    conditions: tuple[str, ...] = ()
 
     def to_dict(self) -> dict:
         payload = {
@@ -52,6 +53,8 @@ class Combatant:
             payload["blessed"] = True
         if self.action_budget is not None:
             payload["action_budget"] = self.action_budget.to_dict()
+        if self.conditions:
+            payload["conditions"] = list(self.conditions)
         return payload
 
     @classmethod
@@ -81,6 +84,10 @@ class Combatant:
                 ActionBudget.from_dict(raw_budget)
                 if (raw_budget := data.get("action_budget")) is not None
                 else None
+            ),
+            conditions=tuple(
+                str(condition_id)
+                for condition_id in (data.get("conditions") or [])
             ),
         )
 
@@ -113,3 +120,16 @@ class Combatant:
 
     def with_action_budget(self, budget: ActionBudget | None) -> Combatant:
         return replace(self, action_budget=budget)
+
+    def with_condition(self, condition_id: str) -> Combatant:
+        if condition_id in self.conditions:
+            return self
+        return replace(self, conditions=self.conditions + (condition_id,))
+
+    def without_condition(self, condition_id: str) -> Combatant:
+        if condition_id not in self.conditions:
+            return self
+        return replace(
+            self,
+            conditions=tuple(c for c in self.conditions if c != condition_id),
+        )

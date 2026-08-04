@@ -219,6 +219,13 @@ def _effect_matches(
             return False
         return True
 
+    if effect_type == "disadvantage":
+        if context == "attack":
+            return request.roll_type == "attack"
+        if context == "ability_check":
+            return request.roll_type == "ability_check"
+        return False
+
     return False
 
 
@@ -233,7 +240,15 @@ def _resolve_mode(
     disadvantage_count = 1 if base_mode == "desavantage" else 0
 
     for effect in effects:
-        if effect.get("type") != "advantage":
+        effect_type = effect.get("type")
+        if effect_type == "disadvantage":
+            if not _effect_matches(effect, request):
+                continue
+            disadvantage_count += 1
+            source = effect.get("source_id") or effect.get("when") or effect.get("versus")
+            applied.append(f"désavantage ({source})")
+            continue
+        if effect_type != "advantage":
             continue
         if not _effect_matches(effect, request):
             continue
