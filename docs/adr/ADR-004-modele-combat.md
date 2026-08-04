@@ -317,7 +317,7 @@ Le jet d'attaque consomme **`roll_d20_for_character`** → **`roll_d20`** (`jdr_
 
 ### Économie d'actions
 
-**Hors périmètre C3a** — aucune limite d'attaques par tour ; lot **C4**.
+**Lot C4** — budget par tour avec réinitialisation à `TurnStarted` ; voir décision 11.
 
 ### Ambiguïtés laissées ouvertes (C3a)
 
@@ -339,6 +339,11 @@ Les points suivants **ne sont pas tranchés individuellement** ; ils seront rés
 | **`advance_turn` avec ≤1 combattant actif** | Ambiguïté C2 |
 | **Mort à 0 PV** (inconscient, retrait auto) | Ambiguïté C3a |
 | **Synchronisation overlay combat → fiche `Character`** | ADR décision 1 / C3a |
+| **Double source concentration** (overlay + fiche) | Ambiguïté C3b |
+
+### Dette explicite — buffs inertes (C3b → B4)
+
+Les champs overlay **`blessed`** et **`hunters_mark_caster_id`** posent un **état inerte** en C3b — aucun effet mécanique sur les jets. Leur activation relève du lot **B4** (`hunters_mark` puis `bless`).
 
 ---
 
@@ -367,9 +372,10 @@ Sorts à concentration (`hunters_mark`, `bless`) : **`_set_concentration`** de `
 | `fire_bolt` | Attaque de sort | — |
 | `burning_hands` | Sauvegarde DEX | — |
 | `hunters_mark` | Buff + concentration | `hunters_mark_caster_id` sur cible |
-| `bless` | Buff + concentration | `blessed=True` sur cibles (max 3) |
+| `bless` | Buff + concentration | `blessed=True` sur cibles (max 3) — **état inerte jusqu'à B4** |
+| `hunters_mark` | Buff + concentration | `hunters_mark_caster_id` sur cible — **état inerte jusqu'à B4** |
 
-Le **+1d4 mécanique** de `bless` et le **+1d6** de `hunters_mark` sur les attaques relèvent de **B4** — seul l'état de buff est posé en C3b.
+Le **+1d4 mécanique** de `bless` et le **+1d6** de `hunters_mark` sur les attaques relèvent de **B4** — seul l'état de buff est posé en C3b (voir dette explicite buffs inertes).
 
 ### Événements (C3b)
 
@@ -382,7 +388,6 @@ Le **+1d4 mécanique** de `bless` et le **+1d6** de `hunters_mark` sur les attaq
 
 ### Hors périmètre C3b
 
-- Économie d'actions (**C4**)
 - Emplacements de sorts (resync ROADMAP post-C4)
 - Rupture de concentration sur dégâts (**C5**)
 - Application mécanique des buffs (**B4** / **C6**)
@@ -392,8 +397,63 @@ Le **+1d4 mécanique** de `bless` et le **+1d6** de `hunters_mark` sur les attaq
 | Point | Traitement |
 |---|---|
 | **AoE multi-cibles** (`burning_hands` cône) | C3b : une cible par appel ; zone complète non modélisée |
-| **Double source concentration** (overlay + fiche) | Overlay combat + `_set_concentration` sur fiche ; resync non tranchée |
 | **Remplacement de marque** (`hunters_mark` sur nouvelle cible) | Non tranché |
+
+---
+
+## Décision 11 — Économie d'actions (lot C4, 2026-08-04)
+
+### Budget par tour
+
+Chaque combattant possède un **`ActionBudget`** dans l'overlay (`action_budget` sur `Combatant`) :
+
+| Composante | Quantité par tour |
+|---|---|
+| Action | 1 |
+| Action bonus | 1 |
+| Réaction | 1 |
+| Déplacement | 1 |
+
+### Réinitialisation à `TurnStarted`
+
+Au **`TurnStarted`** du combattant concerné uniquement, budget remis à **`fresh_action_budget()`** — pas de mécanisme parallèle.
+
+### Réaction — mécanisme distinct
+
+- Consommable **hors tour propre** via `consume_reaction` (lève `NotCombatantTurnError` sur son propre tour).
+- **Non réinitialisée** au `TurnStarted` des autres combattants.
+- **Réinitialisée** au `TurnStarted` du réactant (inclus dans `fresh_action_budget()`).
+
+### Refus et événements
+
+- Budget épuisé → **`ActionBudgetExhaustedError`** (pas d'événement).
+- Hors tour → **`NotCombatantTurnError`**.
+- Consommation effective → **`ActionConsumed`** (`action_kind` : `action` \| `bonus_action` \| `reaction` \| `movement`).
+
+### Rattachement actions existantes
+
+| Méthode | Budget consommé |
+|---|---|
+| `resolve_attack_roll` | `action` |
+| `cast_spell_attack` | `action` (via `resolve_attack_roll`) |
+| `cast_spell_save` | `action` |
+| `cast_bless` | `action` |
+| `cast_hunters_mark` | `bonus_action` |
+| `apply_damage` | — (aucun) |
+
+### Hors périmètre C4
+
+- Emplacements de sorts (cycle repos long, fiche)
+- Attaques multiples (Extra Attack), actions gratuites, interactions d'objet
+- Privation d'action par conditions (**C6**)
+
+### Ambiguïtés laissées ouvertes (C4)
+
+| Point | Traitement |
+|---|---|
+| **Consommation du déplacement** | Budget suivi ; aucune action ne le consomme en C4 |
+| **Réaction sur son propre tour** (certaines features) | Non tranché — refus par défaut |
+| **Action bonus / action interchangeables** (certaines features) | Non tranché |
 
 ---
 

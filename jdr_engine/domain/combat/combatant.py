@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Literal
+from jdr_engine.domain.combat.action_budget import ActionBudget, ActionKind, fresh_action_budget
 
 
 @dataclass(frozen=True)
@@ -28,6 +28,7 @@ class Combatant:
     concentration_spell_name: str | None = None
     hunters_mark_caster_id: str | None = None
     blessed: bool = False
+    action_budget: ActionBudget | None = None
 
     def to_dict(self) -> dict:
         payload = {
@@ -49,6 +50,8 @@ class Combatant:
             payload["hunters_mark_caster_id"] = self.hunters_mark_caster_id
         if self.blessed:
             payload["blessed"] = True
+        if self.action_budget is not None:
+            payload["action_budget"] = self.action_budget.to_dict()
         return payload
 
     @classmethod
@@ -74,6 +77,11 @@ class Combatant:
                 else None
             ),
             blessed=bool(data.get("blessed", False)),
+            action_budget=(
+                ActionBudget.from_dict(raw_budget)
+                if (raw_budget := data.get("action_budget")) is not None
+                else None
+            ),
         )
 
     def with_hp(self, hp_current: int) -> Combatant:
@@ -95,3 +103,6 @@ class Combatant:
 
     def with_blessed(self, blessed: bool = True) -> Combatant:
         return replace(self, blessed=blessed)
+
+    def with_action_budget(self, budget: ActionBudget | None) -> Combatant:
+        return replace(self, action_budget=budget)

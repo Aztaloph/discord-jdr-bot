@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Callable
 
 from jdr_engine.core.events.bus import EventBus
 from jdr_engine.core.events.combat_events import (
+    ActionConsumed,
     AttackRollResolved,
     CombatEnded,
     CombatStarted,
@@ -21,6 +22,11 @@ from jdr_engine.core.events.combat_events import (
     TurnStarted,
 )
 from jdr_engine.dice.d20 import D20Mode, D20RollRequest, D20RollResult, RandInt
+from jdr_engine.domain.combat.action_budget import (
+    ActionBudgetExhaustedError,
+    ActionKind,
+    fresh_action_budget,
+)
 from jdr_engine.domain.combat.combat_state import (
     COMBAT_STATE_VERSION,
     CombatState,
@@ -96,6 +102,10 @@ class NoActiveCombatantsError(Exception):
 
 class CombatantNotFoundError(Exception):
     """Combattant introuvable dans la rencontre."""
+
+
+class NotCombatantTurnError(Exception):
+    """Action tentée hors du tour du combattant."""
 
 
 @dataclass(frozen=True)
@@ -239,7 +249,7 @@ class CombatManager:
             old = updated_combatants[combatant_id]
             updated_combatants[combatant_id] = replace(
                 old, initiative_total=roll.total
-            )
+            ).with_action_budget(fresh_action_budget())
 
         state.combatants = updated_combatants
         state.initiative_order = order
@@ -339,16 +349,15 @@ class CombatManager:
             raise CombatStatusError(
                 "Les attaques ne sont possibles qu'en combat actif."
             )
-        attacker = self._require_combatant(state, attacker_id)
-        target = self._require_combatant(state, target_id)
-        character = self._characters.get_by_id(attacker.character_id)
-        if character is None:
-            raise CombatCharacterNotFoundError(
-                f"Personnage introuvable : {attacker.character_id!r}."
-            )
-
         if request.roll_type != "attack":
             raise ValueError("roll_type doit être 'attack' pour un jet d'attaque.")
+
+        self._consume_budget(combat_id, attacker_id, "action")
+
+        state = self._require_state(combat_id)
+        attacker = self._require_combatant(state, attacker_id)
+        target = self._require_combatant(state, target_id)
+        character = self._require_character(attacker.character_id)
 
         d20 = roll_d20_for_character(request, character, self._engine, rng=rng)
         outcome = resolve_attack_hit(d20, target.ac)
@@ -511,6 +520,9 @@ class CombatManager:
         if spell.effect_type != "saving_throw":
             raise SpellCastError(f"{spell_id!r} n'est pas un sort à sauvegarde.")
 
+        self._consume_budget(combat_id, caster_id, "action")
+
+        state = self._require_state(combat_id)
         self._publish_spell_cast(state, caster_id, spell, (target_id,))
 
         notation = resolve_spell_damage_notation(spell, caster_char)
@@ -585,6 +597,10 @@ class CombatManager:
         caster_char = self._require_character(caster.character_id)
 
         spell = load_combat_spell(self._engine, "hunters_mark", locale=locale)
+        self._consume_budget(combat_id, caster_id, "bonus_action")
+
+        state = self._require_state(combat_id)
+        caster = self._require_combatant(state, caster_id)
         self._publish_spell_cast(state, caster_id, spell, (target_id,))
 
         updated_char, _interrupted = _set_concentration(
@@ -623,6 +639,10 @@ class CombatManager:
         caster_char = self._require_character(caster.character_id)
 
         spell = load_combat_spell(self._engine, "bless", locale=locale)
+        self._consume_budget(combat_id, caster_id, "action")
+
+        state = self._require_state(combat_id)
+        caster = self._require_combatant(state, caster_id)
         self._publish_spell_cast(
             state, caster_id, spell, tuple(target_ids)
         )
@@ -641,6 +661,23 @@ class CombatManager:
             )
         self._persist(state)
         return state
+
+    def consume_reaction(self, combat_id: int, combatant_id: str) -> CombatState:
+        """Consomme la réaction hors du tour propre du combattant."""
+        state = self._require_state(combat_id)
+        if state.status != "active":
+            raise CombatStatusError("Combat non actif.")
+        if self._current_turn_combatant_id(state) == combatant_id:
+            raise NotCombatantTurnError(
+                "La réaction n'est consommable que hors du tour propre du combattant."
+            )
+        self._consume_budget(
+            combat_id,
+            combatant_id,
+            "reaction",
+            require_own_turn=False,
+        )
+        return self._require_state(combat_id)
 
     def load_combat(self, combat_id: int) -> CombatState:
         """Charge un combat par identifiant SQL."""
@@ -840,6 +877,12 @@ class CombatManager:
 
     def _publish_turn_started(self, state: CombatState) -> None:
         combatant_id = state.initiative_order[state.turn_index]
+        combatant = state.combatants[combatant_id]
+        state.combatants[combatant_id] = combatant.with_action_budget(
+            fresh_action_budget()
+        )
+        self._persist(state)
+
         self._bus.publish(
             TurnStarted(
                 ruleset_id=state.ruleset_id,
@@ -847,6 +890,47 @@ class CombatManager:
                 guild_id=state.guild_id or "",
                 channel_id=state.channel_id or "",
                 combatant_id=combatant_id,
+                round_number=state.round_number,
+                turn_index=state.turn_index,
+            )
+        )
+
+    def _current_turn_combatant_id(self, state: CombatState) -> str:
+        return state.initiative_order[state.turn_index]
+
+    def _consume_budget(
+        self,
+        combat_id: int,
+        combatant_id: str,
+        kind: ActionKind,
+        *,
+        require_own_turn: bool = True,
+    ) -> None:
+        state = self._require_state(combat_id)
+        if require_own_turn and self._current_turn_combatant_id(state) != combatant_id:
+            raise NotCombatantTurnError(
+                f"Seul le combattant actif peut consommer {kind!r}."
+            )
+        combatant = self._require_combatant(state, combatant_id)
+        budget = combatant.action_budget
+        if budget is None:
+            raise ActionBudgetExhaustedError(
+                f"Budget non initialisé pour {combatant_id!r}."
+            )
+        try:
+            new_budget = budget.consume(kind)
+        except ActionBudgetExhaustedError:
+            raise
+        state.combatants[combatant_id] = combatant.with_action_budget(new_budget)
+        self._persist(state)
+        self._bus.publish(
+            ActionConsumed(
+                ruleset_id=state.ruleset_id,
+                combat_id=state.combat_id or str(combat_id),
+                guild_id=state.guild_id or "",
+                channel_id=state.channel_id or "",
+                combatant_id=combatant_id,
+                action_kind=kind,
                 round_number=state.round_number,
                 turn_index=state.turn_index,
             )

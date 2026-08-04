@@ -218,6 +218,11 @@ class TestCombatManagerAttack(unittest.TestCase):
         self.assertTrue(hit.outcome.hit)
         self.assertIsInstance(self.events[0], AttackRollResolved)
 
+        loaded = self.manager.load_combat(combat_id)
+        self.assertEqual(loaded.combatants[bob_id].hp_current, bob.hp_current)
+
+    def test_attack_roll_natural_1_miss(self) -> None:
+        alice_id, bob_id, combat_id = self._active_fight()
         miss = self.manager.resolve_attack_roll(
             combat_id,
             alice_id,
@@ -226,9 +231,6 @@ class TestCombatManagerAttack(unittest.TestCase):
             rng=RandSequence([1]),
         )
         self.assertTrue(miss.outcome.automatic_miss)
-
-        loaded = self.manager.load_combat(combat_id)
-        self.assertEqual(loaded.combatants[bob_id].hp_current, bob.hp_current)
 
     def test_apply_damage_updates_combat_not_character(self) -> None:
         alice_id, bob_id, combat_id = self._active_fight()

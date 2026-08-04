@@ -115,3 +115,14 @@ class SavingThrowResolved(DomainEvent):
     succeeded: bool
     damage_before_save: int
     damage_applied: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class ActionConsumed(DomainEvent):
+    combat_id: str
+    guild_id: str
+    channel_id: str
+    combatant_id: str
+    action_kind: str
+    round_number: int
+    turn_index: int
