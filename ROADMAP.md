@@ -32,14 +32,14 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
 
 ---
 
-## État du projet (juillet 2026)
+## État du projet (août 2026)
 
 | Indicateur | Valeur |
 |---|---|
-| Tests unitaires | **711** verts (`python -m unittest discover -s tests -p "test_*.py" -q`) |
+| Tests unitaires | **831** verts sur `main` (`python -m unittest discover -s tests -p "test_*.py" -q`) — **835** avec commit C ADR-006 (persistance, working tree) |
 | Classes SRD 2014 | 12/12 jouables (création + montée de niveau 1–20 full casters, ASI 5 paliers) |
 | Catalogue sorts curated | **42** sorts (schéma v2.0 ; grimoire mage **18** = quota niv. 7) |
-| Derniers commits | Axe B2–B3-b (schéma sorts v2.0 + catalogue mage niv. 1–4) sur `main` |
+| Derniers commits | ADR-006 impl. A–B (`c09a89b`, `7da262c`) ; ADR-006 doc (`c48d9b6`) ; ADR-005 ; B4 bless/hunters_mark |
 
 ---
 
@@ -74,17 +74,18 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
     - [x] Tables progression niv. 6–20 (A1), correction slot niv. 4 (A1-bis), cap + tests 5→20 (A2)
   - [ ] **Passe 3 — Automatisation des aptitudes** (forme sauvage, métamagie à l'incantation, canalisation d'énergie, arme/familier de pacte…)
   - [ ] **Passe 4 — Passe UI / affichage** (libellés, fix limite de caractères des embeds, libellé « Sous-classe (niv. 3) »)
-- [ ] **ÉTAPE 4 : Système de combat** — ⏭️ **prochain gros chantier** (VISION.md §9, ordre 2). **API moteur pure** (fonctions + events), **aucun rendu Discord/Web**.
-  > Cible stratégique : [`VISION.md`](VISION.md) §5. Prérequis techniques encore à créer : **EventBus** (ADR-003 — aujourd'hui placeholder `jdr_engine/core/events/`) et **Game Engine** de combat (`jdr_engine/game/` — placeholder). Résolution des jets/dégâts = **Rule Engine**. Chaque lot ci-dessous est **livrable et testable sans interface** (asserts sur l'état + événements publiés).
-  - [ ] **C0 — EventBus & socle** : `EventBus` in-process typé + `DomainEvent` (ADR-003), capture de test ; ossature `Game Engine` combat. *(aucun rendu)*
-  - [ ] **C1 — Modèle d'état de combat** : `CombatManager` — participants, PV/CA, ordre, tour courant ; état persistable. *(aucun rendu)*
-  - [ ] **C2 — Initiative** : jets, tri, événements `CombatStarted` / `InitiativeRolled` / `TurnStarted`. *(aucun rendu)*
-  - [ ] **C3 — Résolution d'attaque** : jet vs CA + dégâts (Rule Engine), événements `AttackDeclared` / `AttackResolved` / `DamageDealt`. *(aucun rendu)*
-  - [ ] **C4 — Économie d'actions** : action / action bonus / réaction / mouvement par tour, validation des dépenses. *(aucun rendu)*
-  - [ ] **C5 — Concentration (combat)** : rupture sur dégâts (sauvegarde CON), expiration durée — rejoint dette **Axe B4**. *(aucun rendu)*  
-    > **Hors combat (Lot 1 ✅)** : pose sur `mechanics.concentration` (13 sorts), remplacement, nettoyage repos long/court, affichage `/perso-afficher`. **Ouvert** : durées/expiration (horloge combat absente), application mécanique des buffs (Axe B4).
-  - [ ] **C6 — Conditions en combat** : application/expiration (`ConditionApplied` / `ConditionRemoved`), impact sur les jets. *(aucun rendu)*
-  - [ ] **C7 — Service & persistance** : `CombatService` (use cases), auto-save via handler EventBus, log de combat. *(aucun rendu)*
+- [ ] **ÉTAPE 4 : Système de combat** — 🚧 **boucle moteur livrée** (C0–C7, ADR-004/005) ; dettes ouvertes = effets au-delà de `bless`/`hunters_mark`, `prone`, movement inerte. **API moteur pure** (fonctions + events), **aucun rendu Discord/Web**. Voir [`VISION.md`](VISION.md) §5.
+  > Prérequis techniques : **EventBus** (ADR-003 ✅), **Game Engine** (`CombatManager`, ADR-004 ✅), **Rule Engine** jets/dégâts ✅. Chaque lot ci-dessous est **livrable et testable sans interface**.
+  - [x] **C0 — EventBus & socle** : `EventBus` in-process typé + `DomainEvent` (ADR-003), capture de test ; ossature `Game Engine` combat.
+  - [x] **C1 — Modèle d'état de combat** : `CombatManager` — participants, PV/CA, ordre, tour courant ; état persistable (blob JSON SQLite).
+  - [x] **C2 — Initiative** : jets, tri, événements `CombatStarted` / `InitiativeRolled` / `TurnStarted` / `RoundStarted`.
+  - [x] **C3 — Résolution d'attaque & sorts** : jet vs CA + dégâts, attaque/sauvegarde de sort (`AttackRollResolved`, `DamageDealt`, `SavingThrowResolved`).
+  - [x] **C4 — Économie d'actions** : action / action bonus / réaction / mouvement par tour, validation des dépenses. *(dette : budget `movement` inerte — ADR-004)*
+  - [x] **C5 — Concentration (combat)** : rupture sur dégâts (sauvegarde CON), nettoyage overlay concentration. *(horloge durée rounds : ADR-006 ✅)*
+  - [x] **C6 — Conditions en combat** : application/retrait phase 1 (`frightened`, `poisoned`), impact jets via `collect_*`. *(dette : `prone`, conditions → `ActiveEffect` — hors ADR-006)*
+  - [x] **C7 — Service & persistance** : `CombatService`, journal événementiel, auto-save handler. *(dette : `_persist()` handler-only — post-C7)*
+  - [x] **ADR-005 — Fin de rencontre** : sync PV/concentration à `close_combat`, auto-close `advance_turn`, encounter-scoped conditions.
+  - [x] **ADR-006 — Effets actifs unifiés** (doc `c48d9b6` ; impl. A–B `c09a89b`/`7da262c`) : `ActiveEffect`, horloge `round_number`, registre `rules/effects/`, migration `bless`/`hunters_mark`, blob `COMBAT_STATE_VERSION` **2**. **Commit C** (persistance consolidée + adaptateurs `collect_*`) — livré en working tree, commit en attente.
 - [ ] **ÉTAPE 6 : API (REST + WebSocket)** — 🔜 nouveau (VISION.md §9, ordre 3). `interfaces/api/` expose `CharacterService`, `CombatService`, `CompendiumService` et **pousse les événements EventBus** vers les clients. Objectif : contrat unique consommé par le Web.
 - [ ] **ÉTAPE 7 : Client Web (interface de jeu principale)** — 🔜 nouveau (ordre 4). Fiche/tableau de bord, onglets, magie, inventaire, **HUD de combat**, écran MJ. Spécification UX : VISION.md §4.
 - [ ] **ÉTAPE 8 : Discord minimal** — 🔜 nouveau (ordre 5). Réduction au social : chat, lancement de partie, `/personnage` → Web, notifications (via EventBus). Voir VISION.md §3.
@@ -110,7 +111,12 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
 - [x] **B3-a** — +6 sorts niv. 3 mage (pool grimoire 14 = quota niv. 5)
 - [x] **B3-b** — +4 sorts niv. 4 mage Option A (pool grimoire 18 = quota niv. 7)
 - [ ] **B3** — Élargissement catalogue (suite niv. 5+, autres classes)
-- [ ] **B4** — Moteur d'effets : dégâts, jets de sauvegarde, **application mécanique des buffs et conditions**. **Concentration persistante (Lot 1 ✅)** : pose/remplacement/affichage/repos — voir C5. **Ouvert** : durées, expiration, rupture sur dégâts, bonus mécaniques (`bless`, `hex`, etc.). **Alimente l'ÉTAPE 4** (concentration en combat = lot **C5**).
+- [ ] **B4** — Moteur d'effets : dégâts, jets de sauvegarde, **application mécanique des buffs et conditions**.
+  - [x] **B4a+B4b** — `hunters_mark` : +1d6 dégâts, nettoyage overlay concentration
+  - [x] **B4c+B4d** — `bless` : +1d4 attaque/sauvegarde via `roll_bonus_dice`
+  - [x] **ADR-006** — Registre `ActiveEffect`, horloge combat, persistance blob (A–B ✅ ; C en attente commit)
+  - [ ] **Suite B4** — autres buffs/conditions via registre (`hex`, durées rounds sur sorts futurs, etc.)
+  > **Concentration persistante (Lot 1 ✅)** : pose/remplacement/affichage/repos hors combat. **Rupture CON en combat (C5 ✅)**. **Horloge round (ADR-006 ✅)**.
 
 ---
 
@@ -123,7 +129,8 @@ Tous les jalons P2a–P2h sont livrés. Grimoire mage : consultable via **`/pers
 Chaîne validée : ASI **5 paliers** (4/8/12/16/19), cap **niv. 20** full casters, cantrip scaling 2d10/3d10/4d10, UI **`AsiDistributionView`**.
 
 **Prochain jalon opérationnel** (dans l'ÉTAPE 3) : **Axe B3** (élargissement catalogue) ou **Axe A3** (demi-casters).
-**Prochain gros chantier** : **ÉTAPE 4 — Système de combat** (API moteur pure, voir [`VISION.md`](VISION.md) §5).
+**Prochain chantier combat** : finaliser **ADR-006 commit C**, puis extension **B4** (nouveaux sorts/buffs via registre) ou dettes ADR-004 (`prone`, movement C4).
+**ÉTAPE 6 (API REST)** : `interfaces/api/` existe (banc de test DTO) — extension WebSocket et contrat client = après stabilisation combat moteur.
 
 ---
 
@@ -134,8 +141,8 @@ Items hors périmètre des lots fonctionnels — à traiter en passes dédiées,
 | Priorité | Item | Contexte |
 |---|---|---|
 | 🔵 | **Edge cap-20 ASI (base 18 vs 19 + racial)** | Invariant cap effectif ≤ 20 démontré ; cas limite UI/validation à durcir en passe dédiée |
-| 🔵 | **Scaling upcast `slot_scaling` — clés B4** (`extra_targets`, `temp_hp`, `cold_damage`) | `missiles` / `damage_dice` / `healing_dice` livrés dans `cast.py` ; reste ouvert : `bless`, `armor_of_agathys` (ciblage, PV temp., dégâts de contact) — **Axe B4**, moteur d'effets |
-| 🔵 | **Concentration — durées et effets mécaniques** | Lot 1 ✅ : pose (`mechanics.concentration`, **13** sorts), remplacement, repos, `/perso-afficher`. **Ouvert** : expiration/durées (horloge combat, ÉTAPE 4), rupture sur dégâts (C5), buffs mécaniques (B4) |
+| 🔵 | **Scaling upcast `slot_scaling` — clés B4** (`extra_targets`, `temp_hp`, `cold_damage`) | `missiles` / `damage_dice` / `healing_dice` livrés dans `cast.py` ; reste ouvert : `armor_of_agathys` (PV temp., dégâts de contact) — **Axe B4** |
+| 🔵 | **Concentration — durées et effets mécaniques** | Lot 1 ✅ hors combat ; rupture CON C5 ✅ ; horloge round ADR-006 ✅ ; **`bless`/`hunters_mark` via registre** ADR-006 A–B ✅. **Ouvert** : autres sorts à durée (`hex`, etc.) |
 | 🔵 | **`CharacterSheet.trait_ids` contient des libellés, pas des ids** | `calculator.py` assigne `trait_ids = resolve_race_trait_labels()` (libellés FR) ; les vrais ids sont dans `resolve_race_traits()` (`entry_id`). DTO n'expose que `trait_names`. Corriger `build_character_sheet` + tests. |
 | 🔵 | **Log défensif `_sort_autocomplete`** | Diagnostic autocomplete `/sort` (« Échec des options de chargement ») — traçabilité sans masquer les exceptions |
 | 🔵 | **Élargissement catalogue curated (B3)** | 42 sorts actuels vs quotas SRD niv. 20 — voir `docs/SPELLS_INVENTORY.md` |
