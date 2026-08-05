@@ -10,7 +10,7 @@
 
 | 🧪 Tests | ⚔️ Classes | ✨ Sorts | 🐍 Python |
 |:--------:|:----------:|:-------:|:---------:|
-| **711** ✅ | **12/12** | **42** | **3.12** |
+| **835** ✅ | **12/12** | **42** | **3.12** |
 
 </p>
 
@@ -29,10 +29,10 @@ La **cible** est une plateforme JDR complète : moteur de règles indépendant, 
 
 | Priorité | Focus |
 |:--------:|-------|
-| 🔧 **Maintenant** | Moteur, API, banc de test HTTP — préparer le client Web |
+| 🔧 **Maintenant** | Extension **B4** (effets de sorts via registre), dettes combat mineures, API banc de test |
 | 🛡️ **Discord** | Commandes existantes **maintenues**, pas de nouvelles features joueur |
-| ⚔️ **Ensuite** | Combat Engine (API moteur pure, sans rendu UI) |
-| 🌐 **Puis** | Client Web (fiche, sorts, HUD de combat, écran MJ) |
+| ⚔️ **Combat moteur** | Boucle **livrée** (C0–C7, ADR-004/005/006) — API pure, sans rendu UI |
+| 🌐 **Ensuite** | Client Web (fiche, sorts, HUD de combat, écran MJ) |
 
 ---
 
@@ -68,7 +68,23 @@ La **cible** est une plateforme JDR complète : moteur de règles indépendant, 
 
 ---
 
-## 🔌 API HTTP — banc de test (nouveau)
+## ⚔️ Combat Engine (moteur pur)
+
+Le **Combat Engine** vit dans `jdr_engine/game/` et `jdr_engine/domain/combat/` — **aucun rendu Discord ni Web** : fonctions déterministes + **EventBus** (ADR-003).
+
+| Livré | Détail |
+|-------|--------|
+| Cycle de vie | Création, initiative, tours, rounds, clôture (ADR-005) |
+| Règles | Attaque vs CA, dégâts, sorts (attaque / sauvegarde), économie d'actions |
+| Concentration | Rupture sur dégâts (save CON), nettoyage des buffs liés |
+| Effets actifs | Registre `ActiveEffect`, horloge combat, persistance blob (ADR-006) |
+| Buffs mécaniques | `bless` (+1d4), `hunters_mark` (+1d6) via registre |
+
+Persistance SQLite (`CombatState` JSON, version blob **2**). Décisions actées : [`docs/adr/`](docs/adr/).
+
+---
+
+## 🔌 API HTTP — banc de test
 
 Une **API FastAPI** permet d'observer un personnage **hors Discord** : fiche calculée, lancer un sort, repos court/long. Couche de sérialisation **données uniquement** (pas de texte pré-formaté Discord).
 
@@ -148,7 +164,7 @@ Créez un rôle Discord nommé **`MJ`**. Repos, montée de niveau et suppression
 python -m unittest discover -s tests -p "test_*.py" -q
 ```
 
-**711 tests** — moteur de règles, sorts, concentration, DTO/API, persistance SQLite, handlers Discord.
+**835 tests** — moteur de règles, sorts, combat (C0–C7), effets actifs (ADR-006), concentration, DTO/API, persistance SQLite.
 
 Validation compendium :
 
@@ -168,14 +184,17 @@ discord-jdr-bot/
 │   ├── discord/                     # Handlers, embeds, wizards UI
 │   └── api/                         # API FastAPI (banc de test)
 ├── jdr_engine/                      # Moteur pur — zéro import Discord
-│   ├── application/                 # CharacterService, DTO de sortie
-│   ├── domain/                      # Character, CharacterSheet
+│   ├── application/                 # CharacterService, CombatService, DTO
+│   ├── core/events/                 # EventBus, événements domaine
+│   ├── domain/                      # Character, CombatState, ActiveEffect
+│   ├── game/                        # CombatManager (orchestration)
 │   ├── rules/                       # Rule Engine (stateless, data-driven)
+│   │   ├── effects/                 # Registre effets actifs (ADR-006)
 │   │   └── spellcasting/            # Pools, préparation, cast
 │   ├── persistence/                 # SQLite
 │   └── dice/                        # Parser et roller de dés
 ├── compendium/dnd5e/entries/        # Données YAML (races, classes, sorts)
-├── docs/                            # Schémas sorts, API locale, architecture
+├── docs/                            # Schémas sorts, API locale, ADR, architecture
 ├── data/bot.db                      # Base locale (ignorée par git)
 └── tests/unit/                      # Suite unitaire
 ```
@@ -192,10 +211,10 @@ Le **Rule Engine** charge le Compendium YAML et calcule les stats dérivées —
 | **Level-up 4+ (ASI)** | ✅ | Cap niv. 20, ASI 5 paliers, full casters 1–20 |
 | **Axe B — Schéma v2.0** | ✅ | 42 sorts curated, pools dérivés YAML |
 | **Concentration (hors combat)** | ✅ | Pose, remplacement, repos, affichage fiche (13 sorts) |
-| **DTO + API HTTP** | ✅ | `output_serializers`, 4 endpoints, 29 tests dédiés |
-| **B4 — Moteur d'effets** | 🔜 | Buffs mécaniques, durées, rupture sur dégâts |
-| **Étape 4 — Combat** | 🔜 | API moteur pure (initiative, tours, dégâts) |
-| **Client Web** | 🔜 | Interface de jeu principale (après combat moteur) |
+| **DTO + API HTTP** | ✅ | `output_serializers`, endpoints personnage, banc de test |
+| **Étape 4 — Combat moteur** | ✅ | C0–C7, ADR-004/005, persistance blob, journal événementiel |
+| **B4 — Effets de sorts** | 🚧 | `bless` / `hunters_mark` via registre (ADR-006) ; suite catalogue à venir |
+| **Client Web** | 🔜 | Interface de jeu principale (après stabilisation combat) |
 
 Documentation sorts → [`docs/SPELLS_INVENTORY.md`](docs/SPELLS_INVENTORY.md) · [`docs/SPELL_SCHEMA.md`](docs/SPELL_SCHEMA.md)
 
