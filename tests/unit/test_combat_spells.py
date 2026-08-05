@@ -263,14 +263,26 @@ class TestCombatSpells(unittest.TestCase):
         self.assertEqual(
             state.combatants[caster_id].concentration_spell_id, "hunters_mark"
         )
-        self.assertEqual(state.combatants[target_id].hunters_mark_caster_id, caster_id)
+        self.assertTrue(
+            any(
+                effect.effect_id == "hunters_mark"
+                and effect.source_id == caster_id
+                and effect.target_id == target_id
+                for effect in state.active_effects
+            )
+        )
 
         loaded = self.manager.load_combat(combat_id)
         self.assertEqual(
             loaded.combatants[caster_id].concentration_spell_id, "hunters_mark"
         )
-        self.assertEqual(
-            loaded.combatants[target_id].hunters_mark_caster_id, caster_id
+        self.assertTrue(
+            any(
+                effect.effect_id == "hunters_mark"
+                and effect.source_id == caster_id
+                and effect.target_id == target_id
+                for effect in loaded.active_effects
+            )
         )
 
     def test_bless_three_targets_persist(self) -> None:
@@ -291,11 +303,25 @@ class TestCombatSpells(unittest.TestCase):
         state = self.manager.cast_bless(int(state.combat_id), caster_id, target_ids)
         self.assertEqual(state.combatants[caster_id].concentration_spell_id, "bless")
         for tid in target_ids:
-            self.assertTrue(state.combatants[tid].blessed)
+            self.assertTrue(
+                any(
+                    effect.effect_id == "blessed"
+                    and effect.source_id == caster_id
+                    and effect.target_id == tid
+                    for effect in state.active_effects
+                )
+            )
 
         loaded = self.manager.load_combat(int(state.combat_id))
         for tid in target_ids:
-            self.assertTrue(loaded.combatants[tid].blessed)
+            self.assertTrue(
+                any(
+                    effect.effect_id == "blessed"
+                    and effect.source_id == caster_id
+                    and effect.target_id == tid
+                    for effect in loaded.active_effects
+                )
+            )
 
 
 if __name__ == "__main__":

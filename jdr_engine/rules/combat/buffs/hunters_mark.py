@@ -5,7 +5,7 @@ from __future__ import annotations
 import random
 from typing import Callable
 
-from jdr_engine.domain.combat.combatant import Combatant
+from jdr_engine.domain.combat.active_effect import ActiveEffect
 
 RandInt = Callable[[int, int], int]
 
@@ -15,14 +15,15 @@ def _default_randint(a: int, b: int) -> int:
 
 
 def hunters_mark_bonus_applies(
-    target: Combatant,
+    target_effects: tuple[ActiveEffect, ...],
     source_id: str | None,
 ) -> bool:
-    """Vrai si la cible est marquée par ``source_id`` (combatant lanceur)."""
-    return (
-        source_id is not None
-        and target.hunters_mark_caster_id is not None
-        and target.hunters_mark_caster_id == source_id
+    """Vrai si la cible porte une marque posée par ``source_id``."""
+    if source_id is None:
+        return False
+    return any(
+        effect.effect_id == "hunters_mark" and effect.source_id == source_id
+        for effect in target_effects
     )
 
 

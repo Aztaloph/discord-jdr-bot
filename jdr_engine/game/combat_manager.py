@@ -437,8 +437,13 @@ class CombatManager:
         target = self._require_combatant(state, target_id)
         character = self._require_character(attacker.character_id)
 
+        attacker_effects = self.query_active_effects(
+            combat_id, target_id=attacker_id
+        )
         d20 = roll_d20_for_combatant(
-            request, character, attacker, self._engine, rng=rng
+            request, character, attacker, self._engine,
+            active_effects=attacker_effects,
+            rng=rng,
         )
         outcome = resolve_attack_hit(d20, target.ac)
 
@@ -487,6 +492,8 @@ class CombatManager:
         if source_id is not None:
             self._require_combatant(state, source_id)
 
+        target_effects = self.query_active_effects(combat_id, target_id=target_id)
+
         if damage_amount is not None:
             if damage_amount < 0:
                 raise ValueError("Les dégâts ne peuvent pas être négatifs.")
@@ -502,7 +509,7 @@ class CombatManager:
             amount = damage_roll.total
             notation = damage_roll.dice_notation
 
-        if amount > 0 and hunters_mark_bonus_applies(target, source_id):
+        if amount > 0 and hunters_mark_bonus_applies(target_effects, source_id):
             mark_bonus = roll_hunters_mark_bonus(rng=rng)
             amount += mark_bonus
             notation = f"{notation}+{mark_bonus} (hunters_mark)"
@@ -624,8 +631,11 @@ class CombatManager:
         save_request = build_save_request(
             target_char, self._engine, save_ability
         )
+        target_effects = self.query_active_effects(combat_id, target_id=target_id)
         d20 = roll_d20_for_combatant(
-            save_request, target_char, target, self._engine, rng=rng
+            save_request, target_char, target, self._engine,
+            active_effects=target_effects,
+            rng=rng,
         )
         succeeded = save_succeeded(d20.total, save_dc)
         half = half_on_save_for_spell(spell)
@@ -710,11 +720,15 @@ class CombatManager:
         state.combatants[caster_id] = caster.with_concentration(
             spell.spell_id, spell.spell_name
         )
-        state.combatants[target_id] = state.combatants[target_id].with_hunters_mark(
-            caster_id
+        self._add_concentration_effect(
+            combat_id,
+            effect_id="hunters_mark",
+            source_id=caster_id,
+            target_id=target_id,
+            applied_at_round=state.round_number,
         )
         self._persist(state)
-        return state
+        return self._require_state(combat_id)
 
     def cast_bless(
         self,
@@ -761,11 +775,15 @@ class CombatManager:
             spell.spell_id, spell.spell_name
         )
         for target_id in target_ids:
-            state.combatants[target_id] = state.combatants[target_id].with_blessed(
-                True
+            self._add_concentration_effect(
+                combat_id,
+                effect_id="blessed",
+                source_id=caster_id,
+                target_id=target_id,
+                applied_at_round=state.round_number,
             )
         self._persist(state)
-        return state
+        return self._require_state(combat_id)
 
     def consume_reaction(self, combat_id: int, combatant_id: str) -> CombatState:
         """Consomme la réaction hors du tour propre du combattant."""
@@ -828,8 +846,11 @@ class CombatManager:
             if hydrated is not combatant:
                 changed = True
         if not changed:
-            return state
-        return replace(state, combatants=updated)
+            self._hydrate_effect_registry(combat_id, state)
+            return self._with_registry_effects(state)
+        state = replace(state, combatants=updated)
+        self._hydrate_effect_registry(combat_id, state)
+        return self._with_registry_effects(state)
 
     def load_open_combat(
         self,
@@ -883,6 +904,7 @@ class CombatManager:
             return record.state
 
         state = record.state
+        self._hydrate_effect_registry(combat_id, state)
         for combatant in state.combatants.values():
             self._sync_character_from_combatant(combatant)
 
@@ -890,6 +912,7 @@ class CombatManager:
             state,
             status="ended",
             ended_at=utc_now_iso(),
+            active_effects=self._registry_for(combat_id).all_effects(),
         )
 
         self._combats.save(
@@ -945,8 +968,11 @@ class CombatManager:
 
         save_dc = concentration_save_dc(damage_dealt)
         save_request = build_save_request(character, self._engine, "con")
+        target_effects = self.query_active_effects(combat_id, target_id=target_id)
         d20 = roll_d20_for_combatant(
-            save_request, character, target, self._engine, rng=rng
+            save_request, character, target, self._engine,
+            active_effects=target_effects,
+            rng=rng,
         )
         if save_succeeded(d20.total, save_dc):
             return state
@@ -958,6 +984,7 @@ class CombatManager:
         state = self._clear_concentration_spell_overlay_effects(
             state, target_id, spell_id
         )
+        state = self._with_registry_effects(state)
         self._persist(state)
 
         self._bus.publish(
@@ -983,17 +1010,13 @@ class CombatManager:
         caster_combatant_id: str,
     ) -> CombatState:
         """Retire toutes les marques posées par ``caster_combatant_id``."""
-        updated: dict[str, Combatant] = {}
-        changed = False
-        for combatant_id, combatant in state.combatants.items():
-            if combatant.hunters_mark_caster_id == caster_combatant_id:
-                updated[combatant_id] = combatant.without_hunters_mark()
-                changed = True
-            else:
-                updated[combatant_id] = combatant
-        if not changed:
+        if state.combat_id is None:
             return state
-        return replace(state, combatants=updated)
+        self._registry_for(int(state.combat_id)).remove_matching(
+            effect_id="hunters_mark",
+            source_id=caster_combatant_id,
+        )
+        return state
 
     def _clear_concentration_spell_overlay_effects(
         self,
@@ -1001,21 +1024,17 @@ class CombatManager:
         caster_combatant_id: str,
         spell_id: str,
     ) -> CombatState:
-        """Nettoie les buffs overlay liés à un sort de concentration rompu (lot B4)."""
+        """Nettoie les buffs liés à un sort de concentration rompu (lot B4 / ADR-006)."""
+        if state.combat_id is None:
+            return state
+        combat_id = int(state.combat_id)
         if spell_id == "hunters_mark":
             return self._clear_hunters_marks_from_caster(state, caster_combatant_id)
         if spell_id == "bless":
-            updated: dict[str, Combatant] = {}
-            changed = False
-            for combatant_id, combatant in state.combatants.items():
-                if combatant.blessed:
-                    updated[combatant_id] = combatant.without_blessed()
-                    changed = True
-                else:
-                    updated[combatant_id] = combatant
-            if not changed:
-                return state
-            return replace(state, combatants=updated)
+            self._registry_for(combat_id).remove_matching(
+                effect_id="blessed",
+                source_id=caster_combatant_id,
+            )
         return state
 
     def _sync_character_from_combatant(self, combatant: Combatant) -> None:
@@ -1059,6 +1078,40 @@ class CombatManager:
 
     def _tick_active_effects(self, combat_id: int, round_number: int) -> None:
         self._registry_for(combat_id).tick(round_number)
+
+    def _hydrate_effect_registry(self, combat_id: int, state: CombatState) -> None:
+        registry = ActiveEffectRegistry()
+        for effect in state.active_effects:
+            registry.add(effect)
+        self._effect_registries[str(combat_id)] = registry
+
+    def _with_registry_effects(self, state: CombatState) -> CombatState:
+        if state.combat_id is None:
+            return state
+        return replace(
+            state,
+            active_effects=self._registry_for(int(state.combat_id)).all_effects(),
+        )
+
+    def _add_concentration_effect(
+        self,
+        combat_id: int,
+        *,
+        effect_id: str,
+        source_id: str,
+        target_id: str,
+        applied_at_round: int,
+    ) -> None:
+        self.add_active_effect(
+            combat_id,
+            ActiveEffect(
+                effect_id=effect_id,
+                source_id=source_id,
+                target_id=target_id,
+                applied_at_round=applied_at_round,
+                expiry_mode="concentration",
+            ),
+        )
 
     def _build_combatant(self, character_id: str) -> Combatant:
         character = self._characters.get_by_id(character_id)
@@ -1138,7 +1191,10 @@ class CombatManager:
         record = self._combats.get_by_id(combat_id)
         if record is None:
             raise CombatNotFoundError(f"Combat introuvable : id={combat_id}.")
-        return record.state
+        state = record.state
+        if str(combat_id) not in self._effect_registries:
+            self._hydrate_effect_registry(combat_id, state)
+        return self._with_registry_effects(state)
 
     def _persist(self, state: CombatState) -> None:
         if state.combat_id is None:
@@ -1147,13 +1203,17 @@ class CombatManager:
         record = self._combats.get_by_id(combat_id)
         if record is None:
             raise CombatNotFoundError(f"Combat introuvable : id={combat_id}.")
+        synced = replace(
+            state,
+            active_effects=self._registry_for(combat_id).all_effects(),
+        )
         self._combats.save(
             CombatRecord(
                 combat_id=combat_id,
                 guild_id=record.guild_id,
                 channel_id=record.channel_id,
-                sql_status=sql_status_from_combat(state.status),
-                state=state,
+                sql_status=sql_status_from_combat(synced.status),
+                state=synced,
             )
         )
 

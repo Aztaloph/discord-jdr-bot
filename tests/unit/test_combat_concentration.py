@@ -200,7 +200,12 @@ class TestCombatConcentrationBreak(unittest.TestCase):
             rng=RandSequence([3]),
         )
         self.assertIsNone(state.combatants[ranger_id].concentration_spell_id)
-        self.assertIsNone(state.combatants[wizard_id].hunters_mark_caster_id)
+        self.assertFalse(
+            any(
+                effect.effect_id == "hunters_mark" and effect.target_id == wizard_id
+                for effect in state.active_effects
+            )
+        )
         reloaded_char = self.char_repo.get_by_id(self.ranger.id)
         assert reloaded_char is not None
         self.assertNotIn("concentration", get_spellcasting_state(reloaded_char))

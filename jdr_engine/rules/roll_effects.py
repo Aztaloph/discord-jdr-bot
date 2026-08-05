@@ -6,6 +6,7 @@ from dataclasses import replace
 from typing import Any
 
 from jdr_engine.domain.character.character import Character
+from jdr_engine.domain.combat.active_effect import ActiveEffect
 from jdr_engine.domain.combat.combatant import Combatant
 from jdr_engine.rules.class_features.barbarian import rage_active, reckless_active
 from jdr_engine.rules.engine import RuleEngine
@@ -98,6 +99,7 @@ def roll_d20_for_combatant(
     combatant: Combatant,
     engine: RuleEngine,
     *,
+    active_effects: tuple[ActiveEffect, ...] = (),
     rng=None,
 ):
     """
@@ -112,6 +114,8 @@ def roll_d20_for_combatant(
     effects.extend(collect_condition_roll_effects(combatant))
     from jdr_engine.rules.combat.buffs.collect import collect_buff_roll_effects
 
-    effects.extend(collect_buff_roll_effects(combatant))
+    effects.extend(
+        collect_buff_roll_effects(combatant.combatant_id, active_effects)
+    )
     enriched = enrich_roll_request(request, character)
     return roll_d20(D20RollContext(request=enriched, effects=effects), rng=rng)

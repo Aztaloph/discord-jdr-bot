@@ -50,3 +50,29 @@ class ActiveEffect:
     def identity(self) -> tuple[str, str, str]:
         """Clé stable pour add/remove dans le registre."""
         return (self.effect_id, self.source_id, self.target_id)
+
+    def to_dict(self) -> dict[str, int | str]:
+        payload: dict[str, int | str] = {
+            "effect_id": self.effect_id,
+            "source_id": self.source_id,
+            "target_id": self.target_id,
+            "applied_at_round": self.applied_at_round,
+            "expiry_mode": self.expiry_mode,
+        }
+        if self.duration_rounds is not None:
+            payload["duration_rounds"] = self.duration_rounds
+        return payload
+
+    @classmethod
+    def from_dict(cls, data: dict) -> ActiveEffect:
+        raw_duration = data.get("duration_rounds")
+        return cls(
+            effect_id=str(data["effect_id"]),
+            source_id=str(data["source_id"]),
+            target_id=str(data["target_id"]),
+            applied_at_round=int(data["applied_at_round"]),
+            expiry_mode=data["expiry_mode"],  # type: ignore[arg-type]
+            duration_rounds=(
+                int(raw_duration) if raw_duration is not None else None
+            ),
+        )

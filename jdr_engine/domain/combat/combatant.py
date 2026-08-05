@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from jdr_engine.domain.combat.action_budget import ActionBudget, ActionKind, fresh_action_budget
+from typing import Literal
+
+from jdr_engine.domain.combat.action_budget import ActionBudget, fresh_action_budget
 
 
 @dataclass(frozen=True)
@@ -12,7 +14,7 @@ class Combatant:
     PJ rattaché à un ``character_id`` persisté.
 
     PV et CA sont un overlay de rencontre (lot C3a) — distincts de la fiche SQLite.
-    Concentration et buffs de sort (C3b) vivent aussi dans l'overlay combat.
+    Concentration vit dans l'overlay combat ; buffs de sort via ``ActiveEffect`` (ADR-006).
     """
 
     combatant_id: str
@@ -26,8 +28,6 @@ class Combatant:
     initiative_total: int | None = None
     concentration_spell_id: str | None = None
     concentration_spell_name: str | None = None
-    hunters_mark_caster_id: str | None = None
-    blessed: bool = False
     action_budget: ActionBudget | None = None
     conditions: tuple[str, ...] = ()
 
@@ -47,10 +47,6 @@ class Combatant:
         if self.concentration_spell_id is not None:
             payload["concentration_spell_id"] = self.concentration_spell_id
             payload["concentration_spell_name"] = self.concentration_spell_name
-        if self.hunters_mark_caster_id is not None:
-            payload["hunters_mark_caster_id"] = self.hunters_mark_caster_id
-        if self.blessed:
-            payload["blessed"] = True
         if self.action_budget is not None:
             payload["action_budget"] = self.action_budget.to_dict()
         if self.conditions:
@@ -74,12 +70,6 @@ class Combatant:
             initiative_total=int(raw_init) if raw_init is not None else None,
             concentration_spell_id=str(conc_id) if conc_id is not None else None,
             concentration_spell_name=str(conc_name) if conc_name is not None else None,
-            hunters_mark_caster_id=(
-                str(data["hunters_mark_caster_id"])
-                if data.get("hunters_mark_caster_id")
-                else None
-            ),
-            blessed=bool(data.get("blessed", False)),
             action_budget=(
                 ActionBudget.from_dict(raw_budget)
                 if (raw_budget := data.get("action_budget")) is not None
@@ -115,18 +105,6 @@ class Combatant:
             concentration_spell_id=None,
             concentration_spell_name=None,
         )
-
-    def with_hunters_mark(self, caster_id: str) -> Combatant:
-        return replace(self, hunters_mark_caster_id=caster_id)
-
-    def with_blessed(self, blessed: bool = True) -> Combatant:
-        return replace(self, blessed=blessed)
-
-    def without_hunters_mark(self) -> Combatant:
-        return replace(self, hunters_mark_caster_id=None)
-
-    def without_blessed(self) -> Combatant:
-        return replace(self, blessed=False)
 
     def with_action_budget(self, budget: ActionBudget | None) -> Combatant:
         return replace(self, action_budget=budget)

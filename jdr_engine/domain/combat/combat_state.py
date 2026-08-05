@@ -7,8 +7,9 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 
 from jdr_engine.domain.combat.combatant import Combatant
+from jdr_engine.domain.combat.active_effect import ActiveEffect
 
-COMBAT_STATE_VERSION = 1
+COMBAT_STATE_VERSION = 2
 
 CombatStatus = Literal["preparing", "active", "ended"]
 
@@ -53,6 +54,7 @@ class CombatState:
     combat_id: str | None = None
     guild_id: str | None = None
     channel_id: str | None = None
+    active_effects: tuple[ActiveEffect, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -67,6 +69,9 @@ class CombatState:
             },
             "started_at": self.started_at,
             "ended_at": self.ended_at,
+            "active_effects": [
+                effect.to_dict() for effect in self.active_effects
+            ],
         }
 
     @classmethod
@@ -97,6 +102,7 @@ class CombatState:
             for key, value in raw_combatants.items()
         }
         initiative = data.get("initiative_order") or []
+        raw_effects = data.get("active_effects") or []
         return cls(
             schema_version=version,
             ruleset_id=str(data.get("ruleset_id", "dnd5e")),
@@ -110,6 +116,9 @@ class CombatState:
             combat_id=combat_id,
             guild_id=guild_id,
             channel_id=channel_id,
+            active_effects=tuple(
+                ActiveEffect.from_dict(item) for item in raw_effects
+            ),
         )
 
 

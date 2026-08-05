@@ -1,5 +1,5 @@
 # tests/unit/test_combat_buffs.py
-"""Lot B4 — buffs overlay combat (hunters_mark, bless)."""
+"""Lot B4 — buffs combat via ActiveEffect (ADR-006 commit B)."""
 from __future__ import annotations
 
 import tempfile
@@ -11,6 +11,7 @@ from jdr_engine.core.events.combat_events import ConcentrationBroken, DamageDeal
 from jdr_engine.dice.d20 import D20RollRequest
 from jdr_engine.domain.character.ability_scores import AbilityScores
 from jdr_engine.domain.character.character import Character
+from jdr_engine.domain.combat.active_effect import ActiveEffect
 from jdr_engine.domain.combat.combatant import Combatant
 from jdr_engine.game.combat_manager import CombatManager
 from jdr_engine.persistence.combat_repository import SqliteCombatRepository
@@ -157,6 +158,34 @@ def _attack_request(**kwargs) -> D20RollRequest:
     )
 
 
+def _has_effect(
+    manager: CombatManager,
+    combat_id: int,
+    *,
+    effect_id: str,
+    target_id: str,
+    source_id: str | None = None,
+) -> bool:
+    effects = manager.query_active_effects(
+        combat_id,
+        effect_id=effect_id,
+        target_id=target_id,
+    )
+    if source_id is None:
+        return bool(effects)
+    return any(effect.source_id == source_id for effect in effects)
+
+
+def _bless_effect(*, source_id: str, target_id: str) -> ActiveEffect:
+    return ActiveEffect(
+        effect_id="blessed",
+        source_id=source_id,
+        target_id=target_id,
+        applied_at_round=1,
+        expiry_mode="concentration",
+    )
+
+
 class TestHuntersMarkBuff(unittest.TestCase):
     def setUp(self) -> None:
         self._tmpdir = tempfile.TemporaryDirectory()
@@ -269,7 +298,15 @@ class TestHuntersMarkBuff(unittest.TestCase):
             rng=RandSequence([3]),
         )
         self.assertIsNone(state.combatants[ranger_id].concentration_spell_id)
-        self.assertIsNone(state.combatants[wizard_id].hunters_mark_caster_id)
+        self.assertFalse(
+            _has_effect(
+                self.manager,
+                combat_id,
+                effect_id="hunters_mark",
+                target_id=wizard_id,
+                source_id=ranger_id,
+            )
+        )
 
     def test_recast_hunters_mark_clears_previous_target_mark(self) -> None:
         extra = _wizard(name="Charlie")
@@ -290,9 +327,25 @@ class TestHuntersMarkBuff(unittest.TestCase):
         self.manager.cast_hunters_mark(combat_id, ranger_id, wizard_id)
         for _ in range(3):
             self.manager.advance_turn(combat_id)
-        state = self.manager.cast_hunters_mark(combat_id, ranger_id, charlie_id)
-        self.assertIsNone(state.combatants[wizard_id].hunters_mark_caster_id)
-        self.assertEqual(state.combatants[charlie_id].hunters_mark_caster_id, ranger_id)
+        self.manager.cast_hunters_mark(combat_id, ranger_id, charlie_id)
+        self.assertFalse(
+            _has_effect(
+                self.manager,
+                combat_id,
+                effect_id="hunters_mark",
+                target_id=wizard_id,
+                source_id=ranger_id,
+            )
+        )
+        self.assertTrue(
+            _has_effect(
+                self.manager,
+                combat_id,
+                effect_id="hunters_mark",
+                target_id=charlie_id,
+                source_id=ranger_id,
+            )
+        )
 
 
 class TestBlessBuff(unittest.TestCase):
@@ -363,14 +416,15 @@ class TestBlessBuff(unittest.TestCase):
             hp_current=20,
             hp_max=20,
             ac=12,
-            blessed=True,
         )
         request = build_save_request(self.wizard, self.engine, "dex")
+        bless = _bless_effect(source_id="cleric", target_id="wiz")
         result = roll_d20_for_combatant(
             request,
             self.wizard,
             combatant,
             self.engine,
+            active_effects=(bless,),
             rng=RandSequence([9, 2]),
         )
         self.assertIn("+2 (bless)", result.applied_effects)
@@ -386,13 +440,17 @@ class TestBlessBuff(unittest.TestCase):
                 hp_current=20,
                 hp_max=20,
                 ac=12,
-                blessed=True,
+            )
+            bless = _bless_effect(
+                source_id="cleric",
+                target_id=combatant.combatant_id,
             )
             result = roll_d20_for_combatant(
                 _attack_request(),
                 char,
                 combatant,
                 self.engine,
+                active_effects=(bless,),
                 rng=RandSequence([10, expected_bonus]),
             )
             self.assertIn(f"+{expected_bonus} (bless)", result.applied_effects)
@@ -407,8 +465,25 @@ class TestBlessBuff(unittest.TestCase):
             source_id=wizard_id,
             rng=RandSequence([2]),
         )
-        self.assertFalse(state.combatants[ranger_id].blessed)
-        self.assertFalse(state.combatants[wizard_id].blessed)
+        self.assertIsNone(state.combatants[cleric_id].concentration_spell_id)
+        self.assertFalse(
+            _has_effect(
+                self.manager,
+                combat_id,
+                effect_id="blessed",
+                target_id=ranger_id,
+                source_id=cleric_id,
+            )
+        )
+        self.assertFalse(
+            _has_effect(
+                self.manager,
+                combat_id,
+                effect_id="blessed",
+                target_id=wizard_id,
+                source_id=cleric_id,
+            )
+        )
 
 
 if __name__ == "__main__":
