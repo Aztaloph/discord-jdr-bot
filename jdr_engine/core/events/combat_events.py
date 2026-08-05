@@ -17,10 +17,19 @@ class CombatStarted(DomainEvent):
 
 @dataclass(frozen=True, kw_only=True)
 class CombatEnded(DomainEvent):
+    """Fin de rencontre.
+
+    ``reason`` est une chaîne libre (appelant ou tests). Valeurs canoniques
+    produites par le moteur (ADR-005) :
+
+    - ``"closed"`` — clôture manuelle (défaut de ``close_combat``) ;
+    - ``"no_active_combatants"`` — auto-close via ``advance_turn``.
+    """
+
     combat_id: str
     guild_id: str
     channel_id: str
-    reason: str = "closed"
+    reason: str = "closed"  # prod: "closed" | "no_active_combatants" ; libre en tests
 
 
 @dataclass(frozen=True, kw_only=True)

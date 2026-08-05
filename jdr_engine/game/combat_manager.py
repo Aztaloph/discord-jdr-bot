@@ -839,7 +839,12 @@ class CombatManager:
         )
 
     def close_combat(self, combat_id: int, *, reason: str = "closed") -> CombatState:
-        """Clôture un combat ouvert ; sync fiche puis publie ``CombatEnded`` (ADR-005)."""
+        """Clôture un combat ouvert ; sync fiche puis publie ``CombatEnded`` (ADR-005).
+
+        ``reason`` est transmis tel quel à ``CombatEnded``. Valeurs canoniques moteur :
+        ``"closed"`` (défaut, clôture manuelle) ;
+        ``"no_active_combatants"`` (auto-close ``advance_turn``, ADR-005 §5).
+        """
         record = self._combats.get_by_id(combat_id)
         if record is None:
             raise CombatNotFoundError(f"Combat introuvable : id={combat_id}.")
