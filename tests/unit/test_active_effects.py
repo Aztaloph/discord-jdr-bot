@@ -293,5 +293,169 @@ class TestActiveEffectsCombatIntegration(unittest.TestCase):
         self.assertEqual(self.manager.query_active_effects(combat_id), (effect,))
 
 
+class TestRegistryStateProjection(unittest.TestCase):
+    """Projection registre → ``CombatState`` sans relecture SQL (commit C)."""
+
+    def setUp(self) -> None:
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.db_path = init_database(Path(self._tmpdir.name) / "bot.db")
+        self.engine = _engine()
+        self.char_repo = SqliteCharacterRepository(self.db_path)
+        self.combat_repo = SqliteCombatRepository(self.db_path)
+        self.manager = CombatManager(
+            EventBus(),
+            self.combat_repo,
+            self.char_repo,
+            self.engine,
+        )
+        self.alice = _wizard(name="Alice", dex=16)
+        self.bob = _wizard(name="Bob", dex=10)
+        self.char_repo.save(self.alice)
+        self.char_repo.save(self.bob)
+
+    def tearDown(self) -> None:
+        self._tmpdir.cleanup()
+
+    def test_with_registry_effects_reflects_mutation_without_sql_reload(self) -> None:
+        state = self.manager.create_combat(
+            "guild1", "channel1", [self.alice.id, self.bob.id]
+        )
+        combat_id = int(state.combat_id)
+        self.manager.activate_combat(combat_id, rng=SequenceRng([15, 10]))
+        stale = self.combat_repo.get_by_id(combat_id)
+        assert stale is not None
+        self.assertEqual(stale.state.active_effects, ())
+
+        order = self.manager.load_combat(combat_id).initiative_order
+        pending = ActiveEffect(
+            effect_id="blessed",
+            source_id=order[0],
+            target_id=order[1],
+            applied_at_round=1,
+            expiry_mode="concentration",
+        )
+        self.manager.add_active_effect(combat_id, pending)
+
+        projected = self.manager._with_registry_effects(stale.state)
+        self.assertEqual(projected.active_effects, (pending,))
+
+        still_stale = self.combat_repo.get_by_id(combat_id)
+        assert still_stale is not None
+        self.assertEqual(still_stale.state.active_effects, ())
+
+        via_require = self.manager._require_state(combat_id)
+        self.assertEqual(via_require.active_effects, (pending,))
+
+
+class TestEffectsPersistenceRoundTrip(unittest.TestCase):
+    """Round-trip blob ↔ registre (commit C)."""
+
+    def setUp(self) -> None:
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.db_path = init_database(Path(self._tmpdir.name) / "bot.db")
+        self.engine = _engine()
+        self.char_repo = SqliteCharacterRepository(self.db_path)
+        self.combat_repo = SqliteCombatRepository(self.db_path)
+        self.bus = EventBus()
+        self.alice = _wizard(name="Alice", dex=16)
+        self.bob = _wizard(name="Bob", dex=10)
+        self.char_repo.save(self.alice)
+        self.char_repo.save(self.bob)
+
+    def tearDown(self) -> None:
+        self._tmpdir.cleanup()
+
+    def _manager(self) -> CombatManager:
+        return CombatManager(self.bus, self.combat_repo, self.char_repo, self.engine)
+
+    def test_save_load_restores_active_effects_in_fresh_manager(self) -> None:
+        manager = self._manager()
+        state = manager.create_combat("guild1", "channel1", [self.alice.id, self.bob.id])
+        combat_id = int(state.combat_id)
+        activated = manager.activate_combat(combat_id, rng=SequenceRng([14, 9]))
+        order = activated.initiative_order
+        manager.add_active_effect(
+            combat_id,
+            ActiveEffect(
+                effect_id="shield_of_faith",
+                source_id=order[0],
+                target_id=order[0],
+                applied_at_round=activated.round_number,
+                expiry_mode="rounds",
+                duration_rounds=10,
+            ),
+        )
+        manager._persist(manager._require_state(combat_id))
+
+        reloaded_manager = self._manager()
+        loaded = reloaded_manager.load_combat(combat_id)
+        self.assertEqual(len(loaded.active_effects), 1)
+        self.assertEqual(loaded.active_effects[0].effect_id, "shield_of_faith")
+        self.assertEqual(
+            reloaded_manager.query_active_effects(
+                combat_id, effect_id="shield_of_faith"
+            ),
+            loaded.active_effects,
+        )
+
+    def test_expiration_correct_after_reload(self) -> None:
+        manager = self._manager()
+        state = manager.create_combat("guild1", "channel1", [self.alice.id, self.bob.id])
+        combat_id = int(state.combat_id)
+        activated = manager.activate_combat(combat_id, rng=SequenceRng([12, 8]))
+        order = activated.initiative_order
+        manager.add_active_effect(
+            combat_id,
+            ActiveEffect(
+                effect_id="short_buff",
+                source_id=order[1],
+                target_id=order[0],
+                applied_at_round=1,
+                expiry_mode="rounds",
+                duration_rounds=1,
+            ),
+        )
+        manager._persist(manager._require_state(combat_id))
+
+        reloaded = self._manager()
+        reloaded.load_combat(combat_id)
+        reloaded.advance_turn(combat_id)
+        reloaded.advance_turn(combat_id)
+
+        self.assertEqual(reloaded.query_active_effects(combat_id), ())
+
+    def test_load_combat_force_rehydrates_from_blob_over_stale_registry(self) -> None:
+        manager = self._manager()
+        state = manager.create_combat("guild1", "channel1", [self.alice.id, self.bob.id])
+        combat_id = int(state.combat_id)
+        activated = manager.activate_combat(combat_id, rng=SequenceRng([11, 7]))
+        order = activated.initiative_order
+        persisted = ActiveEffect(
+            effect_id="blessed",
+            source_id=order[0],
+            target_id=order[1],
+            applied_at_round=1,
+            expiry_mode="concentration",
+        )
+        manager.add_active_effect(combat_id, persisted)
+        manager._persist(manager._require_state(combat_id))
+
+        manager.add_active_effect(
+            combat_id,
+            ActiveEffect(
+                effect_id="phantom",
+                source_id=order[0],
+                target_id=order[1],
+                applied_at_round=1,
+                expiry_mode="manual",
+            ),
+        )
+        self.assertEqual(len(manager.query_active_effects(combat_id)), 2)
+
+        loaded = manager.load_combat(combat_id)
+        self.assertEqual(loaded.active_effects, (persisted,))
+        self.assertEqual(manager.query_active_effects(combat_id), (persisted,))
+
+
 if __name__ == "__main__":
     unittest.main()

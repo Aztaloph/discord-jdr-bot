@@ -21,6 +21,7 @@ from jdr_engine.persistence.sqlite_character_repository import (
 )
 from jdr_engine.rules import RuleEngine
 from jdr_engine.rules.combat.spell_resolution import build_save_request
+from jdr_engine.rules.effects.registry import ActiveEffectRegistry
 from jdr_engine.rules.roll_effects import roll_d20_for_combatant
 from jdr_engine.rules.spellcasting.state import get_spellcasting_state
 
@@ -419,12 +420,14 @@ class TestBlessBuff(unittest.TestCase):
         )
         request = build_save_request(self.wizard, self.engine, "dex")
         bless = _bless_effect(source_id="cleric", target_id="wiz")
+        registry = ActiveEffectRegistry()
+        registry.add(bless)
         result = roll_d20_for_combatant(
             request,
             self.wizard,
             combatant,
             self.engine,
-            active_effects=(bless,),
+            effect_registry=registry,
             rng=RandSequence([9, 2]),
         )
         self.assertIn("+2 (bless)", result.applied_effects)
@@ -445,12 +448,14 @@ class TestBlessBuff(unittest.TestCase):
                 source_id="cleric",
                 target_id=combatant.combatant_id,
             )
+            registry = ActiveEffectRegistry()
+            registry.add(bless)
             result = roll_d20_for_combatant(
                 _attack_request(),
                 char,
                 combatant,
                 self.engine,
-                active_effects=(bless,),
+                effect_registry=registry,
                 rng=RandSequence([10, expected_bonus]),
             )
             self.assertIn(f"+{expected_bonus} (bless)", result.applied_effects)

@@ -6,10 +6,10 @@ from dataclasses import replace
 from typing import Any
 
 from jdr_engine.domain.character.character import Character
-from jdr_engine.domain.combat.active_effect import ActiveEffect
 from jdr_engine.domain.combat.combatant import Combatant
 from jdr_engine.rules.class_features.barbarian import rage_active, reckless_active
 from jdr_engine.rules.engine import RuleEngine
+from jdr_engine.rules.effects.registry import ActiveEffectRegistry
 
 
 def _effects_from_entry(entry, *, source_id: str) -> list[dict[str, Any]]:
@@ -99,7 +99,7 @@ def roll_d20_for_combatant(
     combatant: Combatant,
     engine: RuleEngine,
     *,
-    active_effects: tuple[ActiveEffect, ...] = (),
+    effect_registry: ActiveEffectRegistry | None = None,
     rng=None,
 ):
     """
@@ -109,13 +109,13 @@ def roll_d20_for_combatant(
     """
     from jdr_engine.dice.d20 import D20RollContext, roll_d20
     from jdr_engine.rules.combat.conditions.collect import collect_condition_roll_effects
+    from jdr_engine.rules.effects.collect import collect_buff_roll_effects
 
     effects = collect_roll_effects(character, engine)
     effects.extend(collect_condition_roll_effects(combatant))
-    from jdr_engine.rules.combat.buffs.collect import collect_buff_roll_effects
-
-    effects.extend(
-        collect_buff_roll_effects(combatant.combatant_id, active_effects)
-    )
+    if effect_registry is not None:
+        effects.extend(
+            collect_buff_roll_effects(effect_registry, combatant.combatant_id)
+        )
     enriched = enrich_roll_request(request, character)
     return roll_d20(D20RollContext(request=enriched, effects=effects), rng=rng)

@@ -49,10 +49,7 @@ from jdr_engine.persistence.sqlite_character_repository import (
 )
 from jdr_engine.rules.calculator import build_character_sheet
 from jdr_engine.rules.combat.attack_roll import AttackHitOutcome, resolve_attack_hit
-from jdr_engine.rules.combat.buffs.hunters_mark import (
-    hunters_mark_bonus_applies,
-    roll_hunters_mark_bonus,
-)
+from jdr_engine.rules.combat.buffs.hunters_mark import roll_hunters_mark_bonus
 from jdr_engine.rules.combat.conditions.catalog import validate_phase1_condition
 from jdr_engine.rules.combat.concentration_save import concentration_save_dc
 from jdr_engine.rules.combat.damage import (
@@ -69,6 +66,7 @@ from jdr_engine.rules.combat.initiative import (
 )
 from jdr_engine.rules.engine import RuleEngine
 from jdr_engine.rules.effects.registry import ActiveEffectRegistry
+from jdr_engine.rules.effects.collect import hunters_mark_bonus_applies_for_target
 from jdr_engine.rules.combat.saving_throw import (
     damage_after_save,
     save_succeeded,
@@ -437,12 +435,10 @@ class CombatManager:
         target = self._require_combatant(state, target_id)
         character = self._require_character(attacker.character_id)
 
-        attacker_effects = self.query_active_effects(
-            combat_id, target_id=attacker_id
-        )
+        registry = self._registry_for(combat_id)
         d20 = roll_d20_for_combatant(
             request, character, attacker, self._engine,
-            active_effects=attacker_effects,
+            effect_registry=registry,
             rng=rng,
         )
         outcome = resolve_attack_hit(d20, target.ac)
@@ -492,7 +488,7 @@ class CombatManager:
         if source_id is not None:
             self._require_combatant(state, source_id)
 
-        target_effects = self.query_active_effects(combat_id, target_id=target_id)
+        registry = self._registry_for(combat_id)
 
         if damage_amount is not None:
             if damage_amount < 0:
@@ -509,7 +505,9 @@ class CombatManager:
             amount = damage_roll.total
             notation = damage_roll.dice_notation
 
-        if amount > 0 and hunters_mark_bonus_applies(target_effects, source_id):
+        if amount > 0 and hunters_mark_bonus_applies_for_target(
+            registry, target_id, source_id
+        ):
             mark_bonus = roll_hunters_mark_bonus(rng=rng)
             amount += mark_bonus
             notation = f"{notation}+{mark_bonus} (hunters_mark)"
@@ -631,10 +629,10 @@ class CombatManager:
         save_request = build_save_request(
             target_char, self._engine, save_ability
         )
-        target_effects = self.query_active_effects(combat_id, target_id=target_id)
+        registry = self._registry_for(combat_id)
         d20 = roll_d20_for_combatant(
             save_request, target_char, target, self._engine,
-            active_effects=target_effects,
+            effect_registry=registry,
             rng=rng,
         )
         succeeded = save_succeeded(d20.total, save_dc)
@@ -830,7 +828,7 @@ class CombatManager:
         )
 
     def load_combat(self, combat_id: int) -> CombatState:
-        """Charge un combat par identifiant SQL."""
+        """Charge un combat par identifiant SQL et reconstruit le registre d'effets."""
         record = self._combats.get_by_id(combat_id)
         if record is None:
             raise CombatNotFoundError(f"Combat introuvable : id={combat_id}.")
@@ -845,11 +843,9 @@ class CombatManager:
             updated[combatant_id] = hydrated
             if hydrated is not combatant:
                 changed = True
-        if not changed:
-            self._hydrate_effect_registry(combat_id, state)
-            return self._with_registry_effects(state)
-        state = replace(state, combatants=updated)
-        self._hydrate_effect_registry(combat_id, state)
+        if changed:
+            state = replace(state, combatants=updated)
+        self._sync_effect_registry_from_state(combat_id, state, force=True)
         return self._with_registry_effects(state)
 
     def load_open_combat(
@@ -904,7 +900,7 @@ class CombatManager:
             return record.state
 
         state = record.state
-        self._hydrate_effect_registry(combat_id, state)
+        self._sync_effect_registry_from_state(combat_id, state, force=True)
         for combatant in state.combatants.values():
             self._sync_character_from_combatant(combatant)
 
@@ -968,10 +964,10 @@ class CombatManager:
 
         save_dc = concentration_save_dc(damage_dealt)
         save_request = build_save_request(character, self._engine, "con")
-        target_effects = self.query_active_effects(combat_id, target_id=target_id)
+        registry = self._registry_for(combat_id)
         d20 = roll_d20_for_combatant(
             save_request, character, target, self._engine,
-            active_effects=target_effects,
+            effect_registry=registry,
             rng=rng,
         )
         if save_succeeded(d20.total, save_dc):
@@ -1079,11 +1075,28 @@ class CombatManager:
     def _tick_active_effects(self, combat_id: int, round_number: int) -> None:
         self._registry_for(combat_id).tick(round_number)
 
-    def _hydrate_effect_registry(self, combat_id: int, state: CombatState) -> None:
+    def _sync_effect_registry_from_state(
+        self,
+        combat_id: int,
+        state: CombatState,
+        *,
+        force: bool,
+    ) -> None:
+        """
+        Reconstruit le registre depuis ``state.active_effects``.
+
+        ``force=False`` : skip si un registre existe déjà — source de vérité
+        runtime intra-session (``_require_state``).
+        ``force=True`` : relecture obligatoire depuis le blob persisté
+        (``load_combat``, ``close_combat`` — même pattern qu'ADR-005).
+        """
+        key = str(combat_id)
+        if not force and key in self._effect_registries:
+            return
         registry = ActiveEffectRegistry()
         for effect in state.active_effects:
             registry.add(effect)
-        self._effect_registries[str(combat_id)] = registry
+        self._effect_registries[key] = registry
 
     def _with_registry_effects(self, state: CombatState) -> CombatState:
         if state.combat_id is None:
@@ -1192,8 +1205,7 @@ class CombatManager:
         if record is None:
             raise CombatNotFoundError(f"Combat introuvable : id={combat_id}.")
         state = record.state
-        if str(combat_id) not in self._effect_registries:
-            self._hydrate_effect_registry(combat_id, state)
+        self._sync_effect_registry_from_state(combat_id, state, force=False)
         return self._with_registry_effects(state)
 
     def _persist(self, state: CombatState) -> None:
