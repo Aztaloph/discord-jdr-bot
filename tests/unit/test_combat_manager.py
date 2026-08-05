@@ -29,7 +29,6 @@ from jdr_engine.game.combat_manager import (
     CombatManager,
     CombatStatusError,
     InsufficientCombatantsError,
-    NoActiveCombatantsError,
 )
 from jdr_engine.persistence.combat_repository import (
     ActiveCombatExistsError,
@@ -202,12 +201,14 @@ class TestCombatManager(unittest.TestCase):
         state = self.manager.advance_turn(int(state.combat_id))
         self.assertEqual(state.initiative_order[state.turn_index], order[1])
 
-    def test_remove_all_active_raises_on_advance(self) -> None:
+    def test_remove_all_active_auto_closes_on_advance(self) -> None:
         state = self._create_and_activate(rng=SequenceRng([10, 12]))
         for cid in state.initiative_order:
             self.manager.remove_combatant(int(state.combat_id), cid)
-        with self.assertRaises(NoActiveCombatantsError):
-            self.manager.advance_turn(int(state.combat_id))
+        closed = self.manager.advance_turn(int(state.combat_id))
+        self.assertEqual(closed.status, "ended")
+        ended_events = [e for e in self.events if isinstance(e, CombatEnded)]
+        self.assertEqual(ended_events[-1].reason, "no_active_combatants")
 
     def test_turn_progression_survives_save_reload(self) -> None:
         state = self._create_and_activate(rng=SequenceRng([16, 7]))

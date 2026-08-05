@@ -279,6 +279,7 @@ class TestCombatManagerAttack(unittest.TestCase):
         )
         self.assertEqual(resolution.application.hp_after, 0)
         self.assertEqual(state.combatants[bob_id].hp_current, 0)
+        self.assertFalse(state.combatants[bob_id].is_active)
 
 
 if __name__ == "__main__":

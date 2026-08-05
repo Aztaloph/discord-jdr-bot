@@ -106,10 +106,6 @@ class InsufficientCombatantsError(Exception):
     """Nombre de combattants insuffisant pour l'opération."""
 
 
-class NoActiveCombatantsError(Exception):
-    """Aucun combattant actif dans la séquence d'initiative."""
-
-
 class CombatantNotFoundError(Exception):
     """Combattant introuvable dans la rencontre."""
 
@@ -306,8 +302,8 @@ class CombatManager:
             is_active=_is_active,
         )
         if result is None:
-            raise NoActiveCombatantsError(
-                "Aucun combattant actif — fin de combat non tranchée (ambiguïté C2)."
+            return self.close_combat(
+                combat_id, reason="no_active_combatants"
             )
 
         new_index, delta_round = result
@@ -767,7 +763,20 @@ class CombatManager:
         record = self._combats.get_by_id(combat_id)
         if record is None:
             raise CombatNotFoundError(f"Combat introuvable : id={combat_id}.")
-        return record.state
+        state = record.state
+        if state.status == "ended":
+            return state
+
+        updated: dict[str, Combatant] = {}
+        changed = False
+        for combatant_id, combatant in state.combatants.items():
+            hydrated = self._hydrate_combatant_concentration(combatant)
+            updated[combatant_id] = hydrated
+            if hydrated is not combatant:
+                changed = True
+        if not changed:
+            return state
+        return replace(state, combatants=updated)
 
     def load_open_combat(
         self,
@@ -808,7 +817,7 @@ class CombatManager:
         )
 
     def close_combat(self, combat_id: int, *, reason: str = "closed") -> CombatState:
-        """Clôture un combat ouvert ; publie ``CombatEnded``."""
+        """Clôture un combat ouvert ; sync fiche puis publie ``CombatEnded`` (ADR-005)."""
         record = self._combats.get_by_id(combat_id)
         if record is None:
             raise CombatNotFoundError(f"Combat introuvable : id={combat_id}.")
@@ -816,8 +825,14 @@ class CombatManager:
             return record.state
 
         state = record.state
-        state.status = "ended"
-        state.ended_at = utc_now_iso()
+        for combatant in state.combatants.values():
+            self._sync_character_from_combatant(combatant)
+
+        state = replace(
+            state,
+            status="ended",
+            ended_at=utc_now_iso(),
+        )
 
         self._combats.save(
             CombatRecord(
@@ -899,6 +914,37 @@ class CombatManager:
             )
         )
         return state
+
+    def _sync_character_from_combatant(self, combatant: Combatant) -> None:
+        """Sync PV et concentration overlay → fiche (ADR-005, ordre canonique close)."""
+        character = self._require_character(combatant.character_id)
+        character = replace(character, hp_current=combatant.hp_current)
+
+        overlay_id = combatant.concentration_spell_id
+        if overlay_id is not None:
+            spell_name = combatant.concentration_spell_name or overlay_id
+            character, _interrupted = set_concentration(
+                character, overlay_id, spell_name
+            )
+        elif get_active_concentration(character) is not None:
+            character = clear_concentration(character)
+
+        self._characters.save(character)
+
+    def _hydrate_combatant_concentration(self, combatant: Combatant) -> Combatant:
+        """Hydrate l'overlay concentration depuis la fiche si absent (ADR-005 §3)."""
+        if combatant.concentration_spell_id is not None:
+            return combatant
+        character = self._characters.get_by_id(combatant.character_id)
+        if character is None:
+            return combatant
+        persisted = get_active_concentration(character)
+        if persisted is None:
+            return combatant
+        return combatant.with_concentration(
+            persisted["spell_id"],
+            persisted["spell_name"],
+        )
 
     def _build_combatant(self, character_id: str) -> Combatant:
         character = self._characters.get_by_id(character_id)

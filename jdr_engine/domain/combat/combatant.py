@@ -92,7 +92,11 @@ class Combatant:
         )
 
     def with_hp(self, hp_current: int) -> Combatant:
-        return replace(self, hp_current=hp_current)
+        """Met à jour les PV ; à 0 PV le combattant quitte la rotation (ADR-005 §1)."""
+        updates: dict = {"hp_current": hp_current}
+        if hp_current <= 0:
+            updates["is_active"] = False
+        return replace(self, **updates)
 
     def with_concentration(
         self,
