@@ -19,6 +19,7 @@ Chaque ADR documente :
 | [ADR-002](ADR-002%20-%20Pourquoi%20les%20règles%20sont%20externalisées.md) | Pourquoi les règles sont externalisées | Accepté |
 | [ADR-003](ADR-003%20-%20Pourquoi%20utiliser%20un%20EventBus.md) | Pourquoi utiliser un EventBus | Accepté |
 | [ADR-004](ADR-004-modele-combat.md) | Modèle de combat | Accepté |
+| [ADR-005](ADR-005-transition-fin-rencontre.md) | Transition fin de rencontre | Accepté |
 
 ## Documents associés
 
@@ -31,7 +32,7 @@ Chaque ADR documente :
 
 ### ADRs futurs prévus
 
-- ADR-005 — Structure du Compendium (dossier par entité)
+- ADR-010 — Structure du Compendium (dossier par entité)
 - ADR-006 — Stratégie i18n (fichiers par locale)
 - ADR-007 — Validation Compendium (strict vs warn)
 - ADR-008 — Versionnement des rulesets

@@ -330,9 +330,9 @@ Le jet d'attaque consomme **`roll_d20_for_character`** → **`roll_d20`** (`jdr_
 
 `apply_damage` **peut être appelé sans jet d'attaque préalable** — cohérence métier à la charge de l'appelant. Cas d'usage : sorts à sauvegarde (dégâts calculés puis appliqués via `damage_amount`), effets futurs hors attaque.
 
-### Dette groupée — fin de combat (ensemble à traiter d'un bloc)
+### Dette groupée — fin de combat (résolue par ADR-005, 2026-08-05)
 
-Les points suivants **ne sont pas tranchés individuellement** ; ils seront résolus **ensemble** dans un lot dédié :
+Les points suivants étaient **non tranchés** en C7 ; décisions actées dans **[ADR-005](ADR-005-transition-fin-rencontre.md)** :
 
 | Point | Origine |
 |---|---|
