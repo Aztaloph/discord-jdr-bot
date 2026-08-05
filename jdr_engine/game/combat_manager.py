@@ -37,6 +37,7 @@ from jdr_engine.domain.combat.combat_state import (
     utc_now_iso,
 )
 from jdr_engine.domain.combat.combatant import Combatant
+from jdr_engine.domain.combat.active_effect import ActiveEffect
 from jdr_engine.persistence.combat_repository import (
     CombatNotFoundError,
     CombatRecord,
@@ -67,6 +68,7 @@ from jdr_engine.rules.combat.initiative import (
     sort_initiative_order,
 )
 from jdr_engine.rules.engine import RuleEngine
+from jdr_engine.rules.effects.registry import ActiveEffectRegistry
 from jdr_engine.rules.combat.saving_throw import (
     damage_after_save,
     save_succeeded,
@@ -173,6 +175,7 @@ class CombatManager:
         self._combats = combat_repository
         self._characters = character_repository
         self._engine = engine
+        self._effect_registries: dict[str, ActiveEffectRegistry] = {}
 
     def create_combat(
         self,
@@ -313,6 +316,7 @@ class CombatManager:
         new_index, delta_round = result
         if delta_round:
             state.round_number += 1
+            self._tick_active_effects(combat_id, state.round_number)
             self._bus.publish(
                 RoundStarted(
                     ruleset_id=state.ruleset_id,
@@ -780,6 +784,33 @@ class CombatManager:
         )
         return self._require_state(combat_id)
 
+    def active_effect_registry(self, combat_id: int) -> ActiveEffectRegistry:
+        """Registre in-memory des effets actifs pour une rencontre."""
+        return self._registry_for(combat_id)
+
+    def add_active_effect(self, combat_id: int, effect: ActiveEffect) -> None:
+        """Enregistre un effet actif (API publique — lot ADR-006)."""
+        self._registry_for(combat_id).add(effect)
+
+    def remove_active_effect(self, combat_id: int, effect: ActiveEffect) -> bool:
+        """Retire un effet actif par identité stable."""
+        return self._registry_for(combat_id).remove(effect)
+
+    def query_active_effects(
+        self,
+        combat_id: int,
+        *,
+        effect_id: str | None = None,
+        source_id: str | None = None,
+        target_id: str | None = None,
+    ) -> tuple[ActiveEffect, ...]:
+        """Interroge le registre d'effets actifs."""
+        return self._registry_for(combat_id).query(
+            effect_id=effect_id,
+            source_id=source_id,
+            target_id=target_id,
+        )
+
     def load_combat(self, combat_id: int) -> CombatState:
         """Charge un combat par identifiant SQL."""
         record = self._combats.get_by_id(combat_id)
@@ -880,6 +911,7 @@ class CombatManager:
                 reason=reason,
             )
         )
+        self._effect_registries.pop(str(combat_id), None)
         return state
 
     def _resolve_concentration_after_damage(
@@ -1016,6 +1048,17 @@ class CombatManager:
             persisted["spell_id"],
             persisted["spell_name"],
         )
+
+    def _registry_for(self, combat_id: int | str) -> ActiveEffectRegistry:
+        key = str(combat_id)
+        registry = self._effect_registries.get(key)
+        if registry is None:
+            registry = ActiveEffectRegistry()
+            self._effect_registries[key] = registry
+        return registry
+
+    def _tick_active_effects(self, combat_id: int, round_number: int) -> None:
+        self._registry_for(combat_id).tick(round_number)
 
     def _build_combatant(self, character_id: str) -> Combatant:
         character = self._characters.get_by_id(character_id)
