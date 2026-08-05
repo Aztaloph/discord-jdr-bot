@@ -110,5 +110,8 @@ def roll_d20_for_combatant(
 
     effects = collect_roll_effects(character, engine)
     effects.extend(collect_condition_roll_effects(combatant))
+    from jdr_engine.rules.combat.buffs.collect import collect_buff_roll_effects
+
+    effects.extend(collect_buff_roll_effects(combatant))
     enriched = enrich_roll_request(request, character)
     return roll_d20(D20RollContext(request=enriched, effects=effects), rng=rng)

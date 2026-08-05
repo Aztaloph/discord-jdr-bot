@@ -226,6 +226,13 @@ def _effect_matches(
             return request.roll_type == "ability_check"
         return False
 
+    if effect_type == "roll_bonus_dice":
+        if context == "attack":
+            return request.roll_type == "attack"
+        if context == "saving_throw":
+            return request.roll_type == "saving_throw"
+        return False
+
     return False
 
 
@@ -365,7 +372,22 @@ def roll_d20(
         source = effect.get("source_id") or "lucky"
         applied.append(f"relance nat. 1 ({source}) → {new_value}")
 
-    total = kept_value + modifier
+    dice_bonus = 0
+    for effect in context.effects:
+        if effect.get("type") != "roll_bonus_dice":
+            continue
+        if not _effect_matches(effect, request):
+            continue
+        dice_notation = str(effect.get("dice", "1d4"))
+        from jdr_engine.dice.parser import parse
+
+        count, faces, dice_mod, _sign = parse(dice_notation)
+        roll_sum = sum(randint(1, faces) for _ in range(count)) + dice_mod
+        dice_bonus += roll_sum
+        source = effect.get("source_id") or "roll_bonus_dice"
+        applied.append(f"+{roll_sum} ({source})")
+
+    total = kept_value + modifier + dice_bonus
     return D20RollResult(
         request=request,
         rolls=rolls,

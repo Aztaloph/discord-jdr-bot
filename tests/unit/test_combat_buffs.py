@@ -8,8 +8,10 @@ from pathlib import Path
 
 from jdr_engine.core.events import DomainEvent, EventBus
 from jdr_engine.core.events.combat_events import ConcentrationBroken, DamageDealt
+from jdr_engine.dice.d20 import D20RollRequest
 from jdr_engine.domain.character.ability_scores import AbilityScores
 from jdr_engine.domain.character.character import Character
+from jdr_engine.domain.combat.combatant import Combatant
 from jdr_engine.game.combat_manager import CombatManager
 from jdr_engine.persistence.combat_repository import SqliteCombatRepository
 from jdr_engine.persistence.database import init_database
@@ -17,6 +19,8 @@ from jdr_engine.persistence.sqlite_character_repository import (
     SqliteCharacterRepository,
 )
 from jdr_engine.rules import RuleEngine
+from jdr_engine.rules.combat.spell_resolution import build_save_request
+from jdr_engine.rules.roll_effects import roll_d20_for_combatant
 from jdr_engine.rules.spellcasting.state import get_spellcasting_state
 
 
@@ -102,6 +106,54 @@ def _wizard(*, name: str = "Mage", hp: int = 20) -> Character:
                 "slots_used": {},
             }
         },
+    )
+
+
+def _cleric(*, name: str = "Clerc") -> Character:
+    return Character(
+        owner_id="113",
+        guild_id="guild1",
+        name=name,
+        race_id="human",
+        class_id="cleric",
+        level=3,
+        ability_scores=AbilityScores(
+            scores={
+                "str": 10,
+                "dex": 10,
+                "con": 12,
+                "int": 10,
+                "wis": 16,
+                "cha": 10,
+            }
+        ),
+        hp_current=22,
+        hp_max=22,
+        choices={
+            "spellcasting": {
+                "cantrips_known": ["sacred_flame"],
+                "spells_prepared": ["bless", "burning_hands", "cure_wounds"],
+                "slots_used": {},
+            }
+        },
+    )
+
+
+def _attack_request(**kwargs) -> D20RollRequest:
+    base = D20RollRequest(
+        roll_type="attack",
+        ability_modifier=5,
+        proficiency_bonus=2,
+        is_proficient=True,
+    )
+    if not kwargs:
+        return base
+    return D20RollRequest(
+        roll_type=kwargs.get("roll_type", base.roll_type),
+        ability_modifier=kwargs.get("ability_modifier", base.ability_modifier),
+        proficiency_bonus=kwargs.get("proficiency_bonus", base.proficiency_bonus),
+        is_proficient=kwargs.get("is_proficient", base.is_proficient),
+        base_mode=kwargs.get("base_mode", base.base_mode),
     )
 
 
@@ -241,6 +293,122 @@ class TestHuntersMarkBuff(unittest.TestCase):
         state = self.manager.cast_hunters_mark(combat_id, ranger_id, charlie_id)
         self.assertIsNone(state.combatants[wizard_id].hunters_mark_caster_id)
         self.assertEqual(state.combatants[charlie_id].hunters_mark_caster_id, ranger_id)
+
+
+class TestBlessBuff(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.db_path = Path(self._tmpdir.name) / "test.db"
+        init_database(self.db_path)
+        self.engine = _engine()
+        self.bus = EventBus()
+        self.combat_repo = SqliteCombatRepository(self.db_path)
+        self.char_repo = SqliteCharacterRepository(self.db_path)
+        self.manager = CombatManager(
+            self.bus,
+            self.combat_repo,
+            self.char_repo,
+            self.engine,
+        )
+        self.cleric = _cleric(name="Clerc")
+        self.ranger = _ranger(name="Alice")
+        self.wizard = _wizard(name="Bob")
+        for char in (self.cleric, self.ranger, self.wizard):
+            self.char_repo.save(char)
+
+    def tearDown(self) -> None:
+        self._tmpdir.cleanup()
+
+    def _three_way_fight(self) -> tuple[str, str, str, int]:
+        state = self.manager.create_combat(
+            "guild1",
+            "channel1",
+            [self.cleric.id, self.ranger.id, self.wizard.id],
+        )
+        state = self.manager.activate_combat(
+            int(state.combat_id),
+            rng=InitiativeSequence([16, 12, 8]),
+        )
+        id_map = {c.character_id: cid for cid, c in state.combatants.items()}
+        return (
+            id_map[self.cleric.id],
+            id_map[self.ranger.id],
+            id_map[self.wizard.id],
+            int(state.combat_id),
+        )
+
+    def test_bless_adds_1d4_to_attack_roll(self) -> None:
+        cleric_id, ranger_id, wizard_id, combat_id = self._three_way_fight()
+        self.manager.cast_bless(combat_id, cleric_id, [ranger_id])
+        self.manager.advance_turn(combat_id)
+
+        resolution = self.manager.resolve_attack_roll(
+            combat_id,
+            ranger_id,
+            wizard_id,
+            _attack_request(),
+            rng=RandSequence([11, 3]),
+        )
+        self.assertEqual(resolution.d20.total, 11 + 5 + 2 + 3)
+        self.assertTrue(
+            any("+3 (bless)" in entry for entry in resolution.d20.applied_effects)
+        )
+
+    def test_bless_adds_1d4_to_saving_throw(self) -> None:
+        combatant = Combatant(
+            combatant_id="wiz",
+            display_name="Bob",
+            kind="player_character",
+            character_id=self.wizard.id,
+            hp_current=20,
+            hp_max=20,
+            ac=12,
+            blessed=True,
+        )
+        request = build_save_request(self.wizard, self.engine, "dex")
+        result = roll_d20_for_combatant(
+            request,
+            self.wizard,
+            combatant,
+            self.engine,
+            rng=RandSequence([9, 2]),
+        )
+        self.assertIn("+2 (bless)", result.applied_effects)
+
+    def test_bless_three_targets_independent_rolls(self) -> None:
+        char = self.ranger
+        for expected_bonus in (2, 3, 4):
+            combatant = Combatant(
+                combatant_id=f"t{expected_bonus}",
+                display_name="Cible",
+                kind="player_character",
+                character_id=char.id,
+                hp_current=20,
+                hp_max=20,
+                ac=12,
+                blessed=True,
+            )
+            result = roll_d20_for_combatant(
+                _attack_request(),
+                char,
+                combatant,
+                self.engine,
+                rng=RandSequence([10, expected_bonus]),
+            )
+            self.assertIn(f"+{expected_bonus} (bless)", result.applied_effects)
+
+    def test_concentration_break_clears_blessed_on_all_targets(self) -> None:
+        cleric_id, ranger_id, wizard_id, combat_id = self._three_way_fight()
+        self.manager.cast_bless(combat_id, cleric_id, [ranger_id, wizard_id])
+        state, _ = self.manager.apply_damage(
+            combat_id,
+            cleric_id,
+            damage_amount=24,
+            source_id=wizard_id,
+            rng=RandSequence([2]),
+        )
+        self.assertFalse(state.combatants[ranger_id].blessed)
+        self.assertFalse(state.combatants[wizard_id].blessed)
 
 
 if __name__ == "__main__":
