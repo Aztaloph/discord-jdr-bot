@@ -20,6 +20,7 @@ Chaque ADR documente :
 | [ADR-003](ADR-003%20-%20Pourquoi%20utiliser%20un%20EventBus.md) | Pourquoi utiliser un EventBus | Accepté |
 | [ADR-004](ADR-004-modele-combat.md) | Modèle de combat | Accepté |
 | [ADR-005](ADR-005-transition-fin-rencontre.md) | Transition fin de rencontre | Accepté |
+| [ADR-006](ADR-006-modele-effets-actifs.md) | Modèle d'effets actifs, horloge combat, registre | Accepté |
 
 ## Documents associés
 
@@ -32,8 +33,8 @@ Chaque ADR documente :
 
 ### ADRs futurs prévus
 
-- ADR-010 — Structure du Compendium (dossier par entité)
-- ADR-006 — Stratégie i18n (fichiers par locale)
-- ADR-007 — Validation Compendium (strict vs warn)
-- ADR-008 — Versionnement des rulesets
-- ADR-009 — Système de plugins (sandbox)
+- ADR-011 — Structure du Compendium (dossier par entité)
+- ADR-007 — Stratégie i18n (fichiers par locale)
+- ADR-008 — Validation Compendium (strict vs warn)
+- ADR-009 — Versionnement des rulesets
+- ADR-010 — Système de plugins (sandbox)
