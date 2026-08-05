@@ -1,5 +1,5 @@
-# tests/unit/test_combat_concentration.py
-"""Lot C5 — rupture de concentration sur dégâts (save CON)."""
+# tests/unit/test_combat_buffs.py
+"""Lot B4 — buffs overlay combat (hunters_mark, bless)."""
 from __future__ import annotations
 
 import tempfile
@@ -17,7 +17,6 @@ from jdr_engine.persistence.sqlite_character_repository import (
     SqliteCharacterRepository,
 )
 from jdr_engine.rules import RuleEngine
-from jdr_engine.rules.combat.concentration_save import concentration_save_dc
 from jdr_engine.rules.spellcasting.state import get_spellcasting_state
 
 
@@ -76,7 +75,7 @@ def _ranger(*, name: str = "Rodeur", con: int = 12) -> Character:
     )
 
 
-def _wizard(*, name: str = "Mage") -> Character:
+def _wizard(*, name: str = "Mage", hp: int = 20) -> Character:
     return Character(
         owner_id="112",
         guild_id="guild1",
@@ -94,8 +93,8 @@ def _wizard(*, name: str = "Mage") -> Character:
                 "cha": 10,
             }
         ),
-        hp_current=20,
-        hp_max=20,
+        hp_current=hp,
+        hp_max=hp,
         choices={
             "spellcasting": {
                 "cantrips_known": ["fire_bolt"],
@@ -106,28 +105,16 @@ def _wizard(*, name: str = "Mage") -> Character:
     )
 
 
-class TestConcentrationSaveRules(unittest.TestCase):
-    def test_dc_minimum_ten(self) -> None:
-        self.assertEqual(concentration_save_dc(4), 10)
-        self.assertEqual(concentration_save_dc(10), 10)
-
-    def test_dc_half_damage_rounded_down(self) -> None:
-        self.assertEqual(concentration_save_dc(22), 11)
-        self.assertEqual(concentration_save_dc(23), 11)
-
-    def test_zero_damage_no_dc(self) -> None:
-        self.assertEqual(concentration_save_dc(0), 0)
-
-
-class TestCombatConcentrationBreak(unittest.TestCase):
+class TestHuntersMarkBuff(unittest.TestCase):
     def setUp(self) -> None:
         self._tmpdir = tempfile.TemporaryDirectory()
-        self.db_path = init_database(Path(self._tmpdir.name) / "bot.db")
+        self.db_path = Path(self._tmpdir.name) / "test.db"
+        init_database(self.db_path)
         self.engine = _engine()
-        self.char_repo = SqliteCharacterRepository(self.db_path)
-        self.combat_repo = SqliteCombatRepository(self.db_path)
         self.bus = EventBus()
         self.events: list[DomainEvent] = []
+        self.combat_repo = SqliteCombatRepository(self.db_path)
+        self.char_repo = SqliteCharacterRepository(self.db_path)
         self.bus.subscribe(DamageDealt, self.events.append)
         self.bus.subscribe(ConcentrationBroken, self.events.append)
         self.manager = CombatManager(
@@ -149,7 +136,8 @@ class TestCombatConcentrationBreak(unittest.TestCase):
             "guild1", "channel1", [self.ranger.id, self.wizard.id]
         )
         state = self.manager.activate_combat(
-            int(state.combat_id), rng=InitiativeSequence([10, 8])
+            int(state.combat_id),
+            rng=InitiativeSequence([10, 8]),
         )
         ranger_id = next(
             cid
@@ -163,34 +151,63 @@ class TestCombatConcentrationBreak(unittest.TestCase):
         )
         return ranger_id, wizard_id, int(state.combat_id)
 
-    def _mark_and_concentrate(
-        self, ranger_id: str, wizard_id: str, combat_id: int
-    ) -> None:
+    def test_hunters_mark_adds_1d6_damage_when_caster_hits_marked_target(self) -> None:
+        ranger_id, wizard_id, combat_id = self._active_fight()
+        self.manager.cast_hunters_mark(combat_id, ranger_id, wizard_id)
+        wizard_hp = self.manager.load_combat(combat_id).combatants[wizard_id].hp_current
+
+        state, resolution = self.manager.apply_damage(
+            combat_id,
+            wizard_id,
+            damage_amount=5,
+            source_id=ranger_id,
+            rng=RandSequence([4]),
+        )
+        self.assertEqual(resolution.application.damage_dealt, 9)
+        self.assertEqual(state.combatants[wizard_id].hp_current, wizard_hp - 9)
+
+    def test_hunters_mark_no_bonus_unmarked_target(self) -> None:
+        ranger_id, wizard_id, combat_id = self._active_fight()
         self.manager.cast_hunters_mark(combat_id, ranger_id, wizard_id)
 
-    def test_successful_save_keeps_concentration(self) -> None:
-        ranger_id, wizard_id, combat_id = self._active_fight()
-        self._mark_and_concentrate(ranger_id, wizard_id, combat_id)
-
-        state, _ = self.manager.apply_damage(
+        state, resolution = self.manager.apply_damage(
             combat_id,
             ranger_id,
-            damage_amount=10,
+            damage_amount=5,
             source_id=wizard_id,
-            rng=RandSequence([9]),
+            rng=RandSequence([6]),
         )
-        self.assertEqual(
-            state.combatants[ranger_id].concentration_spell_id, "hunters_mark"
-        )
-        self.assertIn("concentration", get_spellcasting_state(
-            self.char_repo.get_by_id(self.ranger.id)  # type: ignore[arg-type]
-        ))
-        self.assertEqual(len(self.events), 1)
-        self.assertIsInstance(self.events[0], DamageDealt)
+        self.assertEqual(resolution.application.damage_dealt, 5)
 
-    def test_failed_save_breaks_concentration(self) -> None:
+    def test_hunters_mark_no_bonus_wrong_attacker(self) -> None:
+        extra = _wizard(name="Charlie")
+        self.char_repo.save(extra)
+        state = self.manager.create_combat(
+            "guild1", "channel1", [self.ranger.id, self.wizard.id, extra.id]
+        )
+        state = self.manager.activate_combat(
+            int(state.combat_id),
+            rng=InitiativeSequence([14, 10, 6]),
+        )
+        id_map = {c.character_id: cid for cid, c in state.combatants.items()}
+        ranger_id = id_map[self.ranger.id]
+        wizard_id = id_map[self.wizard.id]
+        charlie_id = id_map[extra.id]
+        combat_id = int(state.combat_id)
+
+        self.manager.cast_hunters_mark(combat_id, ranger_id, wizard_id)
+        _, resolution = self.manager.apply_damage(
+            combat_id,
+            wizard_id,
+            damage_amount=5,
+            source_id=charlie_id,
+            rng=RandSequence([6]),
+        )
+        self.assertEqual(resolution.application.damage_dealt, 5)
+
+    def test_concentration_break_clears_hunters_mark_overlay(self) -> None:
         ranger_id, wizard_id, combat_id = self._active_fight()
-        self._mark_and_concentrate(ranger_id, wizard_id, combat_id)
+        self.manager.cast_hunters_mark(combat_id, ranger_id, wizard_id)
 
         state, _ = self.manager.apply_damage(
             combat_id,
@@ -201,48 +218,29 @@ class TestCombatConcentrationBreak(unittest.TestCase):
         )
         self.assertIsNone(state.combatants[ranger_id].concentration_spell_id)
         self.assertIsNone(state.combatants[wizard_id].hunters_mark_caster_id)
-        reloaded_char = self.char_repo.get_by_id(self.ranger.id)
-        assert reloaded_char is not None
-        self.assertNotIn("concentration", get_spellcasting_state(reloaded_char))
 
-        self.assertEqual(len(self.events), 2)
-        self.assertIsInstance(self.events[0], DamageDealt)
-        broken = self.events[1]
-        self.assertIsInstance(broken, ConcentrationBroken)
-        assert isinstance(broken, ConcentrationBroken)
-        self.assertEqual(broken.combatant_id, ranger_id)
-        self.assertEqual(broken.spell_id, "hunters_mark")
-        self.assertEqual(broken.damage_taken, 22)
-        self.assertEqual(broken.save_dc, 11)
-        self.assertLess(broken.save_total, broken.save_dc)
-
-    def test_no_concentration_skips_save(self) -> None:
-        ranger_id, wizard_id, combat_id = self._active_fight()
-
-        self.manager.apply_damage(
-            combat_id,
-            ranger_id,
-            damage_amount=12,
-            source_id=wizard_id,
-            rng=RandSequence([1]),
+    def test_recast_hunters_mark_clears_previous_target_mark(self) -> None:
+        extra = _wizard(name="Charlie")
+        self.char_repo.save(extra)
+        state = self.manager.create_combat(
+            "guild1", "channel1", [self.ranger.id, self.wizard.id, extra.id]
         )
-        self.assertEqual(len(self.events), 1)
-        self.assertIsInstance(self.events[0], DamageDealt)
-
-    def test_zero_damage_skips_concentration_check(self) -> None:
-        ranger_id, wizard_id, combat_id = self._active_fight()
-        self._mark_and_concentrate(ranger_id, wizard_id, combat_id)
-
-        state, _ = self.manager.apply_damage(
-            combat_id,
-            ranger_id,
-            damage_amount=0,
-            source_id=wizard_id,
+        state = self.manager.activate_combat(
+            int(state.combat_id),
+            rng=InitiativeSequence([14, 10, 6]),
         )
-        self.assertEqual(
-            state.combatants[ranger_id].concentration_spell_id, "hunters_mark"
-        )
-        self.assertEqual(len(self.events), 1)
+        id_map = {c.character_id: cid for cid, c in state.combatants.items()}
+        ranger_id = id_map[self.ranger.id]
+        wizard_id = id_map[self.wizard.id]
+        charlie_id = id_map[extra.id]
+        combat_id = int(state.combat_id)
+
+        self.manager.cast_hunters_mark(combat_id, ranger_id, wizard_id)
+        for _ in range(3):
+            self.manager.advance_turn(combat_id)
+        state = self.manager.cast_hunters_mark(combat_id, ranger_id, charlie_id)
+        self.assertIsNone(state.combatants[wizard_id].hunters_mark_caster_id)
+        self.assertEqual(state.combatants[charlie_id].hunters_mark_caster_id, ranger_id)
 
 
 if __name__ == "__main__":

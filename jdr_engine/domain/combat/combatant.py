@@ -122,6 +122,12 @@ class Combatant:
     def with_blessed(self, blessed: bool = True) -> Combatant:
         return replace(self, blessed=blessed)
 
+    def without_hunters_mark(self) -> Combatant:
+        return replace(self, hunters_mark_caster_id=None)
+
+    def without_blessed(self) -> Combatant:
+        return replace(self, blessed=False)
+
     def with_action_budget(self, budget: ActionBudget | None) -> Combatant:
         return replace(self, action_budget=budget)
 

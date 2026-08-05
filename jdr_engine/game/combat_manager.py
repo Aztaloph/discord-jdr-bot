@@ -48,6 +48,10 @@ from jdr_engine.persistence.sqlite_character_repository import (
 )
 from jdr_engine.rules.calculator import build_character_sheet
 from jdr_engine.rules.combat.attack_roll import AttackHitOutcome, resolve_attack_hit
+from jdr_engine.rules.combat.buffs.hunters_mark import (
+    hunters_mark_bonus_applies,
+    roll_hunters_mark_bonus,
+)
 from jdr_engine.rules.combat.conditions.catalog import validate_phase1_condition
 from jdr_engine.rules.combat.concentration_save import concentration_save_dc
 from jdr_engine.rules.combat.damage import (
@@ -494,6 +498,11 @@ class CombatManager:
             amount = damage_roll.total
             notation = damage_roll.dice_notation
 
+        if amount > 0 and hunters_mark_bonus_applies(target, source_id):
+            mark_bonus = roll_hunters_mark_bonus(rng=rng)
+            amount += mark_bonus
+            notation = f"{notation}+{mark_bonus} (hunters_mark)"
+
         application = apply_damage_to_hp(target.hp_current, amount)
 
         state.combatants[target_id] = target.with_hp(application.hp_after)
@@ -680,6 +689,13 @@ class CombatManager:
 
         state = self._require_state(combat_id)
         caster = self._require_combatant(state, caster_id)
+        previous_spell_id = caster.concentration_spell_id
+        if previous_spell_id and previous_spell_id != spell.spell_id:
+            state = self._clear_concentration_spell_overlay_effects(
+                state, caster_id, previous_spell_id
+            )
+        state = self._clear_hunters_marks_from_caster(state, caster_id)
+
         self._publish_spell_cast(state, caster_id, spell, (target_id,))
 
         updated_char, _interrupted = set_concentration(
@@ -722,6 +738,12 @@ class CombatManager:
 
         state = self._require_state(combat_id)
         caster = self._require_combatant(state, caster_id)
+        previous_spell_id = caster.concentration_spell_id
+        if previous_spell_id and previous_spell_id != spell.spell_id:
+            state = self._clear_concentration_spell_overlay_effects(
+                state, caster_id, previous_spell_id
+            )
+
         self._publish_spell_cast(
             state, caster_id, spell, tuple(target_ids)
         )
@@ -896,6 +918,9 @@ class CombatManager:
         self._characters.save(updated_char)
 
         state.combatants[target_id] = target.without_concentration()
+        state = self._clear_concentration_spell_overlay_effects(
+            state, target_id, spell_id
+        )
         self._persist(state)
 
         self._bus.publish(
@@ -913,6 +938,47 @@ class CombatManager:
                 save_total=d20.total,
             )
         )
+        return state
+
+    def _clear_hunters_marks_from_caster(
+        self,
+        state: CombatState,
+        caster_combatant_id: str,
+    ) -> CombatState:
+        """Retire toutes les marques posées par ``caster_combatant_id``."""
+        updated: dict[str, Combatant] = {}
+        changed = False
+        for combatant_id, combatant in state.combatants.items():
+            if combatant.hunters_mark_caster_id == caster_combatant_id:
+                updated[combatant_id] = combatant.without_hunters_mark()
+                changed = True
+            else:
+                updated[combatant_id] = combatant
+        if not changed:
+            return state
+        return replace(state, combatants=updated)
+
+    def _clear_concentration_spell_overlay_effects(
+        self,
+        state: CombatState,
+        caster_combatant_id: str,
+        spell_id: str,
+    ) -> CombatState:
+        """Nettoie les buffs overlay liés à un sort de concentration rompu (lot B4)."""
+        if spell_id == "hunters_mark":
+            return self._clear_hunters_marks_from_caster(state, caster_combatant_id)
+        if spell_id == "bless":
+            updated: dict[str, Combatant] = {}
+            changed = False
+            for combatant_id, combatant in state.combatants.items():
+                if combatant.blessed:
+                    updated[combatant_id] = combatant.without_blessed()
+                    changed = True
+                else:
+                    updated[combatant_id] = combatant
+            if not changed:
+                return state
+            return replace(state, combatants=updated)
         return state
 
     def _sync_character_from_combatant(self, combatant: Combatant) -> None:
