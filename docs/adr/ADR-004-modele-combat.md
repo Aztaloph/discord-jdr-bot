@@ -696,6 +696,12 @@ B4 intervient **après C4** (boucle de tour jouable), comme **première validati
 | **`bless` en premier sort B4** | Cas documenté dans COMBAT_PREP | Requiert `1d4` dans modificateurs avant validation dégâts simples | **Rejetée pour premier sort** |
 | **B4 après boucle combat ; `hunters_mark` puis `bless`** | Chemin critique minimal ; validation progressive | Effets sorts absents du premier MVP jouable | **Retenue** |
 
+### Décisions actées — implémentation B4
+
+| Point | Décision | Référence |
+|---|---|---|
+| **`hunters_mark` — portée du bonus +1d6** | Écart SRD assumé (MVP) : le bonus s'applique à **toute source de dégâts** du lanceur sur la cible marquée (arme et sort), pas seulement aux attaques d'arme (SRD 5e strict). Acté lors du cadrage B4. | `compendium/dnd5e/entries/spells/hunters_mark/definition.yaml` (`mechanics.notes`) |
+
 ### Conséquences
 
 - MVP combat jouable sans `bless` ni `hex` mécaniques.

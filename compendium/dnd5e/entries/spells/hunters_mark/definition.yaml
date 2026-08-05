@@ -36,6 +36,10 @@ mechanics:
     en: 'Marked target: +1d6 damage on attacks against it; advantage on Survival to track (SRD 2014).'
   effects:
   - type: buff
+  notes: >-
+    Écart SRD assumé (MVP) : le bonus de dégâts s'applique à toute source de dégâts
+    du lanceur sur la cible marquée (arme et sort), pas seulement aux attaques d'arme
+    comme le prévoit le SRD 5e strict. Décision actée lors du cadrage B4 (voir ADR-004).
 classes:
 - ranger
 class_pool_order:
