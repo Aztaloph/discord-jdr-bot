@@ -8,6 +8,7 @@ from jdr_engine.rules.combat.buffs.collect import (
     collect_buff_roll_effects as _translate_buff_roll_effects,
 )
 from jdr_engine.rules.combat.buffs.hunters_mark import hunters_mark_bonus_applies
+from jdr_engine.rules.combat.buffs.hex import hex_bonus_applies
 from jdr_engine.rules.effects.registry import ActiveEffectRegistry
 
 
@@ -29,6 +30,18 @@ def hunters_mark_bonus_applies_for_target(
 ) -> bool:
     """Vrai si la cible porte une marque du chasseur posée par ``source_id``."""
     return hunters_mark_bonus_applies(
+        registry.query(target_id=target_id),
+        source_id,
+    )
+
+
+def hex_bonus_applies_for_target(
+    registry: ActiveEffectRegistry,
+    target_id: str,
+    source_id: str | None,
+) -> bool:
+    """Vrai si la cible porte un maléfice posé par ``source_id``."""
+    return hex_bonus_applies(
         registry.query(target_id=target_id),
         source_id,
     )

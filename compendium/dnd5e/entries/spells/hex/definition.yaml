@@ -34,8 +34,15 @@ mechanics:
   utility_effect:
     fr: Malus aux tests d'une caractéristique ; +1d6 dégâts occultes sur la cible (SRD 2014).
     en: Disadvantage on ability checks; +1d6 necrotic on target (SRD 2014).
+  buff_effect:
+    fr: 'Cible maudite : +1d6 dégâts nécrotiques quand vous la touchez avec un sort (SRD 2014).'
+    en: 'Cursed target: +1d6 necrotic when you hit it with a spell (SRD 2014).'
   effects:
-  - type: utility
+  - type: buff
+  notes: >-
+    MVP combat (B4e) : bonus +1d6 sur les dégâts de sort du lanceur uniquement ;
+    le désavantage aux tests de caractéristique n'est pas modélisé (pas de résolution
+    de test d'abilité en combat).
 classes:
 - warlock
 class_pool_order:

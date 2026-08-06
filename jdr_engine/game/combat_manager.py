@@ -50,6 +50,7 @@ from jdr_engine.persistence.sqlite_character_repository import (
 from jdr_engine.rules.calculator import build_character_sheet
 from jdr_engine.rules.combat.attack_roll import AttackHitOutcome, resolve_attack_hit
 from jdr_engine.rules.combat.buffs.hunters_mark import roll_hunters_mark_bonus
+from jdr_engine.rules.combat.buffs.hex import roll_hex_bonus
 from jdr_engine.rules.combat.conditions.catalog import validate_phase1_condition
 from jdr_engine.rules.combat.concentration_save import concentration_save_dc
 from jdr_engine.rules.combat.damage import (
@@ -66,7 +67,10 @@ from jdr_engine.rules.combat.initiative import (
 )
 from jdr_engine.rules.engine import RuleEngine
 from jdr_engine.rules.effects.registry import ActiveEffectRegistry
-from jdr_engine.rules.effects.collect import hunters_mark_bonus_applies_for_target
+from jdr_engine.rules.effects.collect import (
+    hex_bonus_applies_for_target,
+    hunters_mark_bonus_applies_for_target,
+)
 from jdr_engine.rules.combat.saving_throw import (
     damage_after_save,
     save_succeeded,
@@ -472,11 +476,13 @@ class CombatManager:
         source_id: str | None = None,
         rng: RandInt | None = None,
         dice_notation_label: str | None = None,
+        spell_damage: bool = False,
     ) -> tuple[CombatState, DamageResolution]:
         """
         Applique des dégâts aux PV du combattant (overlay).
 
         Soit ``damage_notation`` (jet de dés), soit ``damage_amount`` (montant fixe).
+        ``spell_damage=True`` active les bonus réservés aux dégâts de sort (ex. maléfice).
         Publie ``DamageDealt``. Persiste l'état combat.
         """
         state = self._require_state(combat_id)
@@ -511,6 +517,13 @@ class CombatManager:
             mark_bonus = roll_hunters_mark_bonus(rng=rng)
             amount += mark_bonus
             notation = f"{notation}+{mark_bonus} (hunters_mark)"
+
+        if spell_damage and amount > 0 and hex_bonus_applies_for_target(
+            registry, target_id, source_id
+        ):
+            hex_bonus = roll_hex_bonus(rng=rng)
+            amount += hex_bonus
+            notation = f"{notation}+{hex_bonus} (hex)"
 
         application = apply_damage_to_hp(target.hp_current, amount)
 
@@ -585,6 +598,7 @@ class CombatManager:
                 critical=attack.outcome.critical,
                 source_id=caster_id,
                 rng=rng,
+                spell_damage=True,
             )
 
         return state, SpellAttackOutcome(
@@ -668,6 +682,7 @@ class CombatManager:
             damage_amount=final_damage,
             source_id=caster_id,
             dice_notation_label=f"{notation} → {final_damage}",
+            spell_damage=True,
         )
 
         return state, SpellSaveOutcome(
@@ -780,6 +795,55 @@ class CombatManager:
                 target_id=target_id,
                 applied_at_round=state.round_number,
             )
+        self._persist(state)
+        return self._require_state(combat_id)
+
+    def cast_hex(
+        self,
+        combat_id: int,
+        caster_id: str,
+        target_id: str,
+        *,
+        locale: str = "fr",
+    ) -> CombatState:
+        """Pose la concentration et maudit la cible (overlay combat)."""
+        state = self._require_state(combat_id)
+        if state.status != "active":
+            raise CombatStatusError("Les sorts ne sont lançables qu'en combat actif.")
+
+        caster = self._require_combatant(state, caster_id)
+        self._require_combatant(state, target_id)
+        caster_char = self._require_character(caster.character_id)
+
+        spell = load_combat_spell(self._engine, "hex", locale=locale)
+        self._consume_budget(combat_id, caster_id, "action")
+
+        state = self._require_state(combat_id)
+        caster = self._require_combatant(state, caster_id)
+        previous_spell_id = caster.concentration_spell_id
+        if previous_spell_id and previous_spell_id != spell.spell_id:
+            state = self._clear_concentration_spell_overlay_effects(
+                state, caster_id, previous_spell_id
+            )
+        state = self._clear_hex_from_caster(state, caster_id)
+
+        self._publish_spell_cast(state, caster_id, spell, (target_id,))
+
+        updated_char, _interrupted = set_concentration(
+            caster_char, spell.spell_id, spell.spell_name
+        )
+        self._characters.save(updated_char)
+
+        state.combatants[caster_id] = caster.with_concentration(
+            spell.spell_id, spell.spell_name
+        )
+        self._add_concentration_effect(
+            combat_id,
+            effect_id="hexed",
+            source_id=caster_id,
+            target_id=target_id,
+            applied_at_round=state.round_number,
+        )
         self._persist(state)
         return self._require_state(combat_id)
 
@@ -1014,6 +1078,20 @@ class CombatManager:
         )
         return state
 
+    def _clear_hex_from_caster(
+        self,
+        state: CombatState,
+        caster_combatant_id: str,
+    ) -> CombatState:
+        """Retire tous les maléfices posés par ``caster_combatant_id``."""
+        if state.combat_id is None:
+            return state
+        self._registry_for(int(state.combat_id)).remove_matching(
+            effect_id="hexed",
+            source_id=caster_combatant_id,
+        )
+        return state
+
     def _clear_concentration_spell_overlay_effects(
         self,
         state: CombatState,
@@ -1031,6 +1109,8 @@ class CombatManager:
                 effect_id="blessed",
                 source_id=caster_combatant_id,
             )
+        if spell_id == "hex":
+            return self._clear_hex_from_caster(state, caster_combatant_id)
         return state
 
     def _sync_character_from_combatant(self, combatant: Combatant) -> None:
