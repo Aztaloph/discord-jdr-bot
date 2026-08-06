@@ -115,7 +115,10 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
   - [x] **B4a+B4b** — `hunters_mark` : +1d6 dégâts, nettoyage overlay concentration
   - [x] **B4c+B4d** — `bless` : +1d4 attaque/sauvegarde via `roll_bonus_dice`
   - [x] **ADR-006** — Registre `ActiveEffect`, horloge combat, persistance blob (A+B+C ✅)
-  - [ ] **Suite B4** — autres buffs/conditions via registre (`hex`, durées rounds sur sorts futurs, etc.)
+  - [x] **B4e** — `hex` : bonus +1d6 dégâts de sort via `spell_damage` (`cast_spell_attack` / `cast_spell_save`)
+  - [x] **B4f** — `shield` : horloge ``rounds`` banc de test (approximation durée, sans +5 CA)
+  - [ ] **Suite B4** — autres buffs/conditions via registre
+  > **Invariant B4 (dégâts de sort en combat)** : tout nouveau chemin qui applique des dégâts de sort en combat passe par `cast_spell_attack` / `cast_spell_save`, ou appelle `apply_damage(..., spell_damage=True)`. Vérification : `grep apply_damage` dans `jdr_engine/`.
   > **Concentration persistante (Lot 1 ✅)** : pose/remplacement/affichage/repos hors combat. **Rupture CON en combat (C5 ✅)**. **Horloge round (ADR-006 ✅)**.
 
 ---

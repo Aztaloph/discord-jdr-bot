@@ -40,7 +40,8 @@ mechanics:
   effects:
   - type: buff
   notes: >-
-    MVP combat (B4e) : bonus +1d6 sur les dégâts de sort du lanceur uniquement ;
+    MVP combat (B4e) : bonus +1d6 sur les dégâts de sort du lanceur uniquement,
+    résolus via ``cast_spell_attack`` / ``cast_spell_save`` en combat ;
     le désavantage aux tests de caractéristique n'est pas modélisé (pas de résolution
     de test d'abilité en combat).
 classes:

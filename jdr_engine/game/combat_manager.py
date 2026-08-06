@@ -847,6 +847,50 @@ class CombatManager:
         self._persist(state)
         return self._require_state(combat_id)
 
+    def cast_shield(
+        self,
+        combat_id: int,
+        caster_id: str,
+        *,
+        locale: str = "fr",
+    ) -> CombatState:
+        """
+        Banc de test B4f — horloge ``rounds`` via le sort curated ``shield``.
+
+        Approximation de banc : ``duration_rounds=1`` fixe depuis le round de cast.
+        N'implémente ni la réaction SRD ni le +5 CA ; expose l'horloge, pas la
+        sémantique « jusqu'à votre prochain tour » du texte SRD. Usage interne /
+        tests uniquement — aucune surface MJ.
+        """
+        state = self._require_state(combat_id)
+        if state.status != "active":
+            raise CombatStatusError("Les sorts ne sont lançables qu'en combat actif.")
+
+        caster = self._require_combatant(state, caster_id)
+        spell = load_combat_spell(self._engine, "shield", locale=locale)
+
+        self._publish_spell_cast(state, caster_id, spell, (caster_id,))
+
+        registry = self._registry_for(combat_id)
+        registry.remove_matching(
+            effect_id="shielded",
+            source_id=caster_id,
+            target_id=caster_id,
+        )
+        self.add_active_effect(
+            combat_id,
+            ActiveEffect(
+                effect_id="shielded",
+                source_id=caster_id,
+                target_id=caster_id,
+                applied_at_round=state.round_number,
+                expiry_mode="rounds",
+                duration_rounds=1,
+            ),
+        )
+        self._persist(state)
+        return self._require_state(combat_id)
+
     def consume_reaction(self, combat_id: int, combatant_id: str) -> CombatState:
         """Consomme la réaction hors du tour propre du combattant."""
         state = self._require_state(combat_id)
