@@ -103,7 +103,7 @@ def roll_d20_for_combatant(
     rng=None,
 ):
     """
-    Jet d20 combat — traits compendium + conditions overlay du combattant.
+    Jet d20 combat — traits compendium + effets actifs du registre.
 
     Les conditions ne sont jamais écrites sur la fiche ``Character``.
     """

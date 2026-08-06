@@ -14,7 +14,7 @@ class Combatant:
     PJ rattaché à un ``character_id`` persisté.
 
     PV et CA sont un overlay de rencontre (lot C3a) — distincts de la fiche SQLite.
-    Concentration vit dans l'overlay combat ; buffs de sort via ``ActiveEffect`` (ADR-006).
+    Concentration vit dans l'overlay combat ; conditions et buffs de sort via ``ActiveEffect``.
     """
 
     combatant_id: str
@@ -29,7 +29,6 @@ class Combatant:
     concentration_spell_id: str | None = None
     concentration_spell_name: str | None = None
     action_budget: ActionBudget | None = None
-    conditions: tuple[str, ...] = ()
 
     def to_dict(self) -> dict:
         payload = {
@@ -49,8 +48,6 @@ class Combatant:
             payload["concentration_spell_name"] = self.concentration_spell_name
         if self.action_budget is not None:
             payload["action_budget"] = self.action_budget.to_dict()
-        if self.conditions:
-            payload["conditions"] = list(self.conditions)
         return payload
 
     @classmethod
@@ -74,10 +71,6 @@ class Combatant:
                 ActionBudget.from_dict(raw_budget)
                 if (raw_budget := data.get("action_budget")) is not None
                 else None
-            ),
-            conditions=tuple(
-                str(condition_id)
-                for condition_id in (data.get("conditions") or [])
             ),
         )
 
@@ -108,16 +101,3 @@ class Combatant:
 
     def with_action_budget(self, budget: ActionBudget | None) -> Combatant:
         return replace(self, action_budget=budget)
-
-    def with_condition(self, condition_id: str) -> Combatant:
-        if condition_id in self.conditions:
-            return self
-        return replace(self, conditions=self.conditions + (condition_id,))
-
-    def without_condition(self, condition_id: str) -> Combatant:
-        if condition_id not in self.conditions:
-            return self
-        return replace(
-            self,
-            conditions=tuple(c for c in self.conditions if c != condition_id),
-        )

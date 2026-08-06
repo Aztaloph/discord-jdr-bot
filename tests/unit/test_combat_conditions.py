@@ -2,6 +2,7 @@
 """Lot C6 — conditions de combat phase 1 (frightened, poisoned)."""
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from dataclasses import replace
@@ -18,7 +19,7 @@ from jdr_engine.domain.character.character import Character
 from jdr_engine.domain.combat.active_effect import ActiveEffect
 from jdr_engine.game.combat_manager import CombatManager
 from jdr_engine.persistence.combat_repository import SqliteCombatRepository
-from jdr_engine.persistence.database import init_database
+from jdr_engine.persistence.database import get_connection, init_database
 from jdr_engine.persistence.sqlite_character_repository import (
     SqliteCharacterRepository,
 )
@@ -217,7 +218,6 @@ class TestCombatManagerConditions(unittest.TestCase):
     def test_apply_and_remove_condition_persist(self) -> None:
         alice_id, _, combat_id = self._active_fight()
         state = self.manager.apply_condition(combat_id, alice_id, "poisoned")
-        self.assertIn("poisoned", state.combatants[alice_id].conditions)
         self.assertTrue(
             self.manager.query_active_effects(
                 combat_id,
@@ -229,11 +229,16 @@ class TestCombatManagerConditions(unittest.TestCase):
         self.assertIsInstance(self.events[0], ConditionApplied)
 
         state = self.manager.remove_condition(combat_id, alice_id, "poisoned")
-        self.assertNotIn("poisoned", state.combatants[alice_id].conditions)
+        self.assertFalse(
+            self.manager.query_active_effects(
+                combat_id,
+                effect_id="poisoned",
+                target_id=alice_id,
+            )
+        )
         self.assertIsInstance(self.events[1], ConditionRemoved)
 
         reloaded = self.manager.load_combat(combat_id)
-        self.assertEqual(reloaded.combatants[alice_id].conditions, ())
         self.assertFalse(
             self.manager.query_active_effects(
                 combat_id,
@@ -341,6 +346,58 @@ class TestCombatManagerConditions(unittest.TestCase):
         self.assertEqual(
             {effect["source_id"] for effect in effects},
             {"frightened", "poisoned"},
+        )
+
+    def test_legacy_conditions_blob_hydrates_registry_on_reload(self) -> None:
+        alice_id, bob_id, combat_id = self._active_fight()
+        record = self.combat_repo.get_by_id(combat_id)
+        assert record is not None
+        legacy_blob = record.state.to_dict()
+        legacy_blob["active_effects"] = []
+        legacy_blob["combatants"][alice_id]["conditions"] = ["poisoned"]
+
+        payload = json.dumps(legacy_blob, ensure_ascii=False)
+        with get_connection(self.db_path) as conn:
+            conn.execute(
+                "UPDATE combats SET state_json = ? WHERE id = ?",
+                (payload, combat_id),
+            )
+            conn.commit()
+
+        fresh_manager = CombatManager(
+            EventBus(),
+            self.combat_repo,
+            self.char_repo,
+            self.engine,
+        )
+        fresh_manager.load_combat(combat_id)
+        self.assertTrue(
+            fresh_manager.query_active_effects(
+                combat_id,
+                effect_id="poisoned",
+                target_id=alice_id,
+                source_id="poisoned",
+            )
+        )
+
+        resolution = fresh_manager.resolve_attack_roll(
+            combat_id,
+            alice_id,
+            bob_id,
+            _attack_request(),
+            rng=RandSequence([17, 5]),
+        )
+        self.assertEqual(resolution.d20.mode, "desavantage")
+
+        migrated = self.combat_repo.get_state_blob(combat_id)
+        assert migrated is not None
+        self.assertNotIn("conditions", migrated["combatants"][alice_id])
+        self.assertTrue(
+            any(
+                effect["effect_id"] == "poisoned"
+                and effect["target_id"] == alice_id
+                for effect in migrated["active_effects"]
+            )
         )
 
 

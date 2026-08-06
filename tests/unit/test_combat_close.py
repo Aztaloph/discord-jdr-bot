@@ -236,7 +236,12 @@ class TestCombatClose(unittest.TestCase):
         _, _, bob_id, combat_id = self._activate_two()
         self.manager.apply_condition(combat_id, bob_id, "poisoned")
         closed = self.manager.close_combat(combat_id)
-        self.assertIn("poisoned", closed.combatants[bob_id].conditions)
+        self.assertTrue(
+            any(
+                effect.effect_id == "poisoned" and effect.target_id == bob_id
+                for effect in closed.active_effects
+            )
+        )
         reloaded = self.char_repo.get_by_id(self.bob.id)
         assert reloaded is not None
         spellcasting = get_spellcasting_state(reloaded)

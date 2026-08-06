@@ -51,7 +51,10 @@ from jdr_engine.rules.calculator import build_character_sheet
 from jdr_engine.rules.combat.attack_roll import AttackHitOutcome, resolve_attack_hit
 from jdr_engine.rules.combat.buffs.hunters_mark import roll_hunters_mark_bonus
 from jdr_engine.rules.combat.buffs.hex import roll_hex_bonus
-from jdr_engine.rules.combat.conditions.catalog import validate_phase1_condition
+from jdr_engine.rules.combat.conditions.catalog import (
+    PHASE1_CONDITIONS,
+    validate_phase1_condition,
+)
 from jdr_engine.rules.combat.concentration_save import concentration_save_dc
 from jdr_engine.rules.combat.damage import (
     DamageApplicationResult,
@@ -351,15 +354,20 @@ class CombatManager:
         combatant_id: str,
         condition_id: str,
     ) -> CombatState:
-        """Applique une condition phase 1 sur l'overlay du combattant."""
+        """Applique une condition phase 1 via le registre d'effets actifs."""
         state = self._require_state(combat_id)
         if state.status != "active":
             raise CombatStatusError(
                 "Les conditions ne s'appliquent qu'en combat actif."
             )
         normalized = validate_phase1_condition(condition_id)
-        combatant = self._require_combatant(state, combatant_id)
-        if normalized in combatant.conditions:
+        self._require_combatant(state, combatant_id)
+        if self.query_active_effects(
+            combat_id,
+            effect_id=normalized,
+            target_id=combatant_id,
+            source_id=normalized,
+        ):
             return state
 
         self._add_manual_condition_effect(
@@ -369,8 +377,6 @@ class CombatManager:
             applied_at_round=state.round_number,
         )
         state = self._require_state(combat_id)
-        combatant = self._require_combatant(state, combatant_id)
-        state.combatants[combatant_id] = combatant.with_condition(normalized)
         self._persist(state)
         self._bus.publish(
             ConditionApplied(
@@ -390,15 +396,20 @@ class CombatManager:
         combatant_id: str,
         condition_id: str,
     ) -> CombatState:
-        """Retire une condition de l'overlay (seul chemin de sortie en phase 1)."""
+        """Retire une condition phase 1 du registre (seul chemin de sortie en C6)."""
         state = self._require_state(combat_id)
         if state.status != "active":
             raise CombatStatusError(
                 "Les conditions ne se retirent qu'en combat actif."
             )
         normalized = validate_phase1_condition(condition_id)
-        combatant = self._require_combatant(state, combatant_id)
-        if normalized not in combatant.conditions:
+        self._require_combatant(state, combatant_id)
+        if not self.query_active_effects(
+            combat_id,
+            effect_id=normalized,
+            target_id=combatant_id,
+            source_id=normalized,
+        ):
             raise ValueError(
                 f"Le combattant {combatant_id!r} n'a pas la condition {normalized!r}."
             )
@@ -408,7 +419,6 @@ class CombatManager:
             source_id=normalized,
             target_id=combatant_id,
         )
-        state.combatants[combatant_id] = combatant.without_condition(normalized)
         self._persist(state)
         self._bus.publish(
             ConditionRemoved(
@@ -967,6 +977,17 @@ class CombatManager:
         if changed:
             state = replace(state, combatants=updated)
         self._sync_effect_registry_from_state(combat_id, state, force=True)
+        raw_blob = self._combats.get_state_blob(combat_id)
+        if raw_blob is not None and self._hydrate_legacy_combatant_conditions(
+            combat_id, state, raw_blob
+        ):
+            state = self._require_state(combat_id)
+            rehydrated: dict[str, Combatant] = {}
+            for combatant_id, combatant in state.combatants.items():
+                rehydrated[combatant_id] = self._hydrate_combatant_concentration(
+                    combatant
+                )
+            state = replace(state, combatants=rehydrated)
         return self._with_registry_effects(state)
 
     def load_open_combat(
@@ -1200,6 +1221,62 @@ class CombatManager:
             persisted["spell_id"],
             persisted["spell_name"],
         )
+
+    def _hydrate_legacy_combatant_conditions(
+        self,
+        combat_id: int,
+        state: CombatState,
+        raw_blob: dict,
+    ) -> bool:
+        """
+        Convertit ``combatants[].conditions`` legacy → registre (best-effort).
+
+        Sans bump ``COMBAT_STATE_VERSION`` — même politique que l'hydratation
+        concentration (ADR-005). Réécrit le blob sans la clé ``conditions``.
+
+        Retourne ``True`` si le blob a été réécrit (rechargement nécessaire).
+        """
+        if state.status == "ended":
+            return False
+
+        raw_combatants = raw_blob.get("combatants") or {}
+        has_legacy = any(
+            isinstance(payload, dict) and payload.get("conditions")
+            for payload in raw_combatants.values()
+        )
+        if not has_legacy:
+            return False
+
+        registry = self._registry_for(combat_id)
+        existing = {
+            (effect.effect_id, effect.target_id)
+            for effect in registry.all_effects()
+            if effect.effect_id in PHASE1_CONDITIONS
+        }
+        for combatant_id, payload in raw_combatants.items():
+            if not isinstance(payload, dict):
+                continue
+            legacy = payload.get("conditions") or []
+            if not legacy:
+                continue
+            target_id = str(combatant_id)
+            for condition_id in legacy:
+                normalized = str(condition_id).strip()
+                if normalized not in PHASE1_CONDITIONS:
+                    continue
+                key = (normalized, target_id)
+                if key in existing:
+                    continue
+                self._add_manual_condition_effect(
+                    combat_id,
+                    condition_id=normalized,
+                    target_id=target_id,
+                    applied_at_round=state.round_number,
+                )
+                existing.add(key)
+
+        self._persist(self._require_state(combat_id))
+        return True
 
     def _registry_for(self, combat_id: int | str) -> ActiveEffectRegistry:
         key = str(combat_id)

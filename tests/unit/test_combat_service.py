@@ -149,7 +149,12 @@ class TestCombatService(unittest.TestCase):
         wizard = state.combatants[wizard_id]
         ranger = state.combatants[ranger_id]
 
-        self.assertIn("poisoned", wizard.conditions)
+        self.assertTrue(
+            any(
+                effect.effect_id == "poisoned" and effect.target_id == wizard_id
+                for effect in state.active_effects
+            )
+        )
         self.assertEqual(ranger.concentration_spell_id, "hunters_mark")
         self.assertLess(wizard.hp_current, wizard.hp_max)
 

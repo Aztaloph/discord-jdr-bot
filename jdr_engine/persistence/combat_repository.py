@@ -97,6 +97,16 @@ class SqliteCombatRepository:
             return None
         return _row_to_record(row)
 
+    def get_state_blob(self, combat_id: int) -> dict | None:
+        """Retourne le blob JSON brut (hydratation legacy)."""
+        with get_connection(self.db_path) as conn:
+            row = conn.execute(
+                "SELECT state_json FROM combats WHERE id = ?", (combat_id,)
+            ).fetchone()
+        if row is None:
+            return None
+        return json.loads(row["state_json"])
+
     def get_open_by_channel(
         self,
         guild_id: str,
