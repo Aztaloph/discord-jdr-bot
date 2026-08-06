@@ -362,6 +362,14 @@ class CombatManager:
         if normalized in combatant.conditions:
             return state
 
+        self._add_manual_condition_effect(
+            combat_id,
+            condition_id=normalized,
+            target_id=combatant_id,
+            applied_at_round=state.round_number,
+        )
+        state = self._require_state(combat_id)
+        combatant = self._require_combatant(state, combatant_id)
         state.combatants[combatant_id] = combatant.with_condition(normalized)
         self._persist(state)
         self._bus.publish(
@@ -395,6 +403,11 @@ class CombatManager:
                 f"Le combattant {combatant_id!r} n'a pas la condition {normalized!r}."
             )
 
+        self._registry_for(combat_id).remove_matching(
+            effect_id=normalized,
+            source_id=normalized,
+            target_id=combatant_id,
+        )
         state.combatants[combatant_id] = combatant.without_condition(normalized)
         self._persist(state)
         self._bus.publish(
@@ -1247,6 +1260,33 @@ class CombatManager:
                 target_id=target_id,
                 applied_at_round=applied_at_round,
                 expiry_mode="concentration",
+            ),
+        )
+
+    def _add_manual_condition_effect(
+        self,
+        combat_id: int,
+        *,
+        condition_id: str,
+        target_id: str,
+        applied_at_round: int,
+    ) -> None:
+        """
+        Enregistre une condition phase 1 dans le registre (``expiry_mode=manual``).
+
+        Convention : pas de lanceur tracé en C6 — ``source_id`` reprend
+        ``condition_id`` pour l'identité stable ``(condition_id, condition_id,
+        target_id)`` et la cohérence avec les ``source_id`` déjà émis dans
+        les ``effects[]`` d20 (``"poisoned"``, ``"frightened"``, etc.).
+        """
+        self.add_active_effect(
+            combat_id,
+            ActiveEffect(
+                effect_id=condition_id,
+                source_id=condition_id,
+                target_id=target_id,
+                applied_at_round=applied_at_round,
+                expiry_mode="manual",
             ),
         )
 

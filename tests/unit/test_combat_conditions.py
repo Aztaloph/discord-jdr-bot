@@ -15,7 +15,7 @@ from jdr_engine.core.events.combat_events import (
 from jdr_engine.dice.d20 import D20RollContext, D20RollRequest, roll_d20
 from jdr_engine.domain.character.ability_scores import AbilityScores
 from jdr_engine.domain.character.character import Character
-from jdr_engine.domain.combat.combatant import Combatant
+from jdr_engine.domain.combat.active_effect import ActiveEffect
 from jdr_engine.game.combat_manager import CombatManager
 from jdr_engine.persistence.combat_repository import SqliteCombatRepository
 from jdr_engine.persistence.database import init_database
@@ -24,7 +24,8 @@ from jdr_engine.persistence.sqlite_character_repository import (
 )
 from jdr_engine.rules import RuleEngine
 from jdr_engine.rules.combat.conditions.catalog import UnknownCombatConditionError
-from jdr_engine.rules.combat.conditions.collect import collect_condition_roll_effects
+from jdr_engine.rules.effects.collect import collect_condition_roll_effects
+from jdr_engine.rules.effects.registry import ActiveEffectRegistry
 from jdr_engine.rules.roll_effects import roll_d20_for_combatant
 
 
@@ -106,23 +107,19 @@ def _ability_check_request(**kwargs) -> D20RollRequest:
     return replace(base, **kwargs)
 
 
-def _bare_combatant(*, character_id: str, conditions: tuple[str, ...] = ()) -> Combatant:
-    return Combatant(
-        combatant_id="c1",
-        display_name="Test",
-        kind="player_character",
-        character_id=character_id,
-        hp_current=20,
-        hp_max=20,
-        ac=13,
-        conditions=conditions,
-    )
-
-
 class TestConditionCollector(unittest.TestCase):
     def test_poisoned_emits_attack_and_ability_check_disadvantage(self) -> None:
-        combatant = _bare_combatant(character_id="x", conditions=("poisoned",))
-        effects = collect_condition_roll_effects(combatant)
+        registry = ActiveEffectRegistry()
+        registry.add(
+            ActiveEffect(
+                effect_id="poisoned",
+                source_id="poisoned",
+                target_id="c1",
+                applied_at_round=1,
+                expiry_mode="manual",
+            )
+        )
+        effects = collect_condition_roll_effects(registry, "c1")
         self.assertEqual(len(effects), 2)
         contexts = {effect["context"] for effect in effects}
         self.assertEqual(contexts, {"attack", "ability_check"})
@@ -221,6 +218,14 @@ class TestCombatManagerConditions(unittest.TestCase):
         alice_id, _, combat_id = self._active_fight()
         state = self.manager.apply_condition(combat_id, alice_id, "poisoned")
         self.assertIn("poisoned", state.combatants[alice_id].conditions)
+        self.assertTrue(
+            self.manager.query_active_effects(
+                combat_id,
+                effect_id="poisoned",
+                target_id=alice_id,
+                source_id="poisoned",
+            )
+        )
         self.assertIsInstance(self.events[0], ConditionApplied)
 
         state = self.manager.remove_condition(combat_id, alice_id, "poisoned")
@@ -229,6 +234,13 @@ class TestCombatManagerConditions(unittest.TestCase):
 
         reloaded = self.manager.load_combat(combat_id)
         self.assertEqual(reloaded.combatants[alice_id].conditions, ())
+        self.assertFalse(
+            self.manager.query_active_effects(
+                combat_id,
+                effect_id="poisoned",
+                target_id=alice_id,
+            )
+        )
 
     def test_unknown_condition_rejected(self) -> None:
         alice_id, _, combat_id = self._active_fight()
@@ -275,6 +287,7 @@ class TestCombatManagerConditions(unittest.TestCase):
             character,
             combatant,
             self.engine,
+            effect_registry=self.manager.active_effect_registry(combat_id),
             rng=RandSequence([16, 6]),
         )
         self.assertEqual(result.mode, "desavantage")
@@ -299,11 +312,36 @@ class TestCombatManagerConditions(unittest.TestCase):
             character,
             target,
             self.engine,
+            effect_registry=self.manager.active_effect_registry(combat_id),
             rng=RandSequence([18, 3]),
         )
         self.assertEqual(result.mode, "normal")
         self.assertEqual(result.kept_value, 18)
         self.assertEqual(len(result.rolls), 1)
+
+    def test_double_apply_is_idempotent(self) -> None:
+        alice_id, _, combat_id = self._active_fight()
+        self.manager.apply_condition(combat_id, alice_id, "poisoned")
+        self.manager.apply_condition(combat_id, alice_id, "poisoned")
+        self.assertEqual(len(self.events), 1)
+        effects = self.manager.query_active_effects(
+            combat_id,
+            effect_id="poisoned",
+            target_id=alice_id,
+        )
+        self.assertEqual(len(effects), 1)
+
+    def test_frightened_and_poisoned_coexist_on_same_target(self) -> None:
+        alice_id, _, combat_id = self._active_fight()
+        self.manager.apply_condition(combat_id, alice_id, "frightened")
+        self.manager.apply_condition(combat_id, alice_id, "poisoned")
+        registry = self.manager.active_effect_registry(combat_id)
+        effects = collect_condition_roll_effects(registry, alice_id)
+        self.assertEqual(len(effects), 4)
+        self.assertEqual(
+            {effect["source_id"] for effect in effects},
+            {"frightened", "poisoned"},
+        )
 
 
 if __name__ == "__main__":

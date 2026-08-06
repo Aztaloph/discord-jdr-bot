@@ -108,14 +108,18 @@ def roll_d20_for_combatant(
     Les conditions ne sont jamais écrites sur la fiche ``Character``.
     """
     from jdr_engine.dice.d20 import D20RollContext, roll_d20
-    from jdr_engine.rules.combat.conditions.collect import collect_condition_roll_effects
-    from jdr_engine.rules.effects.collect import collect_buff_roll_effects
+    from jdr_engine.rules.effects.collect import (
+        collect_buff_roll_effects,
+        collect_condition_roll_effects,
+    )
 
     effects = collect_roll_effects(character, engine)
-    effects.extend(collect_condition_roll_effects(combatant))
     if effect_registry is not None:
         effects.extend(
             collect_buff_roll_effects(effect_registry, combatant.combatant_id)
+        )
+        effects.extend(
+            collect_condition_roll_effects(effect_registry, combatant.combatant_id)
         )
     enriched = enrich_roll_request(request, character)
     return roll_d20(D20RollContext(request=enriched, effects=effects), rng=rng)
