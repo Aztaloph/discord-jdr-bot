@@ -36,10 +36,10 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
 
 | Indicateur | Valeur |
 |---|---|
-| Tests unitaires | **831** verts sur `main` (`python -m unittest discover -s tests -p "test_*.py" -q`) — **835** avec commit C ADR-006 (persistance, working tree) |
+| Tests unitaires | **835** verts (`python -m unittest discover -s tests -p "test_*.py" -q`) |
 | Classes SRD 2014 | 12/12 jouables (création + montée de niveau 1–20 full casters, ASI 5 paliers) |
 | Catalogue sorts curated | **42** sorts (schéma v2.0 ; grimoire mage **18** = quota niv. 7) |
-| Derniers commits | ADR-006 impl. A–B (`c09a89b`, `7da262c`) ; ADR-006 doc (`c48d9b6`) ; ADR-005 ; B4 bless/hunters_mark |
+| Derniers commits | ADR-006 A+B+C (`c09a89b`→`94156f4`) ; ROADMAP/README août 2026 ; ADR-005 ; B4 bless/hunters_mark |
 
 ---
 
@@ -85,7 +85,7 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
   - [x] **C6 — Conditions en combat** : application/retrait phase 1 (`frightened`, `poisoned`), impact jets via `collect_*`. *(dette : `prone`, conditions → `ActiveEffect` — hors ADR-006)*
   - [x] **C7 — Service & persistance** : `CombatService`, journal événementiel, auto-save handler. *(dette : `_persist()` handler-only — post-C7)*
   - [x] **ADR-005 — Fin de rencontre** : sync PV/concentration à `close_combat`, auto-close `advance_turn`, encounter-scoped conditions.
-  - [x] **ADR-006 — Effets actifs unifiés** (doc `c48d9b6` ; impl. A–B `c09a89b`/`7da262c`) : `ActiveEffect`, horloge `round_number`, registre `rules/effects/`, migration `bless`/`hunters_mark`, blob `COMBAT_STATE_VERSION` **2**. **Commit C** (persistance consolidée + adaptateurs `collect_*`) — livré en working tree, commit en attente.
+  - [x] **ADR-006 — Effets actifs unifiés** (doc `c48d9b6` ; impl. A+B+C `c09a89b`→`94156f4`, poussé sur `main`) : `ActiveEffect`, horloge `round_number`, registre `rules/effects/`, migration `bless`/`hunters_mark`, blob `COMBAT_STATE_VERSION` **2**, adaptateurs `collect_*`, persistance consolidée.
 - [ ] **ÉTAPE 6 : API (REST + WebSocket)** — 🔜 nouveau (VISION.md §9, ordre 3). `interfaces/api/` expose `CharacterService`, `CombatService`, `CompendiumService` et **pousse les événements EventBus** vers les clients. Objectif : contrat unique consommé par le Web.
 - [ ] **ÉTAPE 7 : Client Web (interface de jeu principale)** — 🔜 nouveau (ordre 4). Fiche/tableau de bord, onglets, magie, inventaire, **HUD de combat**, écran MJ. Spécification UX : VISION.md §4.
 - [ ] **ÉTAPE 8 : Discord minimal** — 🔜 nouveau (ordre 5). Réduction au social : chat, lancement de partie, `/personnage` → Web, notifications (via EventBus). Voir VISION.md §3.
@@ -114,7 +114,7 @@ Les **PV** et **emplacements de sorts** restent **dérivés** (calculés par le 
 - [ ] **B4** — Moteur d'effets : dégâts, jets de sauvegarde, **application mécanique des buffs et conditions**.
   - [x] **B4a+B4b** — `hunters_mark` : +1d6 dégâts, nettoyage overlay concentration
   - [x] **B4c+B4d** — `bless` : +1d4 attaque/sauvegarde via `roll_bonus_dice`
-  - [x] **ADR-006** — Registre `ActiveEffect`, horloge combat, persistance blob (A–B ✅ ; C en attente commit)
+  - [x] **ADR-006** — Registre `ActiveEffect`, horloge combat, persistance blob (A+B+C ✅)
   - [ ] **Suite B4** — autres buffs/conditions via registre (`hex`, durées rounds sur sorts futurs, etc.)
   > **Concentration persistante (Lot 1 ✅)** : pose/remplacement/affichage/repos hors combat. **Rupture CON en combat (C5 ✅)**. **Horloge round (ADR-006 ✅)**.
 
@@ -129,7 +129,7 @@ Tous les jalons P2a–P2h sont livrés. Grimoire mage : consultable via **`/pers
 Chaîne validée : ASI **5 paliers** (4/8/12/16/19), cap **niv. 20** full casters, cantrip scaling 2d10/3d10/4d10, UI **`AsiDistributionView`**.
 
 **Prochain jalon opérationnel** (dans l'ÉTAPE 3) : **Axe B3** (élargissement catalogue) ou **Axe A3** (demi-casters).
-**Prochain chantier combat** : finaliser **ADR-006 commit C**, puis extension **B4** (nouveaux sorts/buffs via registre) ou dettes ADR-004 (`prone`, movement C4).
+**Prochain chantier combat** : extension **B4** (registre — `hex`, durées rounds) ou dettes ADR-004 (`prone`, movement C4).
 **ÉTAPE 6 (API REST)** : `interfaces/api/` existe (banc de test DTO) — extension WebSocket et contrat client = après stabilisation combat moteur.
 
 ---
@@ -146,3 +146,4 @@ Items hors périmètre des lots fonctionnels — à traiter en passes dédiées,
 | 🔵 | **`CharacterSheet.trait_ids` contient des libellés, pas des ids** | `calculator.py` assigne `trait_ids = resolve_race_trait_labels()` (libellés FR) ; les vrais ids sont dans `resolve_race_traits()` (`entry_id`). DTO n'expose que `trait_names`. Corriger `build_character_sheet` + tests. |
 | 🔵 | **Log défensif `_sort_autocomplete`** | Diagnostic autocomplete `/sort` (« Échec des options de chargement ») — traçabilité sans masquer les exceptions |
 | 🔵 | **Élargissement catalogue curated (B3)** | 42 sorts actuels vs quotas SRD niv. 20 — voir `docs/SPELLS_INVENTORY.md` |
+| 🔵 | **Blobs combat v1** | `CombatStateVersionError` au rechargement (pas de migration) — politique : MJ recrée la rencontre ; réévaluer si combats longs persistants |
