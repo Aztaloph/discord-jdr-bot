@@ -13,6 +13,17 @@
 
 **Préfixe URL** : toutes les routes contractuelles vivent sous **`/v1/`**.
 
+### Cadrage produit — API seule interface de jeu (2026-08-07)
+
+**Décision mainteneur** : Discord n'est **plus** une interface de jeu. Il sert au **vocal** et, éventuellement, au **chat** (relay de messages vers l'API — transport, pas mécanique). Aucune mécanique de jeu (combat, jets, gestion de fiche) ne passera par Discord.
+
+**Conséquences contractuelles** :
+
+- L'**API HTTP** est le **seul client de jeu** ; pas de cohabitation avec un second point d'entrée sur les mêmes invariants.
+- Tout développement visant une double utilisation API + Discord est **arrêté**.
+- Le code Discord existant n'est **pas supprimé** dans le lot 1, mais **n'est plus une cible d'évolution** — ne rien y ajouter.
+- Les invariants métier se posent **côté API** sans compatibilité Discord.
+
 ---
 
 ## 1. Frontière du modèle
@@ -106,13 +117,29 @@ Deux requêtes concurrentes sur le même `combat_id` ou `character_id` peuvent s
 
 **Alternative écartée** : verrou optimiste — reporté ; migration coûteuse une fois des clients en production.
 
-### 2.5 Scope de création — clients HTTP
+### 2.5 Scope de création — body `POST /v1/combats`
 
-**Décision (option A)** : le client HTTP fournit un **couple scope arbitraire** `guild_id` + `channel_id` (ex. `"api"` / `"session-{uuid}"`), **indépendant** de Discord.
+Les champs `guild_id` et `channel_id` sont une **projection interne** du scope de persistance SQLite — **pas** du vocabulaire client.
 
-**État repository (2026-08-07)** : un seul combat **ouvert** (`preparing` ou `active`) par couple `(guild_id, channel_id)` — index partiel SQLite `idx_combats_open_channel`. Les combats **parallèles** sont obtenus en fournissant un **`channel_id` unique par rencontre`**. Aucune contrainte n'impose les ids Discord réels aux clients HTTP.
+| Champ | Statut |
+|---|---|
+| `character_ids` | **Obligatoire** |
+| `channel_id` | **Optionnel** — généré côté serveur (UUID) si absent |
+| `guild_id` | **Optionnel** — défaut serveur `"api"` ; jamais requis du client |
 
-**Alternative écartée pour le lot 1** : assouplir l'unicité globale du repository (permettre plusieurs combats ouverts dans le **même** scope) — **non requis** si le client génère des scopes uniques ; impliquerait migration schéma + revalidation du comportement Discord (un combat par salon).
+**Client minimal** :
+
+```json
+{ "character_ids": ["abc123", "def456"] }
+```
+
+Le serveur mappe en interne vers `create_combat(guild_id, channel_id, character_ids)` avec les valeurs par défaut ou générées.
+
+**Parallélisme** : plusieurs combats ouverts simultanés via des `channel_id` distincts (générés ou fournis). L'index partiel SQLite `idx_combats_open_channel` limite à **un** combat ouvert par couple `(guild_id, channel_id)` — suffisant sans imposer des ids Discord réels.
+
+**Invariant lobby (lot 1)** : voir §10.3 — un personnage ne peut être que dans **un** combat ouvert à la fois (`CHARACTER_ALREADY_IN_COMBAT`).
+
+**Alternative écartée** : exiger `guild_id` + `channel_id` au client HTTP — rejetée (fuite du modèle Discord).
 
 ### 2.6 Fiche fusionnée pendant combat actif
 
@@ -121,6 +148,8 @@ Deux requêtes concurrentes sur le même `combat_id` ou `character_id` peuvent s
 - **`hp_current`** (et champs overlay pertinents) ← combattant overlay ;
 - **`active_effects`** (ou sous-ensemble contractuel) ← registre / snapshot combat pour ce `combatant_id` ;
 - le reste ← fiche calculée habituelle.
+
+La recherche du combat ouvert se fait **uniquement** par `character_id` — **sans** paramètre `combat_id` sur la route fiche. Cette unicité est garantie par l'invariant lobby (§10.3) : au plus un combat ouvert par personnage.
 
 **Important** : fusion **lecture API uniquement** — la fiche SQLite reste au snapshot pré-sync (ADR-005) jusqu'à `close_combat`. Le client combat continue de lire `/v1/combats/{id}` pour l'état complet de rencontre.
 
@@ -176,6 +205,7 @@ Migration : l'API personnage actuelle (`detail` string) adopte ce format — bre
 | `NotCombatantTurnError` | `NOT_COMBATANT_TURN` |
 | `CombatStateVersionError` | `COMBAT_STATE_UNSUPPORTED` |
 | `require_spell_attack_type` | `SPELL_ATTACK_TYPE_MISSING` |
+| Personnage déjà dans un combat ouvert | `CHARACTER_ALREADY_IN_COMBAT` |
 
 ---
 
@@ -203,7 +233,7 @@ snake_case ; vocabulaire SRD ; modes de jet `normal` / `avantage` / `desavantage
 ### 5.1 Parcours cible (bout-en-bout)
 
 1. `GET /v1/characters/{id}/sheet` — fiche initiale
-2. `POST /v1/combats` — créer avec **plusieurs** `character_ids`, scope arbitraire
+2. `POST /v1/combats` — body minimal `{ "character_ids": [...] }` ; vérification unicité lobby
 3. `POST /v1/combats/{id}/activate`
 4. `POST /v1/combats/{id}/attack-roll` — jet d'attaque avec contexte portée
 5. `GET /v1/combats/{id}` — état rencontre
@@ -212,14 +242,16 @@ snake_case ; vocabulaire SRD ; modes de jet `normal` / `avantage` / `desavantage
 
 ### 5.2 Ressources (intention, sans schémas)
 
-| Intention | Route |
-|---|---|
-| Fiche (fusionnée si combat ouvert) | `GET /v1/characters/{character_id}/sheet` |
-| Créer rencontre | `POST /v1/combats` |
-| Lire rencontre | `GET /v1/combats/{combat_id}` |
-| Activer | `POST /v1/combats/{combat_id}/activate` |
-| Jet d'attaque | `POST /v1/combats/{combat_id}/attack-roll` |
-| Clore | `POST /v1/combats/{combat_id}/close` |
+| Intention | Route | Body (création) |
+|---|---|---|
+| Fiche (fusionnée si combat ouvert) | `GET /v1/characters/{character_id}/sheet` | — |
+| Créer rencontre (lobby) | `POST /v1/combats` | `character_ids` obligatoire ; `channel_id`, `guild_id` optionnels |
+| Lire rencontre | `GET /v1/combats/{combat_id}` | — |
+| Activer | `POST /v1/combats/{combat_id}/activate` | — |
+| Jet d'attaque | `POST /v1/combats/{combat_id}/attack-roll` | — |
+| Clore | `POST /v1/combats/{combat_id}/close` | — |
+
+**Tests lot 1 (commit 3)** : après `close`, les personnages du combat clos doivent pouvoir entrer dans un **nouveau** combat — l'invariant lobby ne doit pas les bloquer indéfiniment.
 
 Routes personnage existantes (cast, repos) migrent sous `/v1/` avec le format d'erreur unifié.
 
@@ -243,9 +275,9 @@ Routes personnage existantes (cast, repos) migrent sous `/v1/` avec le format d'
 
 ---
 
-## 7. Référence Discord
+## 7. Discord — hors périmètre jeu
 
-Handlers Discord : fiche, sorts, repos, `/roll` avec flags — **non** contrat API. L'API HTTP expose l'état combat structuré ; Discord inchangé dans le lot 1.
+Le code Discord (`bot/`, `interfaces/discord/`) reste en dépôt pour le vocal et le chat futur, mais **n'est plus une interface de jeu** (voir préambule). Aucune évolution Discord dans les lots API. Les handlers historiques (fiche, sorts, `/roll`) ne définissent pas le contrat v1.
 
 ---
 
@@ -275,30 +307,37 @@ Handlers Discord : fiche, sorts, repos, `/roll` avec flags — **non** contrat A
 | 7 | Métier → 409, not found → 404 | Tranché |
 | 8 | snake_case, ids SRD stables | Tranché |
 | 9 | Préfixe `/v1/` | Tranché |
-| 10 | Scope arbitraire client ; parallélisme via `channel_id` unique | Tranché |
-| 11 | Fiche fusionnée pendant combat ouvert | Tranché |
+| 10 | Body création : `character_ids` seul requis ; scope interne | Tranché |
+| 11 | Fiche fusionnée ; unicité combat ouvert par personnage | Tranché |
+| 12 | Invariant lobby — `CHARACTER_ALREADY_IN_COMBAT` (lot 1) | Tranché |
+| 13 | API seule interface de jeu ; Discord hors évolution | Tranché |
 
 ---
 
-## 10. Réserves architecturales (hors lot 1, non bloquantes)
+## 10. Réserves architecturales
 
-### 10.1 Rejoindre un combat déjà `active`
+### 10.1 Modèle cible — lobby
 
-**Intention mainteneur** : à terme, un joueur peut **rejoindre** une rencontre en cours.
+**Modèle produit** : un combat est un **lobby** que les joueurs rejoignent et quittent.
 
-**État moteur v1** : `add_combatant` n'accepte que `status=preparing`.
+| Règle | Lot 1 | Plus tard |
+|---|---|---|
+| Un personnage ≤ un combat **ouvert** à la fois | **Oui** — `CHARACTER_ALREADY_IN_COMBAT` à l'entrée (couche API, sans modifier le moteur) | — |
+| Tant qu'il est dans un lobby, pas d'interaction avec un autre combat | Implicite via unicité | — |
+| Rejoindre un combat **déjà `active`** | Non | `POST /v1/combats/{id}/combatants` (moteur : extension `add_combatant`) |
+| Sortir par **fuite** (action de jeu, jet possible) | Non | Chantier gameplay |
 
-**Compatibilité contrat lot 1** :
+**Lot 1** : vérification API — requête sur les combats ouverts contenant le `character_id` avant `create_combat` / `add_combatant`. **Ne pas modifier** `CombatManager` pour cet invariant.
 
-- Le modèle ressource **`POST /v1/combats/{id}/combatants`** (ou action dédiée `join`) reste **compatible** — non implémenté en lot 1, statut `preparing` seulement.
-- **`combatant_id`** opaque assigné à l'ajout — pas de collision avec les participants existants.
-- **Aucune décision lot 1 ne ferme** une future extension `add_combatant` en `active` (budget initiative, insertion ordre — chantier moteur séparé).
+**Clôture** : `close_combat` passe le statut SQL à `ended` — le personnage est **libéré**. Test obligatoire (commit 3) : personnages réutilisables dans un nouveau combat après `close`.
 
-**Signal si blocage futur** : figer « liste combattants immuable après `activate` » dans le contrat — **non retenu** ; l'activation ne doit pas être documentée comme verrou structurel absolu.
+### 10.2 Rejoindre un combat déjà `active`
 
-### 10.2 Scope repository vs Discord
+Voir §10.1. `add_combatant` moteur n'accepte aujourd'hui que `preparing` ; le contrat ne fige pas la liste des combattants comme immuable après `activate`.
 
-Tant que l'unicité `(guild_id, channel_id)` reste en base, Discord (un salon = un combat) et HTTP (scope unique par session) **coexistent** sans modification. Assouplir l'unicité pour plusieurs combats dans le **même** scope HTTP serait un **chantier repository** distinct — signaler avant toute modification du schéma SQL.
+### 10.3 Scope repository
+
+L'unicité `(guild_id, channel_id)` pour combats ouverts reste en base ; l'API masque ce détail via defaults et génération de `channel_id`. Assouplir l'unicité globale = chantier repository distinct, **non requis** lot 1.
 
 ---
 
