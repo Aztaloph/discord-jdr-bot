@@ -177,7 +177,7 @@ Deux refactors simultanés (combat + unification effets classe) multiplient le r
 ### Conséquences
 
 - `collect_roll_effects()` et `enrich_roll_request()` restent le chemin rage/reckless/expertise en combat.
-- `ActiveEffect` phase 1 sert surtout aux **effets de sorts** (B4) — voir **écart C6** ci-dessous pour les conditions.
+- `ActiveEffect` phase 1 sert aux **effets de sorts** (B4) et aux **conditions de rencontre** (C6, post-registre) — voir décision 13 mise à jour (2026-08-07).
 - Un futur ADR ou RFC pourra trancher la migration classe par classe.
 
 ---
@@ -512,7 +512,7 @@ Aucun événement publié si le save réussit ou si la cible ne concentre pas.
 
 ---
 
-## Décision 13 — Conditions de combat (lot C6, 2026-08-04)
+## Décision 13 — Conditions de combat (lot C6, 2026-08-04 — mis à jour 2026-08-07)
 
 ### Sous-ensemble phase 1
 
@@ -520,24 +520,30 @@ Aucun événement publié si le save réussit ou si la cible ne concentre pas.
 |---|---|
 | **`frightened`** | Désavantage attaques + tests de caractéristique (**simplification** — voir ambiguïtés) |
 | **`poisoned`** | Désavantage attaques + tests de caractéristique |
+| **`prone`** | Désavantage attaques du prone ; avantage/désavantage des attaques **contre** lui selon portée mêlée/distance (lot C6b, commit `f361ae3`) |
 
-**Hors C6** : `prone` (**C6b** — collecteur bidirectionnel, portée, relèvement/movement), privatives (`incapacitated` et dérivées), hook condition → concentration, auto-échec/auto-crit.
+Privatives (`incapacitated` et dérivées), hook condition → concentration, auto-échec/auto-crit, relèvement/movement : **hors** phase 1.
 
-### Stockage
+### Stockage (état code 2026-08-07)
 
-Conditions dans l'**overlay `Combatant`** (`conditions: tuple[str, …]`), **sans durée**, retrait par **`remove_condition`** uniquement. **Jamais** écrites sur la fiche `Character`.
+Les conditions phase 1 vivent dans le **registre `ActiveEffect`** (`expiry_mode="manual"`, convention `source_id = condition_id`), sérialisées dans **`CombatState.active_effects`**. **Jamais** écrites sur la fiche `Character` pendant la rencontre (ADR-005 §4).
 
-### Écart ADR — ActiveEffect écarté pour les conditions (décision 5)
+Le champ legacy `combatants[].conditions[]` n'est **plus** la source de vérité : hydratation vers le registre à **`load_combat`** pour les blobs antérieurs, sans bump de version.
 
-L'ADR actait `ActiveEffect` pour les conditions (décision 5 §180), rédigé **avant** constat de l'absence d'horloge combat. Créer `ActiveEffect` sans durée fixerait la sémantique sur le cas dégénéré ; **B4** (durées de sorts) doit définir la structure. **Même logique** que l'écart ROADMAP expiration / C5.
+### Migration post-B4 (clos)
 
-**Question ouverte (non tranchée)** : migration conditions overlay → `ActiveEffect` post-B4.
+L'écart acté en rédaction initiale (« ActiveEffect écarté pour les conditions ») est **levé** : migration livrée après ADR-006 (commits conditions → registre, retrait overlay `Combatant.conditions`).
 
 ### Agrégation
 
-Collecteur combat unidirectionnel (`rules/combat/conditions/collect.py`) → `effects[]` → **`_resolve_mode`** dans `d20.py`. Extension C6 : `type: "disadvantage"` pour contextes **`attack`** et **`ability_check`** uniquement — pas `saving_throw`.
+Adaptateurs **`jdr_engine/rules/effects/collect.py`** :
 
-Fusion sur les chemins combat via **`roll_d20_for_combatant`** : `collect_roll_effects(character)` + effets conditions overlay.
+- **`collect_attacker_condition_roll_effects`** — conditions portées par le jeteur (`frightened`, `poisoned`, `prone` attaquant) ;
+- **`collect_defender_condition_roll_effects`** — conditions du défenseur lors d'un jet d'attaque (`prone` cible, clauses `when` portée).
+
+Fusion dans **`roll_d20_for_combatant`** : traits compendium + buffs registre + collect attaquant + collect défenseur (`defender_id=target_id` sur les jets d'attaque).
+
+Extension **`d20.py`** : `type: "disadvantage"` / `"advantage"` pour contexte **`attack`** (et **`ability_check`** pour frightened/poisoned) — pas `saving_throw`.
 
 ### API et événements
 
@@ -546,16 +552,16 @@ Fusion sur les chemins combat via **`roll_d20_for_combatant`** : `collect_roll_e
 | `apply_condition` | `ConditionApplied` |
 | `remove_condition` | `ConditionRemoved` |
 
-Module catalogue : **`jdr_engine/rules/combat/conditions/catalog.py`**.
+Module catalogue : **`jdr_engine/rules/combat/conditions/catalog.py`** (`PHASE1_CONDITIONS`).
 
 ### Ambiguïtés laissées ouvertes (C6)
 
 | Point | Traitement |
 |---|---|
 | **`frightened` SRD complet** | MVP : désavantage inconditionnel ; pas de ligne de vue ; pas d'interdiction d'approche (movement inerte) — **simplification explicite** |
-| **`prone`** | Lot **C6b** (après ou avec branchement movement) |
+| **`prone` — portée réelle** | MVP : flags `melee_weapon` / `ranged_weapon` (ou `attack_type` sort) ≡ mêlée / distance ; pas de grille 5 pieds |
 | **Hook concentration** | Hors phase 1 — pas de privatives |
-| **Sync conditions fin de combat** | **5e point** du groupe fin de combat (§333) |
+| **Sync conditions fin de combat** | ADR-005 §4 — discard fiche, archive blob autorisée |
 
 ---
 
@@ -744,8 +750,8 @@ B4 intervient **après C4** (boucle de tour jouable), comme **première validati
 - `jdr_engine/rules/spellcasting/cast.py` — `_apply_healing`, délégation `set_concentration`
 - `jdr_engine/rules/spellcasting/concentration.py` — `set_concentration`, `clear_concentration`, `get_active_concentration`
 - `jdr_engine/rules/combat/concentration_save.py` — `concentration_save_dc`
-- `jdr_engine/rules/combat/conditions/catalog.py` — enum phase 1 (`frightened`, `poisoned`)
-- `jdr_engine/rules/combat/conditions/collect.py` — collecteur unidirectionnel → `effects[]`
+- `jdr_engine/rules/combat/conditions/catalog.py` — enum phase 1 (`frightened`, `poisoned`, `prone`)
+- `jdr_engine/rules/effects/collect.py` — collecteurs attaquant / défenseur → `effects[]`
 - `jdr_engine/rules/roll_effects.py` — `roll_d20_for_combatant` (fusion traits + conditions)
 - `jdr_engine/application/combat_service.py` — use cases combat (lot C7)
 - `jdr_engine/core/events/handlers/combat_auto_save.py` — journal événementiel

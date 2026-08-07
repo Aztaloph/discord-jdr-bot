@@ -243,7 +243,18 @@ Ordre **sémantique** recommandé (contrat pour l'implémentation future) :
 1. Sync PV overlay → fiche (décision 2)
 2. Réconciliation concentration overlay → fiche (décision 3)
 3. Conditions : discard fiche — archive blob OK (décision 4)
-4. `status=ended`, `ended_at`, persist combat, publier `CombatEnded` (décision 5 si auto-close)
+4. `status=ended`, `ended_at`, persistance combat, publier `CombatEnded` (décision 5 si auto-close)
+
+### État implémenté (2026-08-07)
+
+`CombatManager.close_combat` suit cet ordre :
+
+1. `_sync_effect_registry_from_state` (registre aligné sur le blob)
+2. `_sync_character_from_combatant` pour **chaque** combattant (PV + concentration → fiche)
+3. `status=ended`, `active_effects` archivés depuis le registre, persist combat
+4. `CombatEnded`, retrait du registre mémoire
+
+Les conditions **ne** passent **pas** par `_sync_character_from_combatant` (encounter-scoped, décision 4). L'archive `active_effects` dans le blob `ended` est conforme à « archive blob OK ».
 
 ---
 
@@ -294,4 +305,4 @@ Au-delà du test point 5, la sync PV (point 2) ajoute des assertions sur fiche p
 - ADR-004 §333 — dette groupée résolue par ce document
 - ADR-004 décisions 1, 2, 9 — complétées par la règle temporelle overlay / sync-on-close
 - Lot B4 — buffs overlay (distinct, prioritaire)
-- C6 — conditions overlay (`frightened`, `poisoned`)
+- C6 — conditions via registre `ActiveEffect` (`frightened`, `poisoned`, `prone`)

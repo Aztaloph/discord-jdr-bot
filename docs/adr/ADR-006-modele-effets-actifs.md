@@ -149,7 +149,7 @@ Le champ **`cleanup_on: list[str]`** n'est **pas porté en v1** — redondant av
 | Élément | Traitement |
 |---|---|
 | **`blessed`**, **`hunters_mark`** | Migrent vers `ActiveEffect` (décision 4) |
-| **`frightened`**, **`poisoned`** | **Hors scope** — restent overlay blob-only (ADR-005) ; migration éventuelle en lot séparé si besoin explicite |
+| **`frightened`**, **`poisoned`**, **`prone`** | **`ActiveEffect`** (`expiry_mode="manual"`) — migration C6 post-B4 livrée ; collecte via `rules/effects/collect.py` |
 
 ---
 
@@ -163,7 +163,7 @@ Le champ **`cleanup_on: list[str]`** n'est **pas porté en v1** — redondant av
 |---|---|
 | `rules/combat/buffs/hunters_mark.py` | Bonus +1d6 dans `apply_damage` |
 | `rules/combat/buffs/collect.py` | `collect_buff_roll_effects` → `effects[]` pour `d20.py` |
-| `rules/combat/conditions/collect.py` | Modèle C6 (conditions, hors scope ADR-006) |
+| `rules/effects/collect.py` | `collect_attacker_condition_roll_effects` / `collect_defender_condition_roll_effects` (conditions C6/C6b) |
 
 Le pattern **fonctionne** et est couvert par les tests B4 (**817** tests au baseline post-B4). Il n'offre toutefois **aucun point central** d'inspection, de nettoyage générique, ni d'itération sur les effets actifs d'un combattant — dette actée ADR-004 §708.
 
@@ -256,9 +256,9 @@ Avec le registre (décisions 2 + 4), chaque **`ActiveEffect(effect_id="blessed")
 |---|---|
 | Refonte de la concentration existante | ADR-004, fonctionnelle (C5 + B4) |
 | Modification de `close_combat` / ordre canonique | ADR-005, clos |
-| Migration `frightened` / `poisoned` vers `ActiveEffect` | Overlay blob-only ; lot séparé si besoin |
-| Script de migration de données | Aucune base à migrer (confirmé 2026-08-05) |
-| **`prone`** (C6b), **movement** inerte (C4) | Dette isolée, hors cluster effets |
+| Migration `frightened` / `poisoned` / `prone` vers `ActiveEffect` | **Livré** (lot conditions → registre, 2026-08-07) |
+| Script de migration de données | Aucune base live à migrer ; hydratation legacy `conditions[]` à `load_combat` |
+| **`prone`** (C6b) | **Livré** (bidirectionnel, collecteur défenseur — commit `f361ae3`) ; relèvement/movement reste hors scope |
 | Refactor **`_persist()` handler-only** | Chantier infra orthogonal (dette post-C7) |
 
 ---
@@ -273,7 +273,7 @@ Avec le registre (décisions 2 + 4), chaque **`ActiveEffect(effect_id="blessed")
 
 **Delta estimé** : +15 à +20 tests.
 
-**Baseline actuelle** : **817** tests (`python -m unittest discover -s tests -p "test_*.py" -q`).
+**Baseline actuelle** : **866** tests (`python -m unittest discover -s tests -p "test_*.py" -q`, post-lot prone C6b).
 
 ---
 
