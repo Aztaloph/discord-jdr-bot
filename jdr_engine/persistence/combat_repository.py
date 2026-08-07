@@ -127,6 +127,28 @@ class SqliteCombatRepository:
             return None
         return _row_to_record(row)
 
+    def list_open(self, *, guild_id: str | None = None) -> list[CombatRecord]:
+        """Tous les combats ouverts (``preparing`` ou ``active``)."""
+        with get_connection(self.db_path) as conn:
+            if guild_id is None:
+                rows = conn.execute(
+                    """
+                    SELECT * FROM combats
+                    WHERE status IN ('preparing', 'active')
+                    ORDER BY id
+                    """
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT * FROM combats
+                    WHERE guild_id = ? AND status IN ('preparing', 'active')
+                    ORDER BY id
+                    """,
+                    (str(guild_id),),
+                ).fetchall()
+        return [_row_to_record(row) for row in rows]
+
     def get_active_by_channel(
         self,
         guild_id: str,

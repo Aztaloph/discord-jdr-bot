@@ -15,9 +15,11 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from interfaces.api.combat_routes import register_combat_routes
 from interfaces.api.diagnostic.event_buffer import EventRingBuffer
 from interfaces.api.diagnostic.recording_bus import RecordingEventBus
 from interfaces.api.errors import ApiError, register_error_handlers
+from jdr_engine.application.combat_service import CombatService
 from jdr_engine.core.events.bus import EventBus
 
 from jdr_engine.application.dto.output_serializers import (
@@ -27,6 +29,8 @@ from jdr_engine.application.dto.output_serializers import (
     spell_cast_result_to_dict,
 )
 from jdr_engine.domain.character.character import Character
+from jdr_engine.persistence.combat_log_repository import SqliteCombatLogRepository
+from jdr_engine.persistence.combat_repository import SqliteCombatRepository
 from jdr_engine.persistence.database import init_database
 from jdr_engine.persistence.sqlite_character_repository import (
     SqliteCharacterRepository,
@@ -65,6 +69,7 @@ def create_app(
         engine = RuleEngine.load("dnd5e", validate=True, strict=True)
     resolved_db_path = init_database(db_path)
     repository = SqliteCharacterRepository(resolved_db_path)
+    combat_repository = SqliteCombatRepository(resolved_db_path)
 
     if event_bus is None:
         inner = EventBus()
@@ -72,6 +77,15 @@ def create_app(
         event_bus = RecordingEventBus(inner, buffer)
     elif event_buffer is not None:
         raise ValueError("event_buffer sans RecordingEventBus est incohérent")
+
+    combat_service = CombatService(
+        event_bus,
+        combat_repository,
+        repository,
+        SqliteCombatLogRepository(resolved_db_path),
+        engine,
+        register_auto_save_handler=False,
+    )
 
     app = FastAPI(
         title="JDR Engine API",
@@ -146,6 +160,13 @@ def create_app(
             ) from exc
         repository.save(updated)
         return long_rest_result_to_dict(result)
+
+    register_combat_routes(
+        app,
+        combat_service=combat_service,
+        character_repository=repository,
+        combat_repository=combat_repository,
+    )
 
     @app.get("/")
     def serve_client() -> FileResponse:
