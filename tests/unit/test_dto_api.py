@@ -10,11 +10,20 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from jdr_engine.application.dto.output_serializers import (
+    attack_roll_resolution_to_dict,
     character_sheet_to_dict,
+    combat_state_to_dict,
     long_rest_result_to_dict,
     short_rest_result_to_dict,
     spell_cast_result_to_dict,
 )
+from jdr_engine.dice.d20 import D20RollRequest, D20RollResult
+from jdr_engine.domain.combat.action_budget import ActionBudget
+from jdr_engine.domain.combat.active_effect import ActiveEffect
+from jdr_engine.domain.combat.combat_state import COMBAT_STATE_VERSION, CombatState
+from jdr_engine.domain.combat.combatant import Combatant
+from jdr_engine.game.combat_manager import AttackRollResolution
+from jdr_engine.rules.combat.attack_roll import AttackHitOutcome, resolve_attack_hit
 from jdr_engine.domain.character.ability_scores import AbilityScores
 from jdr_engine.domain.character.character import Character
 from jdr_engine.persistence.database import init_database
@@ -339,6 +348,180 @@ class TestRestResultDto(unittest.TestCase):
         self.assertEqual(data["hp_after"], updated.hp_current)
         self.assertTrue(data["prepared_rechoice_pending"])
         json.dumps(data)
+
+
+class TestCombatStateDto(unittest.TestCase):
+    def test_combat_state_dto_exposes_status_and_combat_id(self):
+        combatant = Combatant(
+            combatant_id="abc12345",
+            display_name="Alice",
+            kind="player_character",
+            character_id="char001",
+            hp_current=18,
+            hp_max=20,
+            ac=15,
+            initiative_total=17,
+            action_budget=ActionBudget(
+                has_action=False,
+                has_bonus_action=True,
+                has_reaction=True,
+                has_movement=True,
+            ),
+        )
+        effect = ActiveEffect(
+            effect_id="blessed",
+            source_id="cleric_a",
+            target_id="abc12345",
+            applied_at_round=2,
+            expiry_mode="rounds",
+            duration_rounds=10,
+        )
+        state = CombatState(
+            schema_version=COMBAT_STATE_VERSION,
+            ruleset_id="dnd5e",
+            round_number=2,
+            turn_index=1,
+            initiative_order=("abc12345", "def67890"),
+            combatants={"abc12345": combatant},
+            status="active",
+            started_at="2026-08-07T12:00:00+00:00",
+            combat_id="42",
+            guild_id="guild1",
+            channel_id="channel1",
+            active_effects=(effect,),
+        )
+        data = combat_state_to_dict(state)
+        self.assertEqual(data["combat_id"], 42)
+        self.assertEqual(data["status"], "active")
+        self.assertEqual(data["round_number"], 2)
+        self.assertEqual(data["turn_index"], 1)
+        self.assertEqual(data["initiative_order"], ["abc12345", "def67890"])
+        self.assertNotIn("schema_version", data)
+        self.assertNotIn("guild_id", data)
+        self.assertNotIn("channel_id", data)
+        json.dumps(data)
+
+    def test_combat_state_dto_active_effects_structured_not_flattened(self):
+        effects = (
+            ActiveEffect(
+                effect_id="blessed",
+                source_id="cleric_a",
+                target_id="ally1",
+                applied_at_round=1,
+                expiry_mode="concentration",
+            ),
+            ActiveEffect(
+                effect_id="frightened",
+                source_id="dragon",
+                target_id="ally2",
+                applied_at_round=3,
+                expiry_mode="rounds",
+                duration_rounds=2,
+            ),
+        )
+        state = CombatState(
+            schema_version=COMBAT_STATE_VERSION,
+            ruleset_id="dnd5e",
+            round_number=1,
+            turn_index=0,
+            initiative_order=(),
+            combatants={},
+            status="preparing",
+            started_at=None,
+            active_effects=effects,
+        )
+        data = combat_state_to_dict(state)
+        self.assertEqual(len(data["active_effects"]), 2)
+        bless = data["active_effects"][0]
+        self.assertEqual(bless["effect_id"], "blessed")
+        self.assertEqual(bless["source_id"], "cleric_a")
+        self.assertEqual(bless["target_id"], "ally1")
+        self.assertEqual(bless["applied_at_round"], 1)
+        self.assertEqual(bless["expiry_mode"], "concentration")
+        self.assertNotIn("duration_rounds", bless)
+        self.assertNotIn("expires_at_round", bless)
+        frightened = data["active_effects"][1]
+        self.assertEqual(frightened["duration_rounds"], 2)
+
+    def test_combat_state_dto_combatant_nested_fields(self):
+        combatant = Combatant(
+            combatant_id="xyz98765",
+            display_name="Bob",
+            kind="player_character",
+            character_id="char002",
+            hp_current=0,
+            hp_max=22,
+            ac=16,
+            is_active=False,
+            concentration_spell_id="hex",
+            concentration_spell_name="Malédiction",
+        )
+        state = CombatState(
+            schema_version=COMBAT_STATE_VERSION,
+            ruleset_id="dnd5e",
+            round_number=1,
+            turn_index=0,
+            initiative_order=("xyz98765",),
+            combatants={"xyz98765": combatant},
+            status="active",
+            started_at="2026-08-07T12:00:00+00:00",
+        )
+        data = combat_state_to_dict(state)
+        bob = data["combatants"]["xyz98765"]
+        self.assertEqual(bob["hp_current"], 0)
+        self.assertFalse(bob["is_active"])
+        self.assertEqual(bob["concentration_spell_id"], "hex")
+        self.assertEqual(bob["concentration_spell_name"], "Malédiction")
+        self.assertNotIn("action_budget", bob)
+        self.assertNotIn("can_act", bob)
+
+
+class TestAttackRollResolutionDto(unittest.TestCase):
+    def _d20(self, kept: int, *, total_mod: int = 5) -> D20RollResult:
+        req = D20RollRequest(
+            roll_type="attack",
+            ability_modifier=3,
+            proficiency_bonus=2,
+            is_proficient=True,
+            ability="str",
+            melee_weapon=True,
+        )
+        return D20RollResult(
+            request=req,
+            rolls=[kept],
+            is_kept=[True],
+            kept_value=kept,
+            mode="normal",
+            modifier=total_mod,
+            modifier_breakdown="+5",
+            total=kept + total_mod,
+            natural_20=kept == 20,
+            natural_1=kept == 1,
+        )
+
+    def test_attack_roll_resolution_dto_nested_d20_and_outcome(self):
+        d20 = self._d20(14)
+        outcome = resolve_attack_hit(d20, target_ac=17)
+        data = attack_roll_resolution_to_dict(
+            AttackRollResolution(d20=d20, outcome=outcome)
+        )
+        self.assertEqual(data["d20"]["kept_value"], 14)
+        self.assertEqual(data["d20"]["total"], 19)
+        self.assertNotIn("modifier_breakdown", data["d20"])
+        self.assertTrue(data["d20"]["request"]["melee_weapon"])
+        self.assertTrue(data["outcome"]["hit"])
+        self.assertFalse(data["outcome"]["critical"])
+        self.assertEqual(data["outcome"]["target_ac"], 17)
+        json.dumps(data)
+
+    def test_attack_roll_resolution_dto_natural_1(self):
+        d20 = self._d20(1)
+        outcome = resolve_attack_hit(d20, target_ac=10)
+        data = attack_roll_resolution_to_dict(
+            AttackRollResolution(d20=d20, outcome=outcome)
+        )
+        self.assertTrue(data["outcome"]["automatic_miss"])
+        self.assertFalse(data["outcome"]["hit"])
 
 
 class TestApiEndpoints(unittest.TestCase):

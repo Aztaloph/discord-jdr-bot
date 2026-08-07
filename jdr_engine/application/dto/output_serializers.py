@@ -34,12 +34,20 @@ from jdr_engine.domain.character.character_sheet import (
     CharacterSheet,
     SpellcastingView,
 )
+from jdr_engine.domain.combat.action_budget import ActionBudget
+from jdr_engine.domain.combat.active_effect import ActiveEffect
+from jdr_engine.domain.combat.combat_state import CombatState
+from jdr_engine.domain.combat.combatant import Combatant
+from jdr_engine.game.combat_manager import AttackRollResolution
+from jdr_engine.rules.combat.attack_roll import AttackHitOutcome
 from jdr_engine.rules.rest.long_rest import LongRestResult
 from jdr_engine.rules.rest.short_rest import HitDieRoll, ShortRestResult
 from jdr_engine.rules.spellcasting.cast import SpellAttackRoll, SpellCastResult
 
 __all__ = [
     "character_sheet_to_dict",
+    "combat_state_to_dict",
+    "attack_roll_resolution_to_dict",
     "spell_cast_result_to_dict",
     "short_rest_result_to_dict",
     "long_rest_result_to_dict",
@@ -142,6 +150,108 @@ def character_sheet_to_dict(sheet: CharacterSheet) -> dict[str, Any]:
             if sheet.spellcasting is not None
             else None
         ),
+    }
+
+
+def _action_budget_to_dict(budget: ActionBudget) -> dict[str, bool]:
+    return {
+        "has_action": budget.has_action,
+        "has_bonus_action": budget.has_bonus_action,
+        "has_reaction": budget.has_reaction,
+        "has_movement": budget.has_movement,
+    }
+
+
+def _active_effect_to_dict(effect: ActiveEffect) -> dict[str, Any]:
+    """
+    Effet actif → dict JSON-sérialisable.
+
+    Exclu : ``expires_at_round`` (dérivé de ``applied_at_round`` +
+    ``duration_rounds``) — recomposable côté client si besoin.
+    """
+    payload: dict[str, Any] = {
+        "effect_id": effect.effect_id,
+        "source_id": effect.source_id,
+        "target_id": effect.target_id,
+        "applied_at_round": effect.applied_at_round,
+        "expiry_mode": effect.expiry_mode,
+    }
+    if effect.duration_rounds is not None:
+        payload["duration_rounds"] = effect.duration_rounds
+    return payload
+
+
+def _combatant_to_dict(combatant: Combatant) -> dict[str, Any]:
+    """
+    Combattant → dict JSON-sérialisable.
+
+    Données persistées uniquement — pas de dérivé « peut agir » ni agrégat UI.
+    """
+    payload: dict[str, Any] = {
+        "combatant_id": combatant.combatant_id,
+        "display_name": combatant.display_name,
+        "kind": combatant.kind,
+        "character_id": combatant.character_id,
+        "hp_current": combatant.hp_current,
+        "hp_max": combatant.hp_max,
+        "ac": combatant.ac,
+        "is_active": combatant.is_active,
+    }
+    if combatant.initiative_total is not None:
+        payload["initiative_total"] = combatant.initiative_total
+    if combatant.concentration_spell_id is not None:
+        payload["concentration_spell_id"] = combatant.concentration_spell_id
+        payload["concentration_spell_name"] = combatant.concentration_spell_name
+    if combatant.action_budget is not None:
+        payload["action_budget"] = _action_budget_to_dict(combatant.action_budget)
+    return payload
+
+
+def combat_state_to_dict(state: CombatState) -> dict[str, Any]:
+    """
+    État de rencontre → dict JSON-sérialisable (ressource API combat).
+
+    Exclus : ``schema_version`` (version blob interne), ``guild_id`` /
+    ``channel_id`` (projection persistence — hors vocabulaire client).
+    """
+    combat_id: int | None = None
+    if state.combat_id is not None:
+        combat_id = int(state.combat_id)
+    return {
+        "combat_id": combat_id,
+        "status": state.status,
+        "ruleset_id": state.ruleset_id,
+        "round_number": state.round_number,
+        "turn_index": state.turn_index,
+        "initiative_order": list(state.initiative_order),
+        "combatants": {
+            combatant_id: _combatant_to_dict(combatant)
+            for combatant_id, combatant in state.combatants.items()
+        },
+        "active_effects": [
+            _active_effect_to_dict(effect) for effect in state.active_effects
+        ],
+        "started_at": state.started_at,
+        "ended_at": state.ended_at,
+    }
+
+
+def _attack_hit_outcome_to_dict(outcome: AttackHitOutcome) -> dict[str, Any]:
+    return {
+        "hit": outcome.hit,
+        "critical": outcome.critical,
+        "automatic_miss": outcome.automatic_miss,
+        "target_ac": outcome.target_ac,
+    }
+
+
+def attack_roll_resolution_to_dict(
+    resolution: AttackRollResolution,
+) -> dict[str, Any]:
+    """Résultat de jet d'attaque combat → dict JSON-sérialisable."""
+    return {
+        "d20": _d20_result_to_dict(resolution.d20),
+        "outcome": _attack_hit_outcome_to_dict(resolution.outcome),
     }
 
 
