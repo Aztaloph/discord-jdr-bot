@@ -2,7 +2,7 @@
 
 | Attribut | Valeur |
 |---|---|
-| **Statut** | Proposition — aucune implémentation engagée par ce document |
+| **Statut** | Accepté (arbitrages mainteneur 2026-08-07) |
 | **Date** | 2026-08-07 |
 | **Périmètre** | Décisions coûteuses à revenir en arrière une fois qu'un client consomme l'API |
 | **Hors périmètre** | Spécification endpoint par endpoint, schémas champ par champ, catalogue d'erreurs exhaustif |
@@ -10,6 +10,8 @@
 **Critère de tri** : une décision entre ici si la changer plus tard **casse un client existant** ou **impose une migration**. Tout le reste sera découvert à l'implémentation et est listé comme hors contrat.
 
 **État de référence moteur** : 866 tests ; combat persistant (initiative, tours, attaques, sorts, conditions, concentration) ; registre d'effets unifié (ADR-006) ; API existante limitée au personnage hors combat (`interfaces/api/`, `docs/API_LOCAL.md`).
+
+**Préfixe URL** : toutes les routes contractuelles vivent sous **`/v1/`**.
 
 ---
 
@@ -25,41 +27,37 @@ Le vocabulaire exposé devient **contrat de stabilité** : tout identifiant stri
 
 | Concept interne | Traverse l'API ? | Forme côté client | Justification |
 |---|---|---|---|
-| **`Character`** (fiche SQLite) | **Oui** | Ressource `/characters/{character_id}` ; agrégat calculé « fiche » (DTO existant `character_sheet_to_dict`) | Source de vérité persistante hors rencontre (ADR-004 §1, ADR-005 sync-on-close) |
+| **`Character`** (fiche SQLite) | **Oui** | Ressource `/v1/characters/{character_id}` ; agrégat calculé « fiche » (DTO existant `character_sheet_to_dict`, éventuellement enrichi — §2.6) | Source de vérité persistante hors rencontre (ADR-004 §1, ADR-005 sync-on-close) |
 | **`Combatant`** (overlay rencontre) | **Oui** | Objet embarqué dans la ressource combat ; référencé par `combatant_id` dans les actions | PV/CA/tour/concentration overlay pendant le combat (ADR-004 §9) ; distinct de la fiche |
 | **`CombatState`** | **Oui** (partiel) | Agrégat combat : statut, round, tour, ordre d'initiative, combattants, effets actifs | Snapshot sérialisable déjà persisté en blob SQLite |
 | **`ActiveEffect`** | **Oui** (snapshot) | Liste `active_effects[]` avec les champs de `ActiveEffect.to_dict()` | État observable des buffs/conditions mécaniques ; mutations via actions API, pas via écriture directe |
 | **`ActiveEffectRegistry`** | **Non** | — | Structure runtime (`CombatManager._effect_registries`) ; reconstruite à partir du blob + hydratation (`load_combat`) ; aucune opération client légitime sur le registre lui-même |
 | **Collecteurs `collect_*`** (`rules/effects/collect.py`) | **Non** | — | Traduction registre → `effects[]` pour `d20.py` ; détail d'implémentation ADR-006 décision 3 |
-| **Distinction attaquant / défenseur du collecteur** | **Non** (mécanisme) ; **Oui** (sémantique) | Les actions d'attaque prennent `attacker_id` + `target_id` (identifiants **combattant**) ; le client fournit le **contexte de portée** (`melee_weapon`, `ranged_weapon`) | Le paramètre interne `defender_id` de `roll_d20_for_combatant` est un détail de pipeline ; le contrat API reproduit la paire attaquant/cible + flags de requête, comme le ferait un handler d'arme |
-| **`D20RollRequest`** | **Non** en entrée brute ; **Oui** en sortie partielle | Entrée : sous-ensemble explicite « contexte de jet » par type d'action ; Sortie : objet `d20` dans les résultats (DTO `_d20_result_to_dict`, sans `modifier_breakdown`) | Dataclass interne riche et évolutive ; l'exposer entièrement en POST lierait chaque client à chaque nouveau flag traits/features |
-| **`D20RollResult`** | **Oui** | Objet structuré dans la réponse d'action (rolls, mode, total, `applied_effects`, etc.) | Résultat métier ; déjà sérialisé pour l'API personnage |
-| **`effect_id` / `source_id`** | **Oui** | Champs string dans `active_effects[]` et traces dans `applied_effects` | Vocabulaire moteur stable : `effect_id` = type d'effet (`blessed`, `prone`, `hunters_mark`…) ; `source_id` = origine (lanceur, ou la condition elle-même pour `expiry_mode=manual`) |
-| **`EventBus` / événements domaine** | **Non** (contrat principal) | Option dev : tampon diagnostic (ex. `/debug/events` actuel) non garanti en prod | Les clients métier lisent l'état post-action, pas le bus ; le journal C7 (`CombatLogEntry`) pourrait devenir ressource séparée plus tard — hors v1 |
-| **`RuleEngine` / compendium** | **Non** | Les réponses portent des **ids** et libellés déjà résolus (`spell_name`, `race_name`…) | Le moteur de règles reste serveur-side ; pas d'introspection compendium générique en v1 |
-| **`ActionBudget`** | **Oui** (lecture) ; **Non** (écriture directe) | Sous-objet du combattant en combat actif | Consommé par les actions (`action`, `bonus_action`, …) ; pas de PATCH manuel du budget |
+| **Distinction attaquant / défenseur du collecteur** | **Non** (mécanisme) ; **Oui** (sémantique) | Les actions d'attaque prennent `attacker_id` + `target_id` (identifiants **combattant**) ; le client fournit le **contexte de portée** (`melee_weapon`, `ranged_weapon`) | Le paramètre interne `defender_id` de `roll_d20_for_combatant` est un détail de pipeline ; le contrat API reproduit la paire attaquant/cible + flags de requête |
+| **`D20RollRequest`** | **Non** en entrée brute ; **Oui** en sortie partielle | Entrée : sous-ensemble explicite « contexte de jet » par type d'action ; Sortie : objet `d20` dans les résultats (DTO `_d20_result_to_dict`, sans `modifier_breakdown`) | Dataclass interne riche et évolutive |
+| **`D20RollResult`** | **Oui** | Objet structuré dans la réponse d'action | Résultat métier ; déjà sérialisé pour l'API personnage |
+| **`effect_id` / `source_id`** | **Oui** | Champs string dans `active_effects[]` et traces dans `applied_effects` | Vocabulaire moteur stable |
+| **`EventBus` / événements domaine** | **Non** (contrat principal) | Option dev : tampon diagnostic (ex. `/debug/events`) non garanti en prod | Les clients métier lisent l'état post-action |
+| **`RuleEngine` / compendium** | **Non** | Les réponses portent des **ids** et libellés déjà résolus | Pas d'introspection compendium générique en v1 |
+| **`ActionBudget`** | **Oui** (lecture) ; **Non** (écriture directe) | Sous-objet du combattant en combat actif | Consommé par les actions ; pas de PATCH manuel |
 
 ### 1.3 Identifiants stables exposés
 
 | Identifiant | Portée | Stabilité contractuelle |
 |---|---|---|
-| `character_id` | Persistant, cross-session | Stable — clé SQLite courte (ex. affichée par `/perso-afficher`) |
+| `character_id` | Persistant, cross-session | Stable — clé SQLite courte |
 | `combat_id` | Rencontre | Stable — entier SQL auto-incrémenté |
-| `combatant_id` | Rencontre | Stable **dans** la rencontre — UUID tronqué (8 car.) assigné à l'ajout ; opaque pour le client |
-| `spell_id`, `condition_id`, `effect_id` | Ruleset / catalogue moteur | Stable — alignés compendium et catalogues phase (`PHASE1_CONDITIONS`, sorts combat YAML) |
-| `ability_id`, `skill` | Ruleset | Stable — vocabulaire SRD 2014 (`str`, `dex`, `perception`, …) |
-
-**Alternative écartée** : exposer des ids numériques internes SQL pour les combattants — rejeté : le moteur ne les utilise pas ; seul `combatant_id` string est la clé du dict `combatants`.
-
-**Alternative écartée** : masquer `effect_id` derrière des enums numériques — rejeté : casse la lisibilité debug, duplique le compendium, et empêche l'extension par sorts/conditions sans bump de table de correspondance.
+| `combatant_id` | Rencontre | Stable **dans** la rencontre — opaque (UUID tronqué 8 car.) |
+| `spell_id`, `condition_id`, `effect_id` | Ruleset / catalogue moteur | Stable |
+| `ability_id`, `skill` | Ruleset | Stable — vocabulaire SRD 2014 |
 
 ### 1.4 Double source Character / Combatant — règle temporelle API
 
-Alignement ADR-005 (non négociable par l'API) :
+Alignement ADR-005 pour la **persistance** (non négociable) :
 
-- **Pendant** `status ∈ {preparing, active}` : les PV et la CA lus pour le combat viennent du **combattant** overlay.
-- **Après** `close_combat` : les PV persistés sur la **fiche** sont synchronisés ; les conditions et effets de rencontre **ne** sont **pas** propagés sur la fiche (encounter-scoped, ADR-005 §4).
-- Un `GET /characters/{id}/sheet` pendant un combat actif reflète la fiche **pré-rencontre** (ou post-close), **pas** l'overlay — sauf décision contraire explicite [À TRANCHER — voir §2.4].
+- **Pendant** `status ∈ {preparing, active}` : overlay `Combatant` fait foi pour le **moteur** combat.
+- **Après** `close_combat` : sync PV fiche ; conditions/effets rencontre non propagés sur `Character`.
+- **Vue API fiche** (§2.6) : pendant un combat actif, `GET /v1/characters/{id}/sheet` expose une **vue fusionnée** pour le parcours joueur — sans écrire l'overlay sur la fiche SQLite.
 
 ---
 
@@ -67,92 +65,72 @@ Alignement ADR-005 (non négociable par l'API) :
 
 ### 2.1 Qui possède la session de combat
 
-**Décision** : le **serveur** possède l'état ; le client le **référence** par `combat_id` (entier) dans les chemins de ressource.
+Le **serveur** possède l'état ; le client le **référence** par `combat_id` (entier) dans `/v1/combats/{combat_id}`.
 
-Il n'y a **pas** de session HTTP (cookie, token de session combat). Chaque requête est authentifiée… — hors v1 (§6) — et identifie le combat par URL.
-
-**Alternative écartée** : session opaque type `session_token` mappée en mémoire seule — rejetée : incompatible avec reprise après redémarrage serveur et avec le modèle SQLite déjà en place.
+Pas de session HTTP dédiée. Pas de sticky session en mémoire requise (blob SQLite + réhydratation registre à la demande).
 
 ### 2.2 Cycle de vie — alignement moteur strict
-
-L'API **reprennent exactement** les statuts `CombatStatus` :
 
 ```
 preparing → active → ended
 ```
 
-| Transition moteur | Sémantique API | Notes |
-|---|---|---|
-| `create_combat` | Création ressource combat | Statut initial `preparing` |
-| `add_combatant` | Ajout participant (preparing only) | |
-| `activate_combat` | Activation | Passe `active`, initiative, round 1 |
-| Mutations en combat | Actions POST sous `/combats/{combat_id}/…` | Chaque mutation persistée (`_persist`) |
-| `close_combat` | Clôture explicite ou conséquence d'`advance_turn` à 0 actif | Séquence ADR-005 § hook unique |
-| `load_combat` | Rechargement **interne** serveur | Pas un endpoint client obligatoire en v1 ; utilisé pour réhydrater registre et concentration |
+| Transition moteur | Sémantique API |
+|---|---|
+| `create_combat` | `POST /v1/combats` — statut `preparing` |
+| `add_combatant` | Ajout participant (**preparing** uniquement en v1 — voir §10) |
+| `activate_combat` | `POST /v1/combats/{id}/activate` |
+| Mutations combat | Actions POST sous `/v1/combats/{id}/…` |
+| `close_combat` | `POST /v1/combats/{id}/close` |
 
-**Séquence `close_combat` (contrat de sémantique, ordre observé côté moteur)** — l'endpoint de clôture API doit déclencher cette séquence sans la réordonner :
+Séquence `close_combat` (ADR-005, implémentée) — l'endpoint de clôture ne la réordonne pas :
 
-1. Sync PV overlay → fiche (`character.hp_current`)
+1. Sync PV overlay → fiche
 2. Réconciliation concentration overlay → fiche
-3. Conditions / effets rencontre : discard fiche (archive blob autorisée)
-4. `status=ended`, `ended_at`, persistance combat, `CombatEnded`
+3. Conditions : discard fiche (archive `active_effects` blob OK)
+4. `status=ended`, persist, `CombatEnded`
 
-**Alternative écartée** : introduire un statut API intermédiaire (`paused`, `between_rounds`) — rejetée : créerait une seconde machine à états divergente du blob.
+### 2.3 Persistance
 
-### 2.3 Persistance : reconstruction vs mémoire
+- **Durable** : blob `CombatState` + colonne SQL `status`.
+- **Cache process** : `ActiveEffectRegistry` par `combat_id`, reconstruit depuis le blob.
+- **Redémarrage serveur** : reprise depuis SQLite ; pas de perte si base intacte.
 
-**État observé dans le code** :
-
-- **Source de vérité durable** : blob JSON `CombatState` + colonne `status` SQL (`SqliteCombatRepository`).
-- **Cache process** : `CombatManager._effect_registries` — registre d'effets **en mémoire** par `combat_id`, reconstruit depuis `active_effects` du blob via `_sync_effect_registry_from_state` à chaque `load_combat` / `_persist`.
-- **Conséquence redémarrage serveur** : aucune perte si SQLite intacte ; prochaine requête charge depuis la base et réhydrate le registre. Pas de sticky session requise.
-
-**Décision API** : modèle **stateless HTTP + état serveur durable**. Le client n'envoie pas l'état combat ; il envoie des **commandes** idempotentes… — idempotence **non** garantie en v1 (§6).
-
-**Alternative écartée** : le client POSTe le blob combat complet à chaque action — rejetée : race conditions, taille, duplication de la logique de validation.
+Modèle **stateless HTTP + état serveur durable**. Idempotence des POST **non** garantie en v1.
 
 ### 2.4 Concurrence
 
-**Décision (alignée `docs/API_LOCAL.md` et bot Discord)** : **dernier écrivain gagne** — pas de verrou optimiste, pas d'`ETag` en v1.
+**Décision** : **last-writer-wins** — pas de `revision`, pas de `If-Match`, pas de file d'actions en v1.
 
-Deux requêtes concurrentes sur le même `combat_id` ou le même `character_id` peuvent se recouvrir ; l'ordre d'application est celui des commits SQLite.
+Deux requêtes concurrentes sur le même `combat_id` ou `character_id` peuvent se recouvrir. Documenter l'interdiction d'accès parallèle non coordonné sur la même ressource.
 
-**[À TRANCHER] — Concurrence combat**
+**Alternative écartée** : verrou optimiste — reporté ; migration coûteuse une fois des clients en production.
 
-| Option | Conséquence client |
-|---|---|
-| **A. Conserver last-writer-wins** (recommandé v1 banc de test) | Simple ; documenter l'interdiction d'accès parallèle |
-| **B. `revision` entier sur combat + header `If-Match`** | 409 `STATE_CONFLICT` ; migration clients si ajout tardif |
-| **C. File d'actions sérialisée par combat** | Contrat temps réel implicite ; complexité serveur |
+### 2.5 Scope de création — clients HTTP
 
-### 2.5 Clés de regroupement `guild_id` / `channel_id`
+**Décision (option A)** : le client HTTP fournit un **couple scope arbitraire** `guild_id` + `channel_id` (ex. `"api"` / `"session-{uuid}"`), **indépendant** de Discord.
 
-Le moteur impose aujourd'hui l'unicité « un combat ouvert par `(guild_id, channel_id)` » (`OpenCombatExistsError`).
+**État repository (2026-08-07)** : un seul combat **ouvert** (`preparing` ou `active`) par couple `(guild_id, channel_id)` — index partiel SQLite `idx_combats_open_channel`. Les combats **parallèles** sont obtenus en fournissant un **`channel_id` unique par rencontre`**. Aucune contrainte n'impose les ids Discord réels aux clients HTTP.
 
-**[À TRANCHER] — Scope de création pour clients non-Discord**
+**Alternative écartée pour le lot 1** : assouplir l'unicité globale du repository (permettre plusieurs combats ouverts dans le **même** scope) — **non requis** si le client génère des scopes uniques ; impliquerait migration schéma + revalidation du comportement Discord (un combat par salon).
 
-| Option | Conséquence |
-|---|---|
-| **A. Conserver guild/channel obligatoires** | Le client HTTP fournit un couple scope arbitraire (ex. `api-local` / `session-uuid`) |
-| **B. Assouplir le moteur** (hors contrat API seul) | Permettre plusieurs combats ouverts sans scope Discord — migration repository |
-| **C. Scope implicite singleton global dev** | Un seul combat ouvert — limite les tests parallèles |
+### 2.6 Fiche fusionnée pendant combat actif
 
-### 2.6 Lecture fiche pendant combat actif
+**Décision (option B)** : `GET /v1/characters/{character_id}/sheet` retourne une **vue fusionnée** lorsque le personnage participe à un combat **ouvert** (`preparing` ou `active`) :
 
-**[À TRANCHER]**
+- **`hp_current`** (et champs overlay pertinents) ← combattant overlay ;
+- **`active_effects`** (ou sous-ensemble contractuel) ← registre / snapshot combat pour ce `combatant_id` ;
+- le reste ← fiche calculée habituelle.
 
-| Option | Conséquence |
-|---|---|
-| **A. Sheet = fiche persistée uniquement** (alignement strict ADR-005) | Le client combat lit les PV via `GET /combats/{id}` |
-| **B. Sheet enrichie overlay si combat actif** | Deux vérités fusionnées côté API — risque de confusion ; simplifie un client monolithique |
+**Important** : fusion **lecture API uniquement** — la fiche SQLite reste au snapshot pré-sync (ADR-005) jusqu'à `close_combat`. Le client combat continue de lire `/v1/combats/{id}` pour l'état complet de rencontre.
+
+**Alternative écartée** : fiche = SQLite seule pendant le combat — rejetée pour l'objectif parcours joueur unifié.
 
 ---
 
 ## 3. Format d'erreur
 
-### 3.1 Structure unique (contrat)
-
-Toute réponse d'erreur HTTP **4xx/5xx** métier ou validation utilise un **corps JSON objet** avec clé racine `error` :
+### 3.1 Structure unique
 
 ```json
 {
@@ -166,32 +144,24 @@ Toute réponse d'erreur HTTP **4xx/5xx** métier ou validation utilise un **corp
 
 | Champ | Obligatoire | Stabilité |
 |---|---|---|
-| `code` | **Oui** | **Contrat** — code machine stable, `SCREAMING_SNAKE_CASE` |
-| `message` | **Oui** | Hint humain ; français ; **non garanti** stable (texte libre) |
-| `details` | Non | Objet JSON extensible (ex. `{"combat_id": 3, "status": "ended"}`) ; clés stables une fois documentées |
+| `code` | Oui | Contrat — `SCREAMING_SNAKE_CASE` |
+| `message` | Oui | Français ; non garanti stable |
+| `details` | Non | Objet extensible |
 
-**Alternative écartée** : message seul dans `detail` string (FastAPI par défaut actuel) — rejetée pour le contrat cible : impossible d'internationaliser ou de brancher un client sur le texte ; changement de message = rupture implicite.
+Migration : l'API personnage actuelle (`detail` string) adopte ce format — breaking change assumé.
 
-**Migration** : l'API personnage existante (`HTTPException(detail=str)`) devra adopter ce format — **breaking change** assumé pour unifier.
+### 3.2 HTTP
 
-### 3.2 Correspondance familles d'erreurs → HTTP
+| HTTP | Famille |
+|---|---|
+| **404** | Ressource absente |
+| **409** | Règle métier / conflit d'état |
+| **422** | Validation corps (`VALIDATION_ERROR`) |
+| **500** | Erreur inattendue (`INTERNAL_ERROR`) |
 
-| HTTP | Famille | Exemples `code` (illustratif, non exhaustif) |
-|---|---|---|
-| **404** | Ressource absente | `CHARACTER_NOT_FOUND`, `COMBAT_NOT_FOUND`, `COMBATANT_NOT_FOUND` |
-| **409** | Règle métier / conflit d'état | `SPELL_CAST_REJECTED`, `REST_REJECTED`, `COMBAT_STATUS_INVALID`, `UNKNOWN_CONDITION`, `ACTION_BUDGET_EXHAUSTED`, `OPEN_COMBAT_EXISTS`, `INSUFFICIENT_COMBATANTS`, `NOT_COMBATANT_TURN`, `SPELL_ATTACK_TYPE_MISSING` |
-| **422** | Corps de requête invalide | `VALIDATION_ERROR` (+ détails pydantic dans `details`) |
-| **500** | Erreur inattendue | `INTERNAL_ERROR` — message générique côté client ; pas de fuite stack |
+### 3.3 Codes stables (minimum contractuel)
 
-**Décision** : les erreurs métier typées du moteur (`SpellCastError`, `CombatStatusError`, `UnknownCombatConditionError`, …) mappent **toutes** en **409** sauf celles explicitement « not found » (404). Distinction alignée sur l'API actuelle (`docs/API_LOCAL.md`).
-
-**Alternative écartée** : HTTP 400 pour toutes les erreurs métier — rejetée : mélange validation syntaxique et règles SRD ; les clients ne peuvent pas distinguer « JSON mal formé » de « sort refusé ».
-
-### 3.3 Table de correspondance moteur → `code` (minimum contractuel)
-
-Le mapping exact sera enrichi à l'implémentation ; les lignes ci-dessous **engagent** la stabilité du `code` une fois publié :
-
-| Exception / cas moteur | `code` proposé |
+| Exception moteur | `code` |
 |---|---|
 | Personnage introuvable | `CHARACTER_NOT_FOUND` |
 | Combat introuvable | `COMBAT_NOT_FOUND` |
@@ -205,78 +175,55 @@ Le mapping exact sera enrichi à l'implémentation ; les lignes ci-dessous **eng
 | `InsufficientCombatantsError` | `INSUFFICIENT_COMBATANTS` |
 | `NotCombatantTurnError` | `NOT_COMBATANT_TURN` |
 | `CombatStateVersionError` | `COMBAT_STATE_UNSUPPORTED` |
-| `require_spell_attack_type` / `SpellCastError` attaque | `SPELL_ATTACK_TYPE_MISSING` |
+| `require_spell_attack_type` | `SPELL_ATTACK_TYPE_MISSING` |
 
 ---
 
 ## 4. Conventions de nommage et de versionnement
 
-### 4.1 Chemins de ressources
+### 4.1 Chemins
 
-**Décision** :
-
-- Ressources au **pluriel**, segments en **snake_case** : `/characters`, `/combats`.
-- Identifiants dans le chemin : `{character_id}`, `{combat_id}` (integer).
-- Actions sous ressource : verbe en **kebab-case** post fixé ou sous-chemin action — ex. `/combats/{combat_id}/attack-roll`, `/combats/{combat_id}/close`, `/characters/{id}/long-rest` (cohérent avec l'existant).
-- Pas de verbes à la racine sauf diagnostic dev explicite (`/debug/…` hors contrat prod).
-
-**Alternative écartée** : RPC style `/executeAttack` — rejetée : mélange modèle ressource et procédure ; complique la versionnement par ressource.
+- Préfixe **`/v1/`** sur toutes les routes contractuelles.
+- Ressources plurielles snake_case : `/v1/characters`, `/v1/combats`.
+- Actions : kebab-case — `/v1/combats/{id}/attack-roll`, `/v1/combats/{id}/close`.
+- Diagnostic dev (`/debug/…`) hors contrat prod ; non préfixé ou explicitement exclu du contrat v1.
 
 ### 4.2 Champs JSON
 
-**Décision** : **snake_case** partout ; aligné sur `output_serializers.py` et le compendium.
+snake_case ; vocabulaire SRD ; modes de jet `normal` / `avantage` / `desavantage` ; clés d'emplacements en string.
 
-Vocabulaire SRD / moteur **conservé** tel quel :
+### 4.3 Versionnement
 
-- `ability_id`, `spell_id`, `condition_id`, `effect_id`, `source_id`, `target_id`
-- `hp_current`, `hp_max`, `ac`, `round_number`, `initiative_order`
-- Modes de jet : `normal`, `avantage`, `desavantage` (libellés moteur français — **décision coûteuse** : changer casserait les clients ; alternative anglaise écartée pour cohérence Discord/moteur)
-
-Clés dict niveau d'emplacement : **string** (`"1"`, `"2"`) — convention DTO existante `_slots_to_dict`.
-
-### 4.3 Versionnement API
-
-**[À TRANCHER]**
-
-| Option | Avantages | Inconvénients |
-|---|---|---|
-| **A. Préfixe `/v1/`** | Clair, routable, standard | Toutes les routes actuelles `/characters/…` migrent |
-| **B. Pas de version URL v1** (banc local, `FastAPI.version="0.1.0"`) | Cohérent avec l'API actuelle minimale | Toute rupture future est implicite |
-| **C. Header `Accept-Version: 1`** | URLs stables | Clients caches/proxies ignorent souvent ; moins visible |
-
-**Recommandation rédactionnelle** : si l'objectif reste un **banc de test local** à court terme, **B** avec engagement de passer à **A** avant tout client externe — à valider mainteneur.
+**Décision** : préfixe **`/v1/`** dès le premier lot implémentable. Ruptures futures → `/v2/` ; pas de version implicite.
 
 ---
 
 ## 5. Périmètre du premier lot implémentable
 
-Objectif : **aller-retour bout-en-bout démontrable** en une session — valider le modèle ressource/combat/erreur, pas couvrir le moteur.
+### 5.1 Parcours cible (bout-en-bout)
 
-### 5.1 Intention
+1. `GET /v1/characters/{id}/sheet` — fiche initiale
+2. `POST /v1/combats` — créer avec **plusieurs** `character_ids`, scope arbitraire
+3. `POST /v1/combats/{id}/activate`
+4. `POST /v1/combats/{id}/attack-roll` — jet d'attaque avec contexte portée
+5. `GET /v1/combats/{id}` — état rencontre
+6. `GET /v1/characters/{id}/sheet` — **fiche fusionnée** (PV overlay, effets actifs)
+7. `POST /v1/combats/{id}/close` — clôture + sync PV fiche
 
-Permettre à un client HTTP de :
+### 5.2 Ressources (intention, sans schémas)
 
-1. Lire une fiche personnage existante (déjà livré).
-2. Ouvrir une rencontre avec des personnages connus.
-3. Activer la rencontre.
-4. Exécuter **une** action de combat qui produit un jet d20 résolu (attaque d'arme avec contexte de portée).
-5. Lire l'état combat mis à jour (PV, effets, tour).
-6. Clore la rencontre et vérifier la sync PV fiche.
+| Intention | Route |
+|---|---|
+| Fiche (fusionnée si combat ouvert) | `GET /v1/characters/{character_id}/sheet` |
+| Créer rencontre | `POST /v1/combats` |
+| Lire rencontre | `GET /v1/combats/{combat_id}` |
+| Activer | `POST /v1/combats/{combat_id}/activate` |
+| Jet d'attaque | `POST /v1/combats/{combat_id}/attack-roll` |
+| Clore | `POST /v1/combats/{combat_id}/close` |
 
-### 5.2 Ressources et intentions (sans schémas)
+Routes personnage existantes (cast, repos) migrent sous `/v1/` avec le format d'erreur unifié.
 
-| Intention | Ressource / action | Repose sur |
-|---|---|---|
-| Fiche personnage | `GET /characters/{character_id}/sheet` | Existant |
-| Créer rencontre | `POST /combats` | `create_combat` + `add_combatant` |
-| Lire rencontre | `GET /combats/{combat_id}` | Blob + DTO combat (à créer) |
-| Activer | `POST /combats/{combat_id}/activate` | `activate_combat` |
-| Jet d'attaque | `POST /combats/{combat_id}/attack-roll` | `resolve_attack_roll` — corps minimal : `attacker_id`, `target_id`, contexte portée |
-| Clore | `POST /combats/{combat_id}/close` | `close_combat` |
-
-**Hors premier lot implémentable** (même si le moteur le supporte) : sorts en combat, conditions, avancement de tour, dégâts, repos, debug events, création personnage, montée de niveau.
-
-**Alternative écartée** : premier lot = uniquement jets hors combat (`/roll`) — rejetée : ne valide pas la frontière Character/Combatant ni la session combat, pourtant structurante.
+**Hors lot 1** : sorts/conditions/dégâts combat, avancement de tour, création personnage, debug events.
 
 ---
 
@@ -284,71 +231,84 @@ Permettre à un client HTTP de :
 
 | Exclusion | Raison |
 |---|---|
-| **Authentification** | Banc local ; ajout ultérieur ne doit pas imposer un modèle de token dans les payloads v1 |
-| **Autorisation** (ownership `character_id`) | Même justification ; 404 suffit masquage en dev |
-| **Rate limiting** | Infra, pas contrat métier |
-| **Pagination** | Volume prévu faible (combats dev, fiches unitaires) |
-| **WebSocket / temps réel** | Événements via polling ou lecture post-action ; SSE/WS = contrat transport distinct |
-| **OpenAPI générée comme contrat** | Peut exister en aide ; le contrat normatif reste ce document + codes d'erreur stables |
-| **CORS** | Déploiement ; le client statique actuel est same-origin |
-| **Déploiement / multi-instance** | Last-writer-wins SQLite local ; scaling = autre ADR |
-| **Idempotency-Key** | Reporté ; les POST combat mutent l'état |
-| **Webhooks** | Pas de push événementiel client |
-| **Introspection compendium** | Les ids passent par le moteur ; pas de `GET /spells` général en v1 |
-| **Création / édition personnage** | Périmètre bot / autre lot |
-| **Couverture complète action economy** | Avancement tour, actions bonus, etc. — extensions après validation du noyau |
+| Authentification / autorisation | Banc local |
+| Rate limiting, pagination | Infra / volume |
+| WebSocket / temps réel | Contrat transport distinct |
+| OpenAPI comme contrat normatif | Ce document prime |
+| CORS, déploiement multi-instance | Hors lot |
+| Idempotency-Key, webhooks | Reportés |
+| Introspection compendium | ids via moteur |
+| Création / édition personnage | Autre lot |
+| Action economy complète | Extension post-validation noyau |
 
 ---
 
-## 7. Référence — ce que Discord expose déjà
+## 7. Référence Discord
 
-Les handlers Discord **ne sont pas** le contrat API, mais indiquent ce que l'UI joueur consomme aujourd'hui :
-
-- Fiche / actions personnage (sorts, repos) — partiellement recouvert par l'API HTTP actuelle.
-- `/roll` avec flags combat (`CombatRollFlags` : `ranged_weapon`, `rage_active`, `reckless`, …) — **analogue** du sous-ensemble « contexte de jet » attendu côté HTTP pour les attaques.
-- Combat Discord : sous-ensemble des opérations `CombatManager` ; pas d'exposition directe du registre ni du blob.
-
-L'API HTTP vise **strictement plus** que Discord (état combat structuré) sans reprendre le rendu embed.
+Handlers Discord : fiche, sorts, repos, `/roll` avec flags — **non** contrat API. L'API HTTP expose l'état combat structuré ; Discord inchangé dans le lot 1.
 
 ---
 
-## 8. Incohérences document / code (signalées, non corrigées)
+## 8. État documentaire (post-résorption 2026-08-07)
 
-| Point | Document | Code observé (2026-08-07) |
-|---|---|---|
-| Conditions et `ActiveEffect` | ADR-006 §2 « frightened/poisoned hors scope — overlay blob-only » | Conditions phase 1 migrées vers registre `ActiveEffect(manual)` ; blob `conditions[]` legacy hydraté à `load_combat` |
-| Collecteur conditions | ADR-004 §538, §748 : `rules/combat/conditions/collect.py` | Fichier **supprimé** ; collecte dans `rules/effects/collect.py` (attaquant / défenseur) |
-| Format d'erreur API | `docs/API_LOCAL.md` : `detail` string | Contrat cible §3 : objet `error` structuré — **migration à prévoir** |
-| Atomicité `close_combat` | ADR-005 § atomicité : sync fiches puis combat `ended` recommandé | Implémenté ; écritures multi-connexion SQLite **non transactionnelles** — limite toujours ouverte |
-| API combat | Ce contrat | **Aucun** endpoint combat HTTP — `interfaces/api/` = personnage uniquement |
-| Tests de référence | AGENTS.md baseline historique 645 | **866** tests mesurés post-lot prone |
+| Point | Statut |
+|---|---|
+| ADR-004/006 conditions → registre | ADR realignés |
+| Collecteur `rules/effects/collect.py` | ADR realignés |
+| `close_combat` vs ADR-005 | ADR-005 complété (§ état implémenté) |
+| Format erreur API | Migration prévue lot 1 |
+| Endpoints combat | Lot 1 à implémenter |
+| Tests référence AGENTS.md (645) | **866** mesurés — doc canonique non mise à jour dans ce lot |
 
 ---
 
-## 9. Synthèse des décisions à figer avant implémentation
+## 9. Synthèse des décisions
 
 | # | Décision | Statut |
 |---|---|---|
-| 1 | Ressources : Character, Combat (avec Combatant + ActiveEffect snapshot) | **Tranché** |
-| 2 | Registre, collecteurs, D20RollRequest complet : internes | **Tranché** |
-| 3 | Session = `combat_id` + SQLite ; pas de sticky session | **Tranché** |
-| 4 | Cycle de vie = `preparing` / `active` / `ended` moteur | **Tranché** |
-| 5 | Concurrence last-writer-wins v1 | **Tranché** (option B revision [À TRANCHER]) |
-| 6 | Format erreur `{ error: { code, message, details? } }` | **Tranché** |
-| 7 | Métier → 409, not found → 404 | **Tranché** |
-| 8 | snake_case, ids SRD stables exposés | **Tranché** |
-| 9 | Versionnement URL | **[À TRANCHER]** |
-| 10 | Scope guild/channel clients HTTP | **[À TRANCHER]** |
-| 11 | Sheet pendant combat actif | **[À TRANCHER]** |
+| 1 | Ressources Character + Combat (+ ActiveEffect snapshot) | Tranché |
+| 2 | Registre, collecteurs, D20RollRequest complet : internes | Tranché |
+| 3 | Session = `combat_id` + SQLite | Tranché |
+| 4 | Cycle de vie moteur strict | Tranché |
+| 5 | Concurrence last-writer-wins | Tranché |
+| 6 | Format erreur structuré | Tranché |
+| 7 | Métier → 409, not found → 404 | Tranché |
+| 8 | snake_case, ids SRD stables | Tranché |
+| 9 | Préfixe `/v1/` | Tranché |
+| 10 | Scope arbitraire client ; parallélisme via `channel_id` unique | Tranché |
+| 11 | Fiche fusionnée pendant combat ouvert | Tranché |
+
+---
+
+## 10. Réserves architecturales (hors lot 1, non bloquantes)
+
+### 10.1 Rejoindre un combat déjà `active`
+
+**Intention mainteneur** : à terme, un joueur peut **rejoindre** une rencontre en cours.
+
+**État moteur v1** : `add_combatant` n'accepte que `status=preparing`.
+
+**Compatibilité contrat lot 1** :
+
+- Le modèle ressource **`POST /v1/combats/{id}/combatants`** (ou action dédiée `join`) reste **compatible** — non implémenté en lot 1, statut `preparing` seulement.
+- **`combatant_id`** opaque assigné à l'ajout — pas de collision avec les participants existants.
+- **Aucune décision lot 1 ne ferme** une future extension `add_combatant` en `active` (budget initiative, insertion ordre — chantier moteur séparé).
+
+**Signal si blocage futur** : figer « liste combattants immuable après `activate` » dans le contrat — **non retenu** ; l'activation ne doit pas être documentée comme verrou structurel absolu.
+
+### 10.2 Scope repository vs Discord
+
+Tant que l'unicité `(guild_id, channel_id)` reste en base, Discord (un salon = un combat) et HTTP (scope unique par session) **coexistent** sans modification. Assouplir l'unicité pour plusieurs combats dans le **même** scope HTTP serait un **chantier repository** distinct — signaler avant toute modification du schéma SQL.
 
 ---
 
 ## Références
 
-- `docs/adr/ADR-005-transition-fin-rencontre.md` — sync-on-close, conditions encounter-scoped
-- `docs/adr/ADR-006-modele-effets-actifs.md` — ActiveEffect, registre, horloge rounds
-- `docs/API_LOCAL.md` — API personnage actuelle (limites concurrence, codes HTTP de facto)
-- `jdr_engine/game/combat_manager.py` — cycle de vie, `_effect_registries`, `close_combat`
-- `jdr_engine/rules/effects/collect.py` — collecteurs attaquant/défenseur
-- `jdr_engine/application/dto/output_serializers.py` — principes DTO (données, pas texte formaté)
-- `interfaces/api/app.py` — surface HTTP existante
+- `docs/adr/ADR-004-modele-combat.md` — conditions, registre
+- `docs/adr/ADR-005-transition-fin-rencontre.md` — sync-on-close
+- `docs/adr/ADR-006-modele-effets-actifs.md` — ActiveEffect
+- `docs/API_LOCAL.md` — API personnage actuelle (à migrer `/v1/` + erreurs)
+- `jdr_engine/game/combat_manager.py`
+- `jdr_engine/rules/effects/collect.py`
+- `jdr_engine/application/dto/output_serializers.py`
+- `interfaces/api/app.py`
