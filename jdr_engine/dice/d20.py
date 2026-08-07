@@ -163,6 +163,10 @@ def _effect_matches(
                 )
             if when == "target_is_reckless":
                 return request.target_reckless
+            if when == "target_prone_melee":
+                return request.melee_weapon
+            if when == "target_prone_ranged":
+                return request.ranged_weapon
             return False
         if context == "ability_check":
             when = effect.get("when")
@@ -221,7 +225,16 @@ def _effect_matches(
 
     if effect_type == "disadvantage":
         if context == "attack":
-            return request.roll_type == "attack"
+            if request.roll_type != "attack":
+                return False
+            when = effect.get("when")
+            if when == "target_prone_melee":
+                return request.melee_weapon
+            if when == "target_prone_ranged":
+                return request.ranged_weapon
+            if when is not None:
+                return False
+            return True
         if context == "ability_check":
             return request.roll_type == "ability_check"
         return False

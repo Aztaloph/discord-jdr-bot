@@ -100,6 +100,7 @@ def roll_d20_for_combatant(
     engine: RuleEngine,
     *,
     effect_registry: ActiveEffectRegistry | None = None,
+    defender_id: str | None = None,
     rng=None,
 ):
     """
@@ -109,8 +110,9 @@ def roll_d20_for_combatant(
     """
     from jdr_engine.dice.d20 import D20RollContext, roll_d20
     from jdr_engine.rules.effects.collect import (
+        collect_attacker_condition_roll_effects,
         collect_buff_roll_effects,
-        collect_condition_roll_effects,
+        collect_defender_condition_roll_effects,
     )
 
     effects = collect_roll_effects(character, engine)
@@ -119,7 +121,15 @@ def roll_d20_for_combatant(
             collect_buff_roll_effects(effect_registry, combatant.combatant_id)
         )
         effects.extend(
-            collect_condition_roll_effects(effect_registry, combatant.combatant_id)
+            collect_attacker_condition_roll_effects(
+                effect_registry, combatant.combatant_id
+            )
         )
+        if defender_id is not None:
+            effects.extend(
+                collect_defender_condition_roll_effects(
+                    effect_registry, defender_id
+                )
+            )
     enriched = enrich_roll_request(request, character)
     return roll_d20(D20RollContext(request=enriched, effects=effects), rng=rng)

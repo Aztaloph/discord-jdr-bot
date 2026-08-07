@@ -16,6 +16,7 @@ from jdr_engine.core.events.combat_events import (
 from jdr_engine.dice.d20 import D20RollContext, D20RollRequest, roll_d20
 from jdr_engine.domain.character.ability_scores import AbilityScores
 from jdr_engine.domain.character.character import Character
+from jdr_engine.domain.combat.combatant import Combatant
 from jdr_engine.domain.combat.active_effect import ActiveEffect
 from jdr_engine.game.combat_manager import CombatManager
 from jdr_engine.persistence.combat_repository import SqliteCombatRepository
@@ -25,7 +26,10 @@ from jdr_engine.persistence.sqlite_character_repository import (
 )
 from jdr_engine.rules import RuleEngine
 from jdr_engine.rules.combat.conditions.catalog import UnknownCombatConditionError
-from jdr_engine.rules.effects.collect import collect_condition_roll_effects
+from jdr_engine.rules.effects.collect import (
+    collect_condition_roll_effects,
+    collect_defender_condition_roll_effects,
+)
 from jdr_engine.rules.effects.registry import ActiveEffectRegistry
 from jdr_engine.rules.roll_effects import roll_d20_for_combatant
 
@@ -125,6 +129,156 @@ class TestConditionCollector(unittest.TestCase):
         contexts = {effect["context"] for effect in effects}
         self.assertEqual(contexts, {"attack", "ability_check"})
         self.assertTrue(all(effect["type"] == "disadvantage" for effect in effects))
+
+    def test_frightened_emits_attack_and_ability_check_disadvantage(self) -> None:
+        registry = ActiveEffectRegistry()
+        registry.add(
+            ActiveEffect(
+                effect_id="frightened",
+                source_id="frightened",
+                target_id="c1",
+                applied_at_round=1,
+                expiry_mode="manual",
+            )
+        )
+        effects = collect_condition_roll_effects(registry, "c1")
+        self.assertEqual(len(effects), 2)
+        contexts = {effect["context"] for effect in effects}
+        self.assertEqual(contexts, {"attack", "ability_check"})
+        self.assertTrue(all(effect["type"] == "disadvantage" for effect in effects))
+
+
+class TestDefenderConditionCollector(unittest.TestCase):
+    def test_poisoned_on_defender_emits_no_attack_effects_yet(self) -> None:
+        """Phase 1 : seules les conditions mappées côté défenseur émettent des effets."""
+        registry = ActiveEffectRegistry()
+        registry.add(
+            ActiveEffect(
+                effect_id="poisoned",
+                source_id="poisoned",
+                target_id="defender",
+                applied_at_round=1,
+                expiry_mode="manual",
+            )
+        )
+        effects = collect_defender_condition_roll_effects(registry, "defender")
+        self.assertEqual(effects, [])
+
+    def test_defender_id_does_not_change_attack_when_defender_has_poisoned_only(
+        self,
+    ) -> None:
+        """``defender_id`` branché ; conditions attaquant-only sur la cible restent inertes."""
+        registry = ActiveEffectRegistry()
+        registry.add(
+            ActiveEffect(
+                effect_id="poisoned",
+                source_id="poisoned",
+                target_id="defender",
+                applied_at_round=1,
+                expiry_mode="manual",
+            )
+        )
+        request = _attack_request()
+        attacker = Combatant(
+            combatant_id="attacker",
+            display_name="Attaquant",
+            kind="player_character",
+            character_id="char-1",
+            hp_current=20,
+            hp_max=20,
+            ac=14,
+        )
+        result = roll_d20_for_combatant(
+            request,
+            _wizard(name="Attacker"),
+            attacker,
+            _engine(),
+            effect_registry=registry,
+            defender_id="defender",
+            rng=RandSequence([14]),
+        )
+        self.assertEqual(result.mode, "normal")
+        self.assertEqual(result.kept_value, 14)
+
+
+class TestD20DefenderWhenClauses(unittest.TestCase):
+    """Clauses ``when`` sur advantage/disadvantage — infrastructure lot prone C6b."""
+
+    def test_disadvantage_without_when_still_matches_all_attacks(self) -> None:
+        request = _attack_request()
+        effects = [
+            {"type": "disadvantage", "context": "attack", "source_id": "poisoned"},
+        ]
+        result = roll_d20(
+            D20RollContext(request=request, effects=effects),
+            rng=RandSequence([18, 4]),
+        )
+        self.assertEqual(result.mode, "desavantage")
+        self.assertEqual(result.kept_value, 4)
+
+    def test_target_prone_melee_advantage_requires_melee_weapon_flag(self) -> None:
+        request_without = _attack_request()
+        request_with = _attack_request(melee_weapon=True)
+        effect = {
+            "type": "advantage",
+            "context": "attack",
+            "when": "target_prone_melee",
+            "source_id": "prone",
+        }
+        without = roll_d20(
+            D20RollContext(request=request_without, effects=[effect]),
+            rng=RandSequence([10, 3]),
+        )
+        with_melee = roll_d20(
+            D20RollContext(request=request_with, effects=[effect]),
+            rng=RandSequence([10, 3]),
+        )
+        self.assertEqual(without.mode, "normal")
+        self.assertEqual(without.kept_value, 10)
+        self.assertEqual(with_melee.mode, "avantage")
+        self.assertEqual(with_melee.kept_value, 10)
+
+    def test_target_prone_ranged_disadvantage_requires_ranged_weapon_flag(self) -> None:
+        request_without = _attack_request()
+        request_with = _attack_request(ranged_weapon=True)
+        effect = {
+            "type": "disadvantage",
+            "context": "attack",
+            "when": "target_prone_ranged",
+            "source_id": "prone",
+        }
+        without = roll_d20(
+            D20RollContext(request=request_without, effects=[effect]),
+            rng=RandSequence([18, 4]),
+        )
+        with_ranged = roll_d20(
+            D20RollContext(request=request_with, effects=[effect]),
+            rng=RandSequence([18, 4]),
+        )
+        self.assertEqual(without.mode, "normal")
+        self.assertEqual(without.kept_value, 18)
+        self.assertEqual(with_ranged.mode, "desavantage")
+        self.assertEqual(with_ranged.kept_value, 4)
+
+    def test_attacker_and_defender_prone_effects_cancel_on_melee_attack(self) -> None:
+        """Attaquant prone (sans when) + cible prone mêlée (when) → annulation."""
+        request = _attack_request(melee_weapon=True)
+        effects = [
+            {"type": "disadvantage", "context": "attack", "source_id": "prone"},
+            {
+                "type": "advantage",
+                "context": "attack",
+                "when": "target_prone_melee",
+                "source_id": "prone",
+            },
+        ]
+        result = roll_d20(
+            D20RollContext(request=request, effects=effects),
+            rng=RandSequence([15, 7]),
+        )
+        self.assertEqual(result.mode, "normal")
+        self.assertEqual(len(result.rolls), 1)
+        self.assertEqual(result.kept_value, 15)
 
 
 class TestD20DisadvantageEffects(unittest.TestCase):

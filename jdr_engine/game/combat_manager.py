@@ -466,6 +466,7 @@ class CombatManager:
         d20 = roll_d20_for_combatant(
             request, character, attacker, self._engine,
             effect_registry=registry,
+            defender_id=target_id,
             rng=rng,
         )
         outcome = resolve_attack_hit(d20, target.ac)
