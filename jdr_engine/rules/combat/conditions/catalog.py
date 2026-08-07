@@ -2,7 +2,7 @@
 """Conditions SRD phase 1 — enum en dur (ADR-004 décision 4, lot C6)."""
 from __future__ import annotations
 
-PHASE1_CONDITIONS: frozenset[str] = frozenset({"frightened", "poisoned"})
+PHASE1_CONDITIONS: frozenset[str] = frozenset({"frightened", "poisoned", "prone"})
 
 
 class UnknownCombatConditionError(Exception):

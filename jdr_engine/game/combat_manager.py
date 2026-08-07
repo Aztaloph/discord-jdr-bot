@@ -85,6 +85,7 @@ from jdr_engine.rules.combat.spell_resolution import (
     compute_spell_save_dc,
     half_on_save_for_spell,
     load_combat_spell,
+    require_spell_attack_type,
     resolve_spell_damage_notation,
     save_ability_for_spell,
 )
@@ -605,7 +606,10 @@ class CombatManager:
         self._publish_spell_cast(state, caster_id, spell, (target_id,))
 
         request = build_spell_attack_request(
-            caster_char, self._engine, base_mode=base_mode
+            caster_char,
+            self._engine,
+            base_mode=base_mode,
+            attack_type=require_spell_attack_type(spell),
         )
         attack = self.resolve_attack_roll(
             combat_id, caster_id, target_id, request, rng=rng

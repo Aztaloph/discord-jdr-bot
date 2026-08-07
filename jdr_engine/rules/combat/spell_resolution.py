@@ -20,6 +20,7 @@ from jdr_engine.rules.spellcasting.cast import (
 )
 
 EffectType = Literal["spell_attack", "saving_throw", "buff"]
+SpellAttackRange = Literal["melee", "ranged"]
 
 
 @dataclass(frozen=True)
@@ -76,13 +77,25 @@ def compute_spell_save_dc(character: Character, engine: RuleEngine) -> int:
     return save_dc
 
 
+def require_spell_attack_type(spell: CombatSpellEffect) -> SpellAttackRange:
+    """Exige ``attack_type`` melee/ranged sur une attaque de sort avec jet vs CA."""
+    attack_type = spell.effect.get("attack_type")
+    if attack_type not in ("melee", "ranged"):
+        raise SpellCastError(
+            f"Sort {spell.spell_id!r} : attack_type {attack_type!r} manquant ou invalide "
+            f"(attendu 'melee' ou 'ranged' pour une attaque de sort)."
+        )
+    return attack_type  # type: ignore[return-value]
+
+
 def build_spell_attack_request(
     character: Character,
     engine: RuleEngine,
     *,
     base_mode: D20Mode = "normal",
+    attack_type: SpellAttackRange,
 ) -> D20RollRequest:
-    """Requête d20 pour attaque de sort — mod incantation + maîtrise."""
+    """Requête d20 pour attaque de sort — mod incantation + maîtrise + portée."""
     ability_id = _spellcasting_ability(character, engine)
     ability_mod, _attack_bonus, _save_dc = get_spellcasting_stats(character, engine)
     proficiency = engine.get_proficiency_bonus(character.level)
@@ -93,6 +106,8 @@ def build_spell_attack_request(
         is_proficient=True,
         ability=ability_id,
         base_mode=base_mode,
+        melee_weapon=attack_type == "melee",
+        ranged_weapon=attack_type == "ranged",
     )
 
 

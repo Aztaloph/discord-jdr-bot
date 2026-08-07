@@ -21,11 +21,26 @@ _ATTACKER_CONDITION_EFFECTS: dict[str, list[dict[str, Any]]] = {
         {"type": "disadvantage", "context": "attack"},
         {"type": "disadvantage", "context": "ability_check"},
     ],
+    "prone": [
+        {"type": "disadvantage", "context": "attack"},
+    ],
 }
 
 # Effets émis pour les conditions portées par le **défenseur** lors d'un jet d'attaque.
-# Lot prone (C6b) complétera ce mapping au commit suivant.
-_DEFENDER_CONDITION_ATTACK_EFFECTS: dict[str, list[dict[str, Any]]] = {}
+_DEFENDER_CONDITION_ATTACK_EFFECTS: dict[str, list[dict[str, Any]]] = {
+    "prone": [
+        {
+            "type": "advantage",
+            "context": "attack",
+            "when": "target_prone_melee",
+        },
+        {
+            "type": "disadvantage",
+            "context": "attack",
+            "when": "target_prone_ranged",
+        },
+    ],
+}
 
 
 def _emit_mapped_condition_effects(
