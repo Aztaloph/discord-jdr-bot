@@ -97,10 +97,10 @@ venv\Scripts\python.exe -m uvicorn --factory interfaces.api.app:create_app
 
 | Méthode | Route | Effet |
 |:-------:|-------|-------|
-| `GET` | `/characters/{id}/sheet` | Fiche calculée (DTO JSON) |
-| `POST` | `/characters/{id}/cast` | Lance un sort, persiste l'état |
-| `POST` | `/characters/{id}/short-rest` | Repos court |
-| `POST` | `/characters/{id}/long-rest` | Repos long |
+| `GET` | `/v1/characters/{id}/sheet` | Fiche calculée (DTO JSON) |
+| `POST` | `/v1/characters/{id}/cast` | Lance un sort, persiste l'état |
+| `POST` | `/v1/characters/{id}/short-rest` | Repos court |
+| `POST` | `/v1/characters/{id}/long-rest` | Repos long |
 
 ---
 

@@ -29,6 +29,13 @@ from jdr_engine.rules.spellcasting.state import get_slots_used, get_spellcasting
 
 from interfaces.api.app import create_app
 
+
+def _api_error(response) -> dict:
+    """Corps d'erreur contractuel ``{ error: { code, message, details } }``."""
+    payload = response.json()
+    assert "error" in payload, payload
+    return payload["error"]
+
 _ENGINE: RuleEngine | None = None
 
 
@@ -357,11 +364,11 @@ class TestApiEndpoints(unittest.TestCase):
         self.repo.save(character)
         return character
 
-    # ── GET /characters/{id}/sheet ──
+    # ── GET /v1/characters/{id}/sheet ──
 
     def test_get_sheet_ok(self):
         self._seed(_tiefling_warlock(), "api001")
-        response = self.client.get("/characters/api001/sheet")
+        response = self.client.get("/v1/characters/api001/sheet")
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(data["name"], "Occultiste")
@@ -370,16 +377,18 @@ class TestApiEndpoints(unittest.TestCase):
         self.assertNotIn("spellcasting_summary", data)
 
     def test_get_sheet_unknown_character_404(self):
-        response = self.client.get("/characters/inconnu/sheet")
+        response = self.client.get("/v1/characters/inconnu/sheet")
         self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json()["detail"], "Personnage introuvable.")
+        err = _api_error(response)
+        self.assertEqual(err["code"], "CHARACTER_NOT_FOUND")
+        self.assertEqual(err["message"], "Personnage introuvable.")
 
-    # ── POST /characters/{id}/cast ──
+    # ── POST /v1/characters/{id}/cast ──
 
     def test_cast_ok_and_persisted_state_matches_response(self):
         self._seed(_tiefling_warlock(), "api002")
         response = self.client.post(
-            "/characters/api002/cast", json={"spell_id": "hex"}
+            "/v1/characters/api002/cast", json={"spell_id": "hex"}
         )
         self.assertEqual(response.status_code, 200)
         data = response.json()
@@ -394,43 +403,49 @@ class TestApiEndpoints(unittest.TestCase):
     def test_cast_unknown_spell_409(self):
         self._seed(_tiefling_warlock(), "api003")
         response = self.client.post(
-            "/characters/api003/cast", json={"spell_id": "sort_inexistant"}
+            "/v1/characters/api003/cast", json={"spell_id": "sort_inexistant"}
         )
         self.assertEqual(response.status_code, 409)
-        self.assertIn("Sort inconnu", response.json()["detail"])
+        err = _api_error(response)
+        self.assertEqual(err["code"], "SPELL_CAST_REJECTED")
+        self.assertIn("Sort inconnu", err["message"])
 
     def test_cast_no_slots_left_409(self):
         self._seed(_tiefling_warlock(), "api004")
         for _ in range(2):
             ok = self.client.post(
-                "/characters/api004/cast", json={"spell_id": "hex"}
+                "/v1/characters/api004/cast", json={"spell_id": "hex"}
             )
             self.assertEqual(ok.status_code, 200)
         response = self.client.post(
-            "/characters/api004/cast", json={"spell_id": "hex"}
+            "/v1/characters/api004/cast", json={"spell_id": "hex"}
         )
         self.assertEqual(response.status_code, 409)
-        self.assertIn("emplacement", response.json()["detail"].lower())
+        err = _api_error(response)
+        self.assertEqual(err["code"], "SPELL_CAST_REJECTED")
+        self.assertIn("emplacement", err["message"].lower())
 
     def test_cast_unknown_character_404(self):
         response = self.client.post(
-            "/characters/inconnu/cast", json={"spell_id": "hex"}
+            "/v1/characters/inconnu/cast", json={"spell_id": "hex"}
         )
         self.assertEqual(response.status_code, 404)
+        self.assertEqual(_api_error(response)["code"], "CHARACTER_NOT_FOUND")
 
     def test_cast_missing_spell_id_422(self):
         self._seed(_tiefling_warlock(), "api005")
-        response = self.client.post("/characters/api005/cast", json={})
+        response = self.client.post("/v1/characters/api005/cast", json={})
         self.assertEqual(response.status_code, 422)
+        self.assertEqual(_api_error(response)["code"], "VALIDATION_ERROR")
 
-    # ── POST /characters/{id}/short-rest ──
+    # ── POST /v1/characters/{id}/short-rest ──
 
     def test_short_rest_ok_and_persisted(self):
         char = _fighter()
         char.hp_current = 5
         self._seed(char, "api006")
         response = self.client.post(
-            "/characters/api006/short-rest", json={"dice_to_spend": 1}
+            "/v1/characters/api006/short-rest", json={"dice_to_spend": 1}
         )
         self.assertEqual(response.status_code, 200)
         data = response.json()
@@ -443,29 +458,31 @@ class TestApiEndpoints(unittest.TestCase):
     def test_short_rest_not_enough_dice_409(self):
         self._seed(_fighter(), "api007")
         response = self.client.post(
-            "/characters/api007/short-rest", json={"dice_to_spend": 99}
+            "/v1/characters/api007/short-rest", json={"dice_to_spend": 99}
         )
         self.assertEqual(response.status_code, 409)
-        self.assertIn("Dés de vie insuffisants", response.json()["detail"])
+        err = _api_error(response)
+        self.assertEqual(err["code"], "REST_REJECTED")
+        self.assertIn("Dés de vie insuffisants", err["message"])
 
     def test_short_rest_negative_dice_422(self):
         self._seed(_fighter(), "api008")
         response = self.client.post(
-            "/characters/api008/short-rest", json={"dice_to_spend": -1}
+            "/v1/characters/api008/short-rest", json={"dice_to_spend": -1}
         )
         self.assertEqual(response.status_code, 422)
 
-    # ── POST /characters/{id}/long-rest ──
+    # ── POST /v1/characters/{id}/long-rest ──
 
     def test_long_rest_ok_and_persisted(self):
         char = _tiefling_warlock()
         char.hp_current = 3
         self._seed(char, "api009")
         cast = self.client.post(
-            "/characters/api009/cast", json={"spell_id": "hex"}
+            "/v1/characters/api009/cast", json={"spell_id": "hex"}
         )
         self.assertEqual(cast.status_code, 200)
-        response = self.client.post("/characters/api009/long-rest")
+        response = self.client.post("/v1/characters/api009/long-rest")
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(data["slots_remaining"], data["slots_max"])
@@ -478,8 +495,9 @@ class TestApiEndpoints(unittest.TestCase):
         )
 
     def test_long_rest_unknown_character_404(self):
-        response = self.client.post("/characters/inconnu/long-rest")
+        response = self.client.post("/v1/characters/inconnu/long-rest")
         self.assertEqual(response.status_code, 404)
+        self.assertEqual(_api_error(response)["code"], "CHARACTER_NOT_FOUND")
 
 
 if __name__ == "__main__":

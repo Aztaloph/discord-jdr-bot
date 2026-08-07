@@ -52,6 +52,10 @@ function escapeHtml(text) {
  */
 function extractErrorMessage(response, body) {
   if (body && typeof body === "object" && body !== null) {
+    const error = /** @type {{ error?: { message?: unknown } }} */ (body).error;
+    if (error && typeof error.message === "string") {
+      return error.message;
+    }
     const detail = /** @type {{ detail?: unknown }} */ (body).detail;
     if (typeof detail === "string") {
       return detail;
@@ -340,7 +344,7 @@ async function loadSheet(characterId, options = {}) {
     throw new Error("Saisissez un identifiant de personnage.");
   }
 
-  const sheet = await apiFetch(`/characters/${encodeURIComponent(id)}/sheet`);
+  const sheet = await apiFetch(`/v1/characters/${encodeURIComponent(id)}/sheet`);
   activeCharacterId = id;
   localStorage.setItem(STORAGE_KEY, id);
   renderSheet(sheet);
@@ -412,7 +416,7 @@ el.btnCast.addEventListener("click", () => {
     return;
   }
   void runAction(`Lancer ${spellId}`, () =>
-    apiFetch(`/characters/${encodeURIComponent(activeCharacterId)}/cast`, {
+    apiFetch(`/v1/characters/${encodeURIComponent(activeCharacterId)}/cast`, {
       method: "POST",
       body: JSON.stringify({ spell_id: spellId }),
     })
@@ -428,7 +432,7 @@ el.btnShortRest.addEventListener("click", () => {
   }
   void runAction(`Repos court (${dice} dé${dice > 1 ? "s" : ""})`, () =>
     apiFetch(
-      `/characters/${encodeURIComponent(activeCharacterId)}/short-rest`,
+      `/v1/characters/${encodeURIComponent(activeCharacterId)}/short-rest`,
       {
         method: "POST",
         body: JSON.stringify({ dice_to_spend: dice }),
@@ -439,7 +443,7 @@ el.btnShortRest.addEventListener("click", () => {
 
 el.btnLongRest.addEventListener("click", () => {
   void runAction("Repos long", () =>
-    apiFetch(`/characters/${encodeURIComponent(activeCharacterId)}/long-rest`, {
+    apiFetch(`/v1/characters/${encodeURIComponent(activeCharacterId)}/long-rest`, {
       method: "POST",
     })
   );

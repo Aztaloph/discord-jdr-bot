@@ -1,46 +1,23 @@
 # interfaces/api/app.py
 """
-API HTTP de lecture et d'action — banc de test pour observer un personnage
-évoluer hors Discord.
+API HTTP — interface de jeu v1 (fiche, sorts, repos ; combat en extension).
 
-Endpoints :
-- ``GET  /characters/{character_id}/sheet``      — fiche calculée (DTO).
-- ``POST /characters/{character_id}/cast``       — lancer un sort.
-- ``POST /characters/{character_id}/short-rest`` — repos court.
-- ``POST /characters/{character_id}/long-rest``  — repos long.
+Routes contractuelles sous ``/v1/`` — voir ``docs/api/CONTRAT.md``.
 
-Règles de fonctionnement :
-- Toute action **persiste systématiquement** le personnage mis à jour, dans la
-  même fonction qui l'exécute — aucune persistance n'est laissée au client.
-- ``cast_spell`` est appelé avec ``persist_slots=True`` : ``updated_character``
-  est alors renseigné et c'est **cet objet** qui est persisté, garantissant que
-  l'état en base correspond à l'état retourné dans la réponse. (Avec
-  ``persist_slots=False``, ``cast_spell`` mute le personnage reçu en place et
-  laisse ``updated_character`` à ``None`` — piège documenté, ne pas l'utiliser ici.)
-- Erreurs métier (``SpellCastError``, ``RestError``) → **409** avec message.
-- Personnage introuvable → **404** dédié.
-- Corps de requête invalide → **422** (validation FastAPI/pydantic).
-- Toute autre exception → **500** (erreur inattendue, distincte du métier).
-
-**Pas de contrôle de concurrence dans ce lot** : comme pour le bot Discord,
-le dernier écrivain gagne (``save`` fait un upsert complet, sans verrou ni
-version). Deux écritures concurrentes sur le même personnage se recouvrent.
-
-Lancement local : voir ``docs/API_LOCAL.md`` (fabrique ``create_app`` + uvicorn).
-Client web statique : ``GET /`` (HTML) · assets ``/static/*`` (même origine, pas de CORS).
-Diagnostic événements (dev) : ``GET /debug/events`` (JSON) · ``GET /debug/events/view`` (HTML).
+Diagnostic dev (hors contrat v1) : ``/debug/events``, ``GET /``, ``/static/*``.
 """
 from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from interfaces.api.diagnostic.event_buffer import EventRingBuffer
 from interfaces.api.diagnostic.recording_bus import RecordingEventBus
+from interfaces.api.errors import ApiError, register_error_handlers
 from jdr_engine.core.events.bus import EventBus
 
 from jdr_engine.application.dto.output_serializers import (
@@ -83,9 +60,6 @@ def create_app(
 
     ``engine`` et ``db_path`` sont injectables pour les tests ; par défaut,
     charge le ruleset ``dnd5e`` et utilise la base SQLite du bot (``data/bot.db``).
-
-    ``event_bus`` / ``event_buffer`` : injectables pour les tests ; par défaut,
-    un ``RecordingEventBus`` (diagnostic dev, isolé du bus nu).
     """
     if engine is None:
         engine = RuleEngine.load("dnd5e", validate=True, strict=True)
@@ -101,26 +75,29 @@ def create_app(
 
     app = FastAPI(
         title="JDR Engine API",
-        description="JDR Engine — banc de test HTTP (fiche, sorts, repos).",
-        version="0.1.0",
+        description="JDR Engine — API de jeu v1 (fiche, sorts, repos, combat).",
+        version="1.0.0",
     )
+    register_error_handlers(app)
     app.state.event_bus = event_bus
 
     def _load_character(character_id: str) -> Character:
         character = repository.get_by_id(character_id)
         if character is None:
-            raise HTTPException(
-                status_code=404, detail="Personnage introuvable."
+            raise ApiError(
+                404,
+                "CHARACTER_NOT_FOUND",
+                "Personnage introuvable.",
             )
         return character
 
-    @app.get("/characters/{character_id}/sheet")
+    @app.get("/v1/characters/{character_id}/sheet")
     def get_sheet(character_id: str) -> dict:
         character = _load_character(character_id)
         sheet = build_character_sheet(character, engine, locale=locale)
         return character_sheet_to_dict(sheet)
 
-    @app.post("/characters/{character_id}/cast")
+    @app.post("/v1/characters/{character_id}/cast")
     def cast(character_id: str, body: CastSpellRequest) -> dict:
         character = _load_character(character_id)
         try:
@@ -132,13 +109,15 @@ def create_app(
                 persist_slots=True,
             )
         except SpellCastError as exc:
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
-        # persist_slots=True garantit updated_character non nul ; le repli sur
-        # `character` (muté en place par cast_spell) couvre tout cas contraire.
+            raise ApiError(
+                409,
+                "SPELL_CAST_REJECTED",
+                str(exc),
+            ) from exc
         repository.save(result.updated_character or character)
         return spell_cast_result_to_dict(result)
 
-    @app.post("/characters/{character_id}/short-rest")
+    @app.post("/v1/characters/{character_id}/short-rest")
     def short_rest(character_id: str, body: ShortRestRequest) -> dict:
         character = _load_character(character_id)
         try:
@@ -146,17 +125,25 @@ def create_app(
                 character, engine, body.dice_to_spend
             )
         except RestError as exc:
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
+            raise ApiError(
+                409,
+                "REST_REJECTED",
+                str(exc),
+            ) from exc
         repository.save(updated)
         return short_rest_result_to_dict(result)
 
-    @app.post("/characters/{character_id}/long-rest")
+    @app.post("/v1/characters/{character_id}/long-rest")
     def long_rest(character_id: str) -> dict:
         character = _load_character(character_id)
         try:
             updated, result = apply_long_rest(character, engine)
         except RestError as exc:
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
+            raise ApiError(
+                409,
+                "REST_REJECTED",
+                str(exc),
+            ) from exc
         repository.save(updated)
         return long_rest_result_to_dict(result)
 
@@ -165,9 +152,10 @@ def create_app(
         """Page d'accueil — client web statique (HTML/CSS/JS vanilla)."""
         index = STATIC_DIR / "index.html"
         if not index.is_file():
-            raise HTTPException(
-                status_code=500,
-                detail="Client web introuvable (interfaces/api/static/index.html).",
+            raise ApiError(
+                500,
+                "INTERNAL_ERROR",
+                "Client web introuvable (interfaces/api/static/index.html).",
             )
         return FileResponse(index)
 
@@ -186,9 +174,10 @@ def create_app(
         """Page HTML de diagnostic — flux d'événements (rafraîchissement périodique)."""
         page = STATIC_DIR / "events.html"
         if not page.is_file():
-            raise HTTPException(
-                status_code=500,
-                detail="Page diagnostic introuvable (interfaces/api/static/events.html).",
+            raise ApiError(
+                500,
+                "INTERNAL_ERROR",
+                "Page diagnostic introuvable (interfaces/api/static/events.html).",
             )
         return FileResponse(page)
 
