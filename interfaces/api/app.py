@@ -19,11 +19,11 @@ from interfaces.api.combat_routes import register_combat_routes
 from interfaces.api.diagnostic.event_buffer import EventRingBuffer
 from interfaces.api.diagnostic.recording_bus import RecordingEventBus
 from interfaces.api.errors import ApiError, register_error_handlers
+from interfaces.api.sheet_view import build_character_sheet_response
 from jdr_engine.application.combat_service import CombatService
 from jdr_engine.core.events.bus import EventBus
 
 from jdr_engine.application.dto.output_serializers import (
-    character_sheet_to_dict,
     long_rest_result_to_dict,
     short_rest_result_to_dict,
     spell_cast_result_to_dict,
@@ -35,7 +35,6 @@ from jdr_engine.persistence.database import init_database
 from jdr_engine.persistence.sqlite_character_repository import (
     SqliteCharacterRepository,
 )
-from jdr_engine.rules.calculator import build_character_sheet
 from jdr_engine.rules.engine import RuleEngine
 from jdr_engine.rules.rest import RestError, apply_long_rest, apply_short_rest
 from jdr_engine.rules.spellcasting.cast import SpellCastError, cast_spell
@@ -58,6 +57,8 @@ def create_app(
     locale: str = "fr",
     event_bus: EventBus | None = None,
     event_buffer: EventRingBuffer | None = None,
+    combat_initiative_rng=None,
+    combat_attack_rng=None,
 ) -> FastAPI:
     """
     Fabrique de l'application FastAPI.
@@ -108,8 +109,12 @@ def create_app(
     @app.get("/v1/characters/{character_id}/sheet")
     def get_sheet(character_id: str) -> dict:
         character = _load_character(character_id)
-        sheet = build_character_sheet(character, engine, locale=locale)
-        return character_sheet_to_dict(sheet)
+        return build_character_sheet_response(
+            character,
+            engine,
+            combat_repository,
+            locale=locale,
+        )
 
     @app.post("/v1/characters/{character_id}/cast")
     def cast(character_id: str, body: CastSpellRequest) -> dict:
@@ -166,6 +171,10 @@ def create_app(
         combat_service=combat_service,
         character_repository=repository,
         combat_repository=combat_repository,
+        engine=engine,
+        locale=locale,
+        initiative_rng=combat_initiative_rng,
+        attack_rng=combat_attack_rng,
     )
 
     @app.get("/")
